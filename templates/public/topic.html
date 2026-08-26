@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "macros/content_card.html" import content_card %}
+{% from "macros/pagination.html" import pagination %}
+
+{% block title %}{{ entity.name }} — Topics{% endblock %}
+{% block description %}All articles and video reviews about {{ entity.name }} — curated technology content from the best publishers.{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ request.host_url }}topic/{{ entity.slug }}">{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  {# Topic header #}
+  <header class="page-header" style="margin-bottom: var(--space-8);">
+    {% if entity.entity_type %}
+    <p class="page-header__eyebrow">{{ entity.entity_type | capitalize }}</p>
+    {% endif %}
+    <h1 class="page-header__title">{{ entity.name }}</h1>
+    {% if entity.description %}
+    <p class="page-header__desc">{{ entity.description }}</p>
+    {% endif %}
+    <div style="display:flex; gap: var(--space-4); align-items:center; margin-top: var(--space-4); flex-wrap:wrap;">
+      <span class="badge badge--category">{{ total or 0 }} results</span>
+      {% if entity.wikidata_id %}
+      <a href="{{ entity.wikipedia_url }}" target="_blank" rel="noopener noreferrer"
+         class="btn btn--ghost btn--sm" style="gap: var(--space-2);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Wikipedia
+      </a>
+      {% endif %}
+    </div>
+  </header>
+
+  {# Content type filter #}
+  <div class="filter-bar" style="margin-bottom: var(--space-6);">
+    <a class="filter-chip {% if not request.args.get('type') %}active{% endif %}"
+       href="/topic/{{ entity.slug }}">All</a>
+    <a class="filter-chip {% if request.args.get('type') == 'article' %}active{% endif %}"
+       href="/topic/{{ entity.slug }}?type=article">Articles</a>
+    <a class="filter-chip {% if request.args.get('type') == 'video' %}active{% endif %}"
+       href="/topic/{{ entity.slug }}?type=video">Videos</a>
+  </div>
+
+  {# Related topics #}
+  {% if related_entities %}
+  <div style="margin-bottom: var(--space-6);">
+    <p style="font-size:var(--text-xs); font-weight:var(--weight-semibold); text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:var(--space-3);">Related Topics</p>
+    <div style="display:flex; flex-wrap:wrap; gap:var(--space-2);">
+      {% for rel in related_entities %}
+      <a class="filter-chip" href="/topic/{{ rel.slug }}">{{ rel.name }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Grid #}
+  {% if items %}
+  <div class="grid-cards">
+    {% for item in items %}
+      {{ content_card(item) }}
+    {% endfor %}
+  </div>
+
+  {{ pagination(page, total_pages, endpoint='public.topic',
+               entity_slug=entity.slug) }}
+
+  {% else %}
+  <div class="empty-state">
+    <h2 class="empty-state__title">No content tagged with {{ entity.name }}</h2>
+    <p class="empty-state__desc">Content is ingested and tagged automatically. Check back soon.</p>
+    <a class="btn btn--secondary" href="/">Back to Home</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

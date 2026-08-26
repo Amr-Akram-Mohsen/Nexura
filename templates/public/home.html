@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% from "macros/content_card.html" import content_card %}
+{% from "macros/meta_tags.html" import meta_tags %}
+
+{% block title %}Technology News, Videos & Reviews{% endblock %}
+{% block description %}Nexura delivers the best technology journalism — articles, video reviews, and analysis organized by topic, brand, and editorial intent.{% endblock %}
+{% block robots %}index, follow{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Nexura",
+  "url": "{{ request.host_url }}",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ request.host_url }}search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: var(--space-6);">
+
+  {# ── Hero Carousel ─────────────────────────────────────────────────────── #}
+  {% if hero_items %}
+  <section aria-label="Featured stories" style="margin-bottom: var(--space-12);">
+    <div class="hero-carousel">
+      {% for item in hero_items %}
+      <article class="hero-slide {% if loop.first %}active{% endif %}">
+        {% if item.thumbnail %}
+        <img class="hero-slide__image"
+             src="{{ item.thumbnail }}"
+             alt="{{ item.title | truncate(80) }}"
+             loading="{% if loop.first %}eager{% else %}lazy{% endif %}"
+             fetchpriority="{% if loop.first %}high{% else %}auto{% endif %}">
+        {% endif %}
+        <div class="hero-slide__gradient" aria-hidden="true"></div>
+        <div class="hero-slide__content">
+          {% set hero_cat = item.category_name or (item.category.name if item.category is mapping else (item.category.name if item.category.name is defined else (item.category if item.category is string else ''))) %}
+          {% if hero_cat %}
+          <span class="hero-slide__tag">{{ hero_cat }}</span>
+          {% endif %}
+          <h2 class="hero-slide__title">
+            <a href="{% if item.object_type == 'video' %}/video/{{ item.id }}{% else %}/article/{{ item.id }}{% endif %}"
+               style="color: inherit; text-decoration: none;">
+              {{ item.title }}
+            </a>
+          </h2>
+          {% if item.preview %}
+          <p class="hero-slide__excerpt">{{ item.preview | truncate(180) }}</p>
+          {% endif %}
+          <a class="btn btn--gradient"
+             href="{% if item.object_type == 'video' %}/video/{{ item.id }}{% else %}/article/{{ item.id }}{% endif %}"
+             aria-label="Read: {{ item.title }}">
+            {% if item.object_type == 'video' %}Watch Now{% else %}Read Article{% endif %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+        </div>
+      </article>
+      {% endfor %}
+
+      <div class="hero__controls" aria-label="Carousel controls">
+        {% for item in hero_items %}
+        <button class="hero__dot {% if loop.first %}active{% endif %}"
+                data-idx="{{ loop.index0 }}"
+                aria-label="Go to slide {{ loop.index }}"
+                type="button"></button>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Section Content Rows ──────────────────────────────────────────────── #}
+  {% for section_row in section_rows %}
+  <section aria-labelledby="section-{{ section_row.slug }}" style="margin-bottom: var(--space-12);">
+    <div class="section-row__header">
+      <h2 class="section-row__title" id="section-{{ section_row.slug }}">
+        <span aria-hidden="true"></span>{{ section_row.name }}
+      </h2>
+      <a class="section-row__view-all" href="/{{ section_row.slug }}" aria-label="View all {{ section_row.name }} content">
+        View all
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
+
+    {% if section_row.content_items %}
+    <div class="grid-cards" data-reveal>
+      {% for item in section_row.content_items %}
+      <div class="reveal-item" style="--reveal-idx: {{ loop.index0 }}">
+        {{ content_card(item) }}
+      </div>
+      {% endfor %}
+    </div>
+    {% if section_row.content_items|length > 6 %}
+    <button class="reveal-trigger" data-reveal-trigger type="button" aria-label="Load more {{ section_row.name }}">
+      Load more {{ section_row.name }}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="margin-left: 6px;"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+      <p class="empty-state__desc">No content available yet.</p>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  {# ── Trending Topics ───────────────────────────────────────────────────── #}
+  {% if trending_entities %}
+  <section aria-labelledby="trending-topics" style="margin-bottom: var(--space-12);">
+    <div class="section-row__header">
+      <h2 class="section-row__title" id="trending-topics">
+        <span aria-hidden="true"></span>Trending Topics
+      </h2>
+    </div>
+    <div class="filter-bar">
+      {% for entity in trending_entities %}
+      <a class="filter-chip" href="/topic/{{ entity.slug }}">{{ entity.name }}</a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Newsletter CTA ────────────────────────────────────────────────────── #}
+  <section aria-labelledby="newsletter-cta" style="margin-bottom: var(--space-16);">
+    <div class="newsletter-box" style="max-width: 560px; margin: 0 auto; text-align: center;">
+      <h2 class="newsletter-box__title" id="newsletter-cta">Stay in the loop</h2>
+      <p class="newsletter-box__desc">Get the best technology articles and video reviews delivered to your inbox weekly. No spam, unsubscribe anytime.</p>
+      <form class="newsletter-form" data-subscribe-form style="flex-direction: row; gap: var(--space-3);">
+        <input class="newsletter-form__input" type="email" name="email" placeholder="your@email.com" aria-label="Email address" required style="flex: 1;">
+        <button class="btn btn--gradient" type="submit" data-action="subscribe" id="newsletter-submit">Subscribe</button>
+      </form>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

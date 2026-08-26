@@ -1,0 +1,181 @@
+/* =============================================================================
+   Nexura Design System — CSS Custom Properties (tokens.css)
+   Phase 7 §24 — HSL color palette, glassmorphism, fluid typography, dark mode
+   ============================================================================= */
+
+:root {
+  /* --- Core Palette (Dark Base) --- */
+  --hue-brand: 217;
+  --hue-accent: 199;
+  --hue-success: 152;
+  --hue-danger: 355;
+  --hue-warning: 37;
+
+  /* Background Layers */
+  --bg-base:       hsl(220, 18%, 7%);
+  --bg-primary:    hsl(220, 16%, 10%);
+  --bg-secondary:  hsl(220, 14%, 14%);
+  --bg-tertiary:   hsl(220, 13%, 19%);
+  --bg-card:       hsl(220, 15%, 13%);
+  --bg-card-hover: hsl(220, 15%, 17%);
+  --bg-overlay:    hsla(220, 18%, 5%, 0.80);
+  --bg-modal:      hsl(220, 17%, 12%);
+
+  /* Text */
+  --text-primary:   hsl(210, 20%, 96%);
+  --text-secondary: hsl(215, 15%, 68%);
+  --text-muted:     hsl(215, 12%, 48%);
+  --text-inverse:   hsl(220, 18%, 7%);
+  --text-on-accent: #fff;
+
+  /* Brand / Accent */
+  --accent-blue:      hsl(var(--hue-brand), 90%, 62%);
+  --accent-blue-dark: hsl(var(--hue-brand), 90%, 48%);
+  --accent-cyan:      hsl(var(--hue-accent), 85%, 58%);
+  --accent-violet:    hsl(267, 84%, 68%);
+  --accent-green:     hsl(var(--hue-success), 60%, 52%);
+  --accent-red:       hsl(var(--hue-danger), 72%, 58%);
+  --accent-amber:     hsl(var(--hue-warning), 90%, 58%);
+  --accent-gradient:  linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+
+  /* Borders */
+  --border-subtle:  hsla(215, 20%, 50%, 0.12);
+  --border-default: hsla(215, 20%, 60%, 0.20);
+  --border-strong:  hsla(215, 20%, 70%, 0.35);
+  --border-accent:  hsla(var(--hue-brand), 90%, 62%, 0.50);
+
+  /* Glassmorphism */
+  --glass-bg:       hsla(220, 20%, 14%, 0.70);
+  --glass-border:   hsla(215, 30%, 70%, 0.12);
+  --glass-blur:     blur(14px) saturate(140%);
+  --glass-shadow:   0 8px 32px hsla(220, 30%, 3%, 0.45);
+
+  /* Card Elevation */
+  --card-elevation-1: 0 1px 3px hsla(0,0%,0%,0.30);
+  --card-elevation-2: 0 4px 12px hsla(0,0%,0%,0.35);
+  --card-elevation-3: 0 8px 28px hsla(0,0%,0%,0.42);
+  --card-elevation-hover: 0 14px 40px hsla(var(--hue-brand), 50%, 10%, 0.55);
+
+  /* Typography — Scale (fluid) */
+  --font-display: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  --text-xs:   clamp(0.70rem, 1.2vw, 0.75rem);
+  --text-sm:   clamp(0.80rem, 1.4vw, 0.875rem);
+  --text-base: clamp(0.9375rem, 1.7vw, 1rem);
+  --text-md:   clamp(1.05rem, 1.9vw, 1.125rem);
+  --text-lg:   clamp(1.15rem, 2.2vw, 1.25rem);
+  --text-xl:   clamp(1.30rem, 2.8vw, 1.5rem);
+  --text-2xl:  clamp(1.55rem, 3.5vw, 1.875rem);
+  --text-3xl:  clamp(1.85rem, 4.5vw, 2.25rem);
+  --text-4xl:  clamp(2.25rem, 5.5vw, 3rem);
+  --text-hero: clamp(2.5rem,  7vw,   4rem);
+
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semibold: 600;
+  --weight-bold:    700;
+  --weight-black:   900;
+
+  --leading-tight:  1.25;
+  --leading-snug:   1.375;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+
+  /* Spacing (8-pt grid) */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* Border Radius */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   18px;
+  --radius-2xl:  24px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast:   140ms;
+  --duration-normal: 220ms;
+  --duration-slow:   380ms;
+
+  /* Z-Index Scale */
+  --z-below:    -1;
+  --z-base:      0;
+  --z-above:    10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-modal:    300;
+  --z-toast:    400;
+  --z-tooltip:  500;
+
+  /* Layout */
+  --container-max:  1320px;
+  --content-max:    780px;
+  --sidebar-width:  300px;
+  --nav-height:     64px;
+}
+
+/* Light Mode Overrides */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg-base:       hsl(210, 20%, 98%);
+    --bg-primary:    hsl(210, 20%, 98%);
+    --bg-secondary:  hsl(210, 18%, 94%);
+    --bg-tertiary:   hsl(210, 15%, 90%);
+    --bg-card:       #fff;
+    --bg-card-hover: hsl(210, 20%, 97%);
+    --bg-modal:      #fff;
+    --text-primary:   hsl(220, 25%, 12%);
+    --text-secondary: hsl(220, 15%, 40%);
+    --text-muted:     hsl(220, 10%, 60%);
+    --border-subtle:  hsla(215, 20%, 20%, 0.08);
+    --border-default: hsla(215, 20%, 20%, 0.14);
+    --border-strong:  hsla(215, 20%, 20%, 0.25);
+    --glass-bg:       hsla(210, 20%, 98%, 0.78);
+    --card-elevation-1: 0 1px 3px hsla(0,0%,0%,0.08);
+    --card-elevation-2: 0 4px 12px hsla(0,0%,0%,0.10);
+    --card-elevation-3: 0 8px 28px hsla(0,0%,0%,0.13);
+  }
+}
+
+/* Explicit dark theme toggle */
+[data-theme="dark"] {
+  --bg-base:       hsl(220, 18%, 7%);
+  --bg-primary:    hsl(220, 16%, 10%);
+  --bg-secondary:  hsl(220, 14%, 14%);
+  --bg-tertiary:   hsl(220, 13%, 19%);
+  --bg-card:       hsl(220, 15%, 13%);
+  --bg-card-hover: hsl(220, 15%, 17%);
+  --text-primary:   hsl(210, 20%, 96%);
+  --text-secondary: hsl(215, 15%, 68%);
+  --text-muted:     hsl(215, 12%, 48%);
+  --border-subtle:  hsla(215, 20%, 50%, 0.12);
+  --border-default: hsla(215, 20%, 60%, 0.20);
+  --card-elevation-1: 0 1px 3px hsla(0,0%,0%,0.30);
+  --card-elevation-2: 0 4px 12px hsla(0,0%,0%,0.35);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

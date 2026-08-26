@@ -1,0 +1,57 @@
+{# templates/macros/pagination.html #}
+
+{% macro pagination(page, total_pages, endpoint=None) %}
+{% if total_pages and total_pages > 1 %}
+<nav class="pagination" aria-label="Page navigation">
+
+  {# Previous #}
+  {% if page > 1 %}
+  <a class="pagination__btn" href="{{ url_for(endpoint or request.endpoint, page=page-1, **kwargs) }}" aria-label="Previous page" rel="prev">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  {% else %}
+  <span class="pagination__btn disabled" aria-disabled="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+  </span>
+  {% endif %}
+
+  {# Page numbers — show ±2 around current with ellipsis #}
+  {% set start = [1, page - 2] | max %}
+  {% set end   = [total_pages, page + 2] | min %}
+
+  {% if start > 1 %}
+  <a class="pagination__btn" href="{{ url_for(endpoint or request.endpoint, page=1, **kwargs) }}" aria-label="Page 1">1</a>
+  {% if start > 2 %}
+  <span class="pagination__btn disabled" aria-hidden="true">…</span>
+  {% endif %}
+  {% endif %}
+
+  {% for p in range(start, end + 1) %}
+  {% if p == page %}
+  <span class="pagination__btn active" aria-current="page" aria-label="Page {{ p }}">{{ p }}</span>
+  {% else %}
+  <a class="pagination__btn" href="{{ url_for(endpoint or request.endpoint, page=p, **kwargs) }}" aria-label="Page {{ p }}">{{ p }}</a>
+  {% endif %}
+  {% endfor %}
+
+  {% if end < total_pages %}
+  {% if end < total_pages - 1 %}
+  <span class="pagination__btn disabled" aria-hidden="true">…</span>
+  {% endif %}
+  <a class="pagination__btn" href="{{ url_for(endpoint or request.endpoint, page=total_pages, **kwargs) }}" aria-label="Page {{ total_pages }}">{{ total_pages }}</a>
+  {% endif %}
+
+  {# Next #}
+  {% if page < total_pages %}
+  <a class="pagination__btn" href="{{ url_for(endpoint or request.endpoint, page=page+1, **kwargs) }}" aria-label="Next page" rel="next">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+  {% else %}
+  <span class="pagination__btn disabled" aria-disabled="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+  </span>
+  {% endif %}
+
+</nav>
+{% endif %}
+{% endmacro %}

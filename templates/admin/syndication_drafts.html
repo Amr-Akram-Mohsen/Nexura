@@ -1,0 +1,125 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Social Drafts — {{ content.title | truncate(40) }}{% endblock %}
+{% block page_title %}Social Media Drafts for #{{ content.id }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:var(--space-6);">
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.syndication.index') }}">← Back to Syndication Hub</a>
+</div>
+
+<div class="admin-panel" style="margin-bottom:var(--space-6);">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">{{ content.title }}</h2>
+  </div>
+</div>
+
+{# ── Social Platform Cards Grid ── #}
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:var(--space-6);">
+
+  {# Twitter / X #}
+  {% if drafts.twitter %}
+  <div class="admin-panel" style="margin-bottom:0;">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title" style="display:flex; align-items:center; gap:var(--space-2);">
+        🐦 Twitter / X Thread Draft
+      </h3>
+      <button class="btn btn--ghost btn--sm" onclick="navigator.clipboard.writeText(`{{ drafts.twitter.text }}`); showAdminToast('Copied to clipboard!', 'success');">Copy</button>
+    </div>
+    <div style="padding:var(--space-5);">
+      <pre style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-md); font-size:var(--text-sm); white-space:pre-wrap; font-family:var(--font-sans);">{{ drafts.twitter.text }}</pre>
+    </div>
+  </div>
+  {% endif %}
+
+  {# LinkedIn #}
+  {% if drafts.linkedin %}
+  <div class="admin-panel" style="margin-bottom:0;">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title" style="display:flex; align-items:center; gap:var(--space-2);">
+        💼 LinkedIn Post Draft
+      </h3>
+      <button class="btn btn--ghost btn--sm" onclick="navigator.clipboard.writeText(`{{ drafts.linkedin.text }}`); showAdminToast('Copied to clipboard!', 'success');">Copy</button>
+    </div>
+    <div style="padding:var(--space-5);">
+      <pre style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-md); font-size:var(--text-sm); white-space:pre-wrap; font-family:var(--font-sans);">{{ drafts.linkedin.text }}</pre>
+    </div>
+  </div>
+  {% endif %}
+
+  {# YouTube Script #}
+  {% if drafts.youtube %}
+  <div class="admin-panel" style="margin-bottom:0;">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title" style="display:flex; align-items:center; gap:var(--space-2);">
+        ▶️ YouTube Video Outline & Hook
+      </h3>
+    </div>
+    <div style="padding:var(--space-5); display:flex; flex-direction:column; gap:var(--space-3); font-size:var(--text-sm);">
+      <div>
+        <span style="font-size:var(--text-xs); font-weight:var(--weight-semibold); color:var(--text-muted); text-transform:uppercase;">0-5s Hook:</span>
+        <p style="margin-top:var(--space-1); font-weight:var(--weight-medium);">{{ drafts.youtube.hook }}</p>
+      </div>
+      <div>
+        <span style="font-size:var(--text-xs); font-weight:var(--weight-semibold); color:var(--text-muted); text-transform:uppercase;">Timestamps:</span>
+        <ul style="margin-top:var(--space-1); padding-left:var(--space-4);">
+          {% for step in drafts.youtube.outline %}
+          <li><strong>{{ step.time }}</strong> — {{ step.topic }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Instagram #}
+  {% if drafts.instagram %}
+  <div class="admin-panel" style="margin-bottom:0;">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title" style="display:flex; align-items:center; gap:var(--space-2);">
+        📸 Instagram Caption
+      </h3>
+      <button class="btn btn--ghost btn--sm" onclick="navigator.clipboard.writeText(`{{ drafts.instagram.caption }}`); showAdminToast('Copied to clipboard!', 'success');">Copy</button>
+    </div>
+    <div style="padding:var(--space-5);">
+      <pre style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-md); font-size:var(--text-sm); white-space:pre-wrap; font-family:var(--font-sans);">{{ drafts.instagram.caption }}</pre>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Pinterest #}
+  {% if drafts.pinterest %}
+  <div class="admin-panel" style="margin-bottom:0;">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title" style="display:flex; align-items:center; gap:var(--space-2);">
+        📌 Pinterest Pin Specification
+      </h3>
+    </div>
+    <div style="padding:var(--space-5); font-size:var(--text-sm);">
+      <p><strong>Title:</strong> {{ drafts.pinterest.pin_title }}</p>
+      <p style="margin-top:var(--space-2); color:var(--text-secondary);"><strong>Description:</strong> {{ drafts.pinterest.description }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {# TikTok #}
+  {% if drafts.tiktok %}
+  <div class="admin-panel" style="margin-bottom:0;">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title" style="display:flex; align-items:center; gap:var(--space-2);">
+        🎵 TikTok / Reels Script Hook
+      </h3>
+    </div>
+    <div style="padding:var(--space-5); font-size:var(--text-sm);">
+      <p><strong>Hook:</strong> {{ drafts.tiktok.hook }}</p>
+      <ul style="margin-top:var(--space-2); padding-left:var(--space-4);">
+        {% for pt in drafts.tiktok.talking_points %}
+        <li>{{ pt }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

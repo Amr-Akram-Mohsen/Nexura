@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy — Nexura{% endblock %}
+{% block description %}Understand how Nexura collects, handles, and protects your data with our privacy-first technology architecture.{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-block: var(--space-10) var(--space-16); max-width: 860px;">
+
+  <header class="page-header">
+    <span class="page-header__eyebrow">Privacy & Security</span>
+    <h1 class="page-header__title">Privacy Policy</h1>
+    <p class="page-header__desc">
+      Effective Date: January 1, 2026. Your privacy and trust are fundamental to how we build Nexura.
+    </p>
+  </header>
+
+  <article style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-2xl); padding: clamp(var(--space-6), 5vw, var(--space-10)); box-shadow: var(--card-elevation-1); display: flex; flex-direction: column; gap: var(--space-8); line-height: var(--leading-relaxed); font-size: var(--text-base); color: var(--text-secondary);">
+
+    <section>
+      <h2 style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-3);">
+        1. Privacy by Design
+      </h2>
+      <p>
+        At Nexura, we believe technology news should be accessible without pervasive surveillance. We do not sell your personal data to data brokers, nor do we run invasive third-party tracking scripts that follow you across the web.
+      </p>
+    </section>
+
+    <section>
+      <h2 style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-3);">
+        2. Information We Collect
+      </h2>
+      <p style="margin-bottom: var(--space-3);">
+        We only collect information necessary to provide and improve our services:
+      </p>
+      <ul style="padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2);">
+        <li><strong>Account Information:</strong> When you register, we collect your email address, display name, and securely hashed password.</li>
+        <li><strong>Library & Interactions:</strong> Articles you bookmark, videos you save, and topics you follow to power your personal library.</li>
+        <li><strong>Aggregated Telemetry:</strong> Anonymized view counts and topic momentum metrics to curate trending discovery feeds.</li>
+        <li><strong>Technical Logs:</strong> IP addresses and user-agent strings temporarily processed for rate limiting, bot protection, and server security.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-3);">
+        3. Local Storage & Cookies
+      </h2>
+      <p style="margin-bottom: var(--space-3);">
+        Nexura uses essential first-party cookies and local storage tokens for:
+      </p>
+      <ul style="padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2);">
+        <li><strong>Authentication:</strong> Secure session cookies when you log into your account.</li>
+        <li><strong>Security:</strong> Cryptographic CSRF tokens protecting form submissions against cross-site forgery.</li>
+        <li><strong>Theme Preferences:</strong> Storing your preferred light or dark mode choice locally in your browser.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-3);">
+        4. Your Rights & Data Control
+      </h2>
+      <p style="margin-bottom: var(--space-3);">
+        Regardless of your jurisdiction, you have full control over your personal data:
+      </p>
+      <ul style="padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2);">
+        <li>You can inspect and update your profile details at any time from your account settings.</li>
+        <li>You can request a complete export of your saved library and activity data.</li>
+        <li>You can request the permanent deletion of your account and associated records by contacting us.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-3);">
+        5. Contact Our Privacy Desk
+      </h2>
+      <p>
+        If you have questions, concerns, or requests regarding this Privacy Policy, please contact our Data Protection desk at <a href="/contact" style="color: var(--accent-blue);">privacy@nexura.tech</a>.
+      </p>
+    </section>
+
+  </article>
+
+</div>
+{% endblock %}

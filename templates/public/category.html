@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "macros/content_card.html" import content_card %}
+{% from "macros/pagination.html" import pagination %}
+
+{% block title %}{{ category.name }} — {{ section.name }}{% endblock %}
+{% block description %}Browse {{ category.name }} coverage — curated articles and video reviews on {{ category.name }} from the best tech publishers.{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ request.host_url }}{{ section.slug }}/{{ category.slug }}">{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  {# Breadcrumb #}
+  <nav aria-label="Breadcrumb" style="padding-top: var(--space-6); margin-bottom: var(--space-4);">
+    <ol style="display:flex; gap:var(--space-2); align-items:center; list-style:none; font-size:var(--text-sm); color:var(--text-muted);">
+      <li><a href="/" style="color:var(--text-muted); transition: color var(--duration-fast);" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='var(--text-muted)'">Home</a></li>
+      <li aria-hidden="true">/</li>
+      <li><a href="/{{ section.slug }}" style="color:var(--text-muted); transition: color var(--duration-fast);" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='var(--text-muted)'">{{ section.name }}</a></li>
+      <li aria-hidden="true">/</li>
+      <li aria-current="page" style="color:var(--text-primary);">{{ category.name }}</li>
+    </ol>
+  </nav>
+
+  {# Page Header #}
+  <header class="page-header" style="margin-bottom: var(--space-6);">
+    <p class="page-header__eyebrow">{{ section.name }}</p>
+    <h1 class="page-header__title">{{ category.name }}</h1>
+    <p class="page-header__desc">{{ total or 0 }} pieces of content in this category</p>
+  </header>
+
+  {# Sub-category chips #}
+  {% if subcategories %}
+  <div class="filter-bar" aria-label="Sub-categories" style="margin-bottom: var(--space-6);">
+    {% for sub in subcategories %}
+    <a class="filter-chip" href="/{{ section.slug }}/{{ sub.slug }}">{{ sub.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# Content type tabs #}
+  <div class="filter-bar" role="tablist" aria-label="Content type filter" style="margin-bottom: var(--space-6);">
+    <a class="filter-chip {% if not request.args.get('type') %}active{% endif %}"
+       href="/{{ section.slug }}/{{ category.slug }}" role="tab"
+       aria-selected="{{ 'true' if not request.args.get('type') else 'false' }}">All</a>
+    <a class="filter-chip {% if request.args.get('type') == 'article' %}active{% endif %}"
+       href="/{{ section.slug }}/{{ category.slug }}?type=article" role="tab"
+       aria-selected="{{ 'true' if request.args.get('type') == 'article' else 'false' }}">Articles</a>
+    <a class="filter-chip {% if request.args.get('type') == 'video' %}active{% endif %}"
+       href="/{{ section.slug }}/{{ category.slug }}?type=video" role="tab"
+       aria-selected="{{ 'true' if request.args.get('type') == 'video' else 'false' }}">Videos</a>
+  </div>
+
+  {# Grid #}
+  {% if items %}
+  <div class="grid-cards">
+    {% for item in items %}
+      {{ content_card(item) }}
+    {% endfor %}
+  </div>
+
+  {{ pagination(page, total_pages, endpoint='public.category',
+               section_slug=section.slug, category_slug=category.slug) }}
+
+  {% else %}
+  <div class="empty-state">
+    <h2 class="empty-state__title">No content yet</h2>
+    <p class="empty-state__desc">Check back soon for {{ category.name }} coverage.</p>
+    <a class="btn btn--secondary" href="/{{ section.slug }}">Back to {{ section.name }}</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

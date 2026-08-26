@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Admin Control Plane{% endblock %} | Nexura</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+
+<div class="admin-shell">
+
+  {# ── Admin Sidebar ──────────────────────────────────────────────────────── #}
+  <aside class="admin-sidebar" aria-label="Admin Navigation">
+    <div class="admin-sidebar__header">
+      <a class="admin-sidebar__brand" href="{{ url_for('admin.dashboard') }}">
+        <svg width="24" height="24" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+          <rect width="30" height="30" rx="6" fill="url(#adminLogoGrad)"/>
+          <path d="M8 22V8l14 14V8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs><linearGradient id="adminLogoGrad" x1="0" y1="0" x2="30" y2="30"><stop stop-color="hsl(217,90%,62%)"/><stop offset="1" stop-color="hsl(199,85%,58%)"/></linearGradient></defs>
+        </svg>
+        Nexura <span class="badge" style="font-size:10px; padding:2px 6px; background:hsla(267,84%,68%,0.2); color:var(--accent-violet);">ADMIN</span>
+      </a>
+    </div>
+
+    <nav class="admin-sidebar__nav">
+      <div class="admin-sidebar__heading">Operations</div>
+      <a class="admin-nav-item {% if active_tab == 'dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="admin-nav-item {% if active_tab == 'ingestions' %}active{% endif %}" href="{{ url_for('admin.ingestions.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><polyline points="21 5 12 14 9 11"/></svg>
+        Ingestions & Tasks
+      </a>
+      <a class="admin-nav-item {% if active_tab == 'contents' %}active{% endif %}" href="{{ url_for('admin.contents.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Content Library
+      </a>
+
+      <div class="admin-sidebar__heading">Editorial Workbenches</div>
+      <a class="admin-nav-item {% if active_tab == 'deduplication' %}active{% endif %}" href="{{ url_for('admin.deduplication.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Deduplication
+      </a>
+      <a class="admin-nav-item {% if active_tab == 'taxonomy' %}active{% endif %}" href="{{ url_for('admin.taxonomy.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Taxonomy & Entities
+      </a>
+      <a class="admin-nav-item {% if active_tab == 'moderation' %}active{% endif %}" href="{{ url_for('admin.moderation.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Moderation & Users
+      </a>
+      <a class="admin-nav-item {% if active_tab == 'syndication' %}active{% endif %}" href="{{ url_for('admin.syndication.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Social Syndication
+      </a>
+    </nav>
+
+    <div class="admin-sidebar__footer">
+      <a class="btn btn--ghost btn--sm" href="/" target="_blank" style="width:100%; justify-content:flex-start;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        View Public Site
+      </a>
+    </div>
+  </aside>
+
+  {# ── Main Layout ─────────────────────────────────────────────────────────── #}
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <h1 class="admin-topbar__title">{% block page_title %}Overview{% endblock %}</h1>
+      <div style="display:flex; align-items:center; gap:var(--space-3);">
+        <span style="font-size:var(--text-xs); color:var(--text-secondary);">Logged in as <strong>{{ current_user.email }}</strong></span>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('auth.logout') }}">Logout</a>
+      </div>
+    </header>
+
+    <main class="admin-body">
+      {# Flash Messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div style="margin-bottom: var(--space-6); display:flex; flex-direction:column; gap:var(--space-2);">
+        {% for category, msg in messages %}
+        <div class="badge" style="padding:var(--space-3) var(--space-4); font-size:var(--text-sm); width:100%; border-radius:var(--radius-lg); {% if category == 'success' %}background:hsla(152,60%,52%,0.15); color:var(--accent-green);{% elif category == 'error' or category == 'danger' %}background:hsla(355,72%,58%,0.15); color:var(--accent-red);{% else %}background:hsla(217,90%,62%,0.15); color:var(--accent-blue);{% endif %}">
+          {{ msg }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

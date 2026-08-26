@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "macros/content_card.html" import content_card %}
+{% from "macros/pagination.html" import pagination %}
+
+{% block title %}{{ section.name }}{% endblock %}
+{% block description %}Browse {{ section.name }} — the latest articles, video reviews, and analysis on {{ section.description or section.name }}.{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ request.host_url }}{{ section.slug }}">{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  {# Page Header #}
+  <header class="page-header" style="margin-bottom: var(--space-8);">
+    <p class="page-header__eyebrow">Section</p>
+    <h1 class="page-header__title">{{ section.name }}</h1>
+    {% if section.description %}
+    <p class="page-header__desc">{{ section.description }}</p>
+    {% endif %}
+  </header>
+
+  {# Filter bar — intent tabs, categories #}
+  {% if filter_options %}
+  <div class="filter-bar" role="navigation" aria-label="Content filters">
+    <span class="filter-bar__label">Filter:</span>
+    <a class="filter-chip {% if not request.args.get('type') %}active{% endif %}"
+       href="/{{ section.slug }}">All</a>
+    <a class="filter-chip {% if request.args.get('type') == 'article' %}active{% endif %}"
+       href="/{{ section.slug }}?type=article">Articles</a>
+    <a class="filter-chip {% if request.args.get('type') == 'video' %}active{% endif %}"
+       href="/{{ section.slug }}?type=video">Videos</a>
+
+    {% for category in filter_options.categories[:8] %}
+    <a class="filter-chip {% if request.args.get('category') == category.slug %}active{% endif %}"
+       href="/{{ section.slug }}/{{ category.slug }}">{{ category.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# Results count #}
+  {% if items %}
+  <p class="search-results-count" aria-live="polite">
+    {{ total or items|length }} results in {{ section.name }}
+    {% if request.args.get('type') %} · {{ request.args.get('type') | capitalize }}s only{% endif %}
+  </p>
+  {% endif %}
+
+  {# Content grid #}
+  {% if items %}
+  <div class="grid-cards">
+    {% for item in items %}
+      {{ content_card(item) }}
+    {% endfor %}
+  </div>
+
+  {# Pagination #}
+  {{ pagination(page, total_pages, endpoint='public.section', section_slug=section.slug) }}
+
+  {% else %}
+  <div class="empty-state">
+    <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <h2 class="empty-state__title">No content found</h2>
+    <p class="empty-state__desc">Try removing filters or check back soon.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

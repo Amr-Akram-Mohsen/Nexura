@@ -1,0 +1,133 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Discussion Moderation & Safety{% endblock %}
+{% block page_title %}Community Safety & Discussion Moderation{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <span class="kpi-card__label">Total Comments</span>
+    <span class="kpi-card__value" style="color:var(--accent-blue);">{{ '{:,}'.format(total_comments) }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Newsletter Subscribers</span>
+    <span class="kpi-card__value" style="color:var(--accent-green);">{{ '{:,}'.format(total_subscribers) }}</span>
+    <span class="kpi-card__sub">{{ confirmed_subscribers }} confirmed double opt-in</span>
+  </div>
+</div>
+
+{# ── Comment Moderation Queue ── #}
+<div class="admin-panel">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">Recent User Comments Queue (§19)</h2>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Comment Text</th>
+          <th>Article / Video</th>
+          <th>AI Sentiment</th>
+          <th>Date</th>
+          <th>Moderation Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in comments %}
+        <tr id="comment-row-{{ c.id }}">
+          <td>
+            <strong>{{ c.user.name or 'Community Member' if c.user else 'Anonymous' }}</strong>
+            <div style="font-size:var(--text-xs); color:var(--text-muted);">{{ c.user.email if c.user else '-' }}</div>
+          </td>
+          <td style="max-width:320px; font-size:var(--text-sm);">
+            {{ c.content }}
+          </td>
+          <td>
+            <a href="/{% if c.content_ref.object_type == 'video' %}video{% else %}article{% endif %}/{{ c.content_id }}" target="_blank" style="color:var(--accent-blue); text-decoration:none;">
+              #{{ c.content_id }} {{ c.content_ref.title | truncate(35) if c.content_ref else '-' }}
+            </a>
+          </td>
+          <td>
+            {% if c.sentiment == 'positive' %}
+            <span class="badge badge--ready">Positive</span>
+            {% elif c.sentiment == 'negative' %}
+            <span class="badge badge--not-ready">Negative</span>
+            {% else %}
+            <span class="badge" style="background:var(--bg-tertiary);">{{ c.sentiment or 'Neutral' }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size:var(--text-xs); color:var(--text-muted);">
+            {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '-' }}
+          </td>
+          <td>
+            <div style="display:flex; gap:var(--space-1);">
+              <button class="btn btn--secondary btn--sm" data-moderate-comment="approve" data-comment-id="{{ c.id }}" title="Approve">
+                ✓
+              </button>
+              <button class="btn btn--secondary btn--sm" data-moderate-comment="soft_delete" data-comment-id="{{ c.id }}" title="Soft-delete">
+                Flag
+              </button>
+              <button class="btn btn--ghost btn--sm" data-moderate-comment="hard_delete" data-comment-id="{{ c.id }}" title="Delete" style="color:var(--accent-red);">
+                🗑
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center; padding:var(--space-8); color:var(--text-muted);">
+            No comments submitted yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Newsletter Subscribers ── #}
+<div class="admin-panel">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">Newsletter Subscribers</h2>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Subscribed Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in subscribers %}
+        <tr>
+          <td><strong>{{ s.email }}</strong></td>
+          <td>
+            {% if s.is_confirmed and not s.unsubscribed_at %}
+            <span class="badge badge--ready">Active / Confirmed</span>
+            {% elif s.unsubscribed_at %}
+            <span class="badge badge--not-ready">Unsubscribed</span>
+            {% else %}
+            <span class="badge badge--needs-work">Pending Confirmation</span>
+            {% endif %}
+          </td>
+          <td style="font-size:var(--text-xs); color:var(--text-muted);">
+            {{ s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '-' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" style="text-align:center; padding:var(--space-6); color:var(--text-muted);">
+            No newsletter subscribers yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

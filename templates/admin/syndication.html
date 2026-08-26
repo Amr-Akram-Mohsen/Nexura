@@ -1,0 +1,71 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Social Syndication Hub{% endblock %}
+{% block page_title %}Multichannel Content Syndication & Publishing{% endblock %}
+
+{% block content %}
+{# ── Syndication Reach KPIs ── #}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <span class="kpi-card__label">Social Engagement Index</span>
+    <span class="kpi-card__value" style="color:var(--accent-violet);">{{ stats.engagement_index }}</span>
+    <span class="kpi-card__sub">Weighted multi-channel score</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Total Social Shares</span>
+    <span class="kpi-card__value" style="color:var(--accent-blue);">{{ '{:,}'.format(stats.total_shares) }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Total Social Clicks</span>
+    <span class="kpi-card__value" style="color:var(--accent-green);">{{ '{:,}'.format(stats.total_clicks) }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Total Social Likes</span>
+    <span class="kpi-card__value" style="color:var(--accent-amber);">{{ '{:,}'.format(stats.total_likes) }}</span>
+  </div>
+</div>
+
+{# ── Auto-Draft Generator for Published Content ── #}
+<div class="admin-panel">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">Generate Multi-Platform Social Drafts (§20)</h2>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Article Title</th>
+          <th>Section</th>
+          <th>Published Date</th>
+          <th>Social Drafts Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in recent_published %}
+        <tr>
+          <td>#{{ item.id }}</td>
+          <td><strong>{{ item.title }}</strong></td>
+          <td>{{ item.section.name if item.section else '-' }}</td>
+          <td style="font-size:var(--text-xs); color:var(--text-muted);">
+            {{ item.published_at.strftime('%Y-%m-%d') if item.published_at else '-' }}
+          </td>
+          <td>
+            <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.syndication.generate_drafts', content_id=item.id) }}">
+              ✨ Generate Social Drafts
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align:center; padding:var(--space-8); color:var(--text-muted);">
+            No published articles available for syndication draft generation yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

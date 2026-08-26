@@ -1,0 +1,98 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Taxonomy & Entity Management{% endblock %}
+{% block page_title %}Taxonomy & Entity Merge Workbench{% endblock %}
+
+{% block content %}
+
+{# ── Fuzzy Duplicate Merge Workbench ── #}
+<div class="admin-panel">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">Fuzzy Duplicate Entity Merge (§18.5)</h2>
+    <span class="badge badge--needs-work">{{ merge_candidates|length }} merge candidates (≥ 82% similarity)</span>
+  </div>
+  <div style="padding:var(--space-6);">
+    <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:var(--space-4);">
+      Merging re-points all linked articles and videos from the duplicate tag to the primary canonical entity, then deletes the redundant entity record.
+    </p>
+
+    {% for cand in merge_candidates %}
+    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:var(--space-4); margin-bottom:var(--space-3); font-size:var(--text-sm);">
+      <div style="display:flex; align-items:center; gap:var(--space-4);">
+        <div>
+          <strong>{{ cand.entity_1.name }}</strong>
+          <span style="font-size:var(--text-xs); color:var(--text-muted);">#{{ cand.entity_1.id }} ({{ cand.entity_1.type }})</span>
+        </div>
+        <span style="color:var(--text-muted); font-size:var(--text-xs);">⇄ {{ cand.similarity_pct }}% similar ⇄</span>
+        <div>
+          <strong>{{ cand.entity_2.name }}</strong>
+          <span style="font-size:var(--text-xs); color:var(--text-muted);">#{{ cand.entity_2.id }} ({{ cand.entity_2.type }})</span>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:var(--space-2);">
+        <button class="btn btn--secondary btn--sm" data-merge-entity-btn
+                data-source-id="{{ cand.entity_2.id }}"
+                data-target-id="{{ cand.entity_1.id }}"
+                data-source-name="{{ cand.entity_2.name }}"
+                data-target-name="{{ cand.entity_1.name }}">
+          Merge "{{ cand.entity_2.name }}" → "{{ cand.entity_1.name }}"
+        </button>
+      </div>
+    </div>
+    {% else %}
+    <p style="font-size:var(--text-sm); color:var(--text-muted);">No duplicate entity pairs detected.</p>
+    {% endfor %}
+  </div>
+</div>
+
+{# ── Taxonomy Dimensions Grid ── #}
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:var(--space-6);">
+
+  {# Sections #}
+  <div class="admin-panel">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title">Sections ({{ sections|length }})</h3>
+    </div>
+    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:300px; overflow-y:auto;">
+      {% for s in sections %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm);">
+        <span>{{ s.name }}</span>
+        <code style="font-size:var(--text-xs); color:var(--text-muted);">/{{ s.slug }}</code>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Categories #}
+  <div class="admin-panel">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title">Categories ({{ categories|length }})</h3>
+    </div>
+    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:300px; overflow-y:auto;">
+      {% for c in categories %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm);">
+        <span>{{ c.name }}</span>
+        <code style="font-size:var(--text-xs); color:var(--text-muted);">/category/{{ c.slug }}</code>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Top Entities #}
+  <div class="admin-panel">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title">Top Entities by Tag Frequency</h3>
+    </div>
+    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:300px; overflow-y:auto;">
+      {% for ent, count in popular_entities %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm);">
+        <span>{{ ent.name }} <small style="color:var(--text-muted);">({{ ent.entity_type }})</small></span>
+        <span class="badge" style="background:var(--bg-tertiary);">{{ count }} items</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

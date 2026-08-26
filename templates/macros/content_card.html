@@ -1,0 +1,145 @@
+{# templates/macros/content_card.html #}
+
+{% macro content_card(item, show_excerpt=True, class='') %}
+{% if item is mapping %}
+  {% set is_video = (item.get('object_type') == 'video') %}
+  {% set item_id = item.get('id', '') %}
+  {% set item_title = item.get('title', '') %}
+  {% set item_thumbnail = item.get('thumbnail') %}
+  {% set item_duration = item.get('duration') %}
+  {% set item_reading_time = item.get('reading_time') %}
+  {% set item_preview = item.get('preview') or item.get('preview_text') %}
+  {% set item_source = item.get('source_name') or item.get('channel_name') or 'Nexura' %}
+  {% set item_source_logo = item.get('source_logo') %}
+  {% set item_views = item.get('view_count', 0) %}
+  {% set item_date = item.get('formatted_date') or item.get('age') or item.get('published_at', '') %}
+  {% set cat_obj = item.get('category') %}
+  {% if item.get('category_name') %}
+    {% set cat_name = item.get('category_name') %}
+  {% elif cat_obj is mapping %}
+    {% set cat_name = cat_obj.get('name', '') %}
+  {% elif cat_obj and cat_obj.name is defined %}
+    {% set cat_name = cat_obj.name %}
+  {% elif cat_obj is string %}
+    {% set cat_name = cat_obj %}
+  {% else %}
+    {% set cat_name = '' %}
+  {% endif %}
+  {% set tag_items = item.get('tags') or item.get('entities') or [] %}
+{% else %}
+  {% set is_video = (item.object_type == 'video') %}
+  {% set item_id = item.id %}
+  {% set item_title = item.title %}
+  {% set item_thumbnail = item.thumbnail if item.thumbnail is defined else None %}
+  {% set item_duration = item.duration if item.duration is defined else None %}
+  {% set item_reading_time = item.reading_time if item.reading_time is defined else None %}
+  {% set item_preview = item.preview_text if item.preview_text is defined else None %}
+  {% set item_source = item.source.name if (item.source is defined and item.source) else 'Nexura' %}
+  {% set item_source_logo = item.source.logo_url if (item.source is defined and item.source) else None %}
+  {% set item_views = item.view_count if item.view_count is defined else 0 %}
+  {% set item_date = item.published_at.strftime('%b %d, %Y') if (item.published_at is defined and item.published_at) else '' %}
+  {% set cat_name = item.category.name if (item.category is defined and item.category) else '' %}
+  {% set tag_items = item.content_entities if item.content_entities is defined else [] %}
+{% endif %}
+
+<a class="card {{ class }}"
+   href="{% if is_video %}/video/{{ item_id }}{% else %}/article/{{ item_id }}{% endif %}"
+   data-content-id="{{ item_id }}"
+   aria-label="{{ item_title }}">
+
+  {# Image / Thumbnail #}
+  <div class="card__image-wrap">
+    {% if item_thumbnail %}
+    <img class="card__image"
+         src="{{ item_thumbnail }}"
+         alt=""
+         loading="lazy"
+         onerror="this.style.display='none'"
+         width="400" height="225">
+    {% else %}
+    <div class="card__placeholder-image" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.35;">
+        {% if is_video %}
+        <polygon points="5 3 19 12 5 21 5 3"/>
+        {% else %}
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        {% endif %}
+      </svg>
+    </div>
+    {% endif %}
+
+    {# Type badge #}
+    <span class="card__type-badge card__type-badge--{% if is_video %}video{% else %}article{% endif %}">
+      {% if is_video %}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      VIDEO
+      {% else %}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      ARTICLE
+      {% endif %}
+    </span>
+
+    {# Duration badge for videos #}
+    {% if is_video and item_duration %}
+    <span class="card__duration">{{ item_duration }}</span>
+    {% endif %}
+  </div>
+
+  {# Body #}
+  <div class="card__body">
+    <div class="card__meta">
+      {% if cat_name %}
+      <span class="card__category">{{ cat_name }}</span>
+      {% endif %}
+      {% if item_date %}
+      <time class="card__date" datetime="{{ item_date }}">
+        {{ item_date[:10] if item_date is string else item_date }}
+      </time>
+      {% endif %}
+    </div>
+
+    <h3 class="card__title">{{ item_title }}</h3>
+
+    {% if show_excerpt and item_preview %}
+    <p class="card__excerpt">{{ item_preview }}</p>
+    {% endif %}
+
+    <div class="card__footer">
+      <div class="card__source">
+        {% if item_source_logo %}
+        <img class="card__source-logo" src="{{ item_source_logo }}" alt="" loading="lazy">
+        {% endif %}
+        <span>{{ item_source }}</span>
+      </div>
+
+      {% if not is_video and item_reading_time %}
+      <span class="card__reading-time">{{ item_reading_time }} min read</span>
+      {% endif %}
+
+      {% if is_video and item_views %}
+      <span class="card__reading-time">{{ '{:,}'.format(item_views) }} views</span>
+      {% endif %}
+    </div>
+
+    {# Tags — top 3 entities #}
+    {% if tag_items %}
+    <div class="card__tags">
+      {% for tag in tag_items[:3] %}
+        {% if tag is mapping %}
+          {% set tag_name = tag.get('name', '') %}
+        {% elif tag.name is defined %}
+          {% set tag_name = tag.name %}
+        {% elif tag.entity is defined and tag.entity %}
+          {% set tag_name = tag.entity.name %}
+        {% else %}
+          {% set tag_name = tag %}
+        {% endif %}
+        {% if tag_name %}
+        <span class="card__tag">{{ tag_name }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</a>
+{% endmacro %}

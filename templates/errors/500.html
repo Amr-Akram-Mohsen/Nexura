@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}500 — Server Error | Nexura{% endblock %}
+
+{% block content %}
+<div class="site-container page-layout">
+  <div class="empty-state" style="padding:var(--space-16) var(--space-4); max-width:600px; margin:0 auto; text-align:center;">
+    <div style="font-family:var(--font-display); font-size:var(--text-4xl); font-weight:var(--weight-extrabold); color:var(--accent-red); margin-bottom:var(--space-3);">
+      500
+    </div>
+    <h1 class="empty-state__title" style="font-size:var(--text-2xl); margin-bottom:var(--space-2);">
+      Internal Server Error
+    </h1>
+    <p class="empty-state__desc" style="color:var(--text-secondary); margin-bottom:var(--space-8); line-height:var(--leading-relaxed);">
+      An unexpected error occurred while processing your request. Our engineering team has been notified.
+    </p>
+    <div style="display:flex; gap:var(--space-3); justify-content:center;">
+      <a class="btn btn--secondary" href="javascript:location.reload()">Refresh Page</a>
+      <a class="btn btn--gradient" href="{{ url_for('public.home') }}">Return Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

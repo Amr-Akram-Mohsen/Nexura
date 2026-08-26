@@ -1,0 +1,148 @@
+{% extends "auth/base_auth.html" %}
+
+{% block title %}Create account{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Password strength meter
+  document.getElementById('password').addEventListener('input', function() {
+    const pw = this.value;
+    const bar = document.getElementById('pw-strength-bar');
+    const label = document.getElementById('pw-strength-label');
+    if (!pw) { bar.style.width = '0%'; label.textContent = ''; return; }
+
+    let score = 0;
+    if (/[a-z]/.test(pw)) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+    bar.dataset.score = pw.length >= 8 ? score : 0;
+    const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    const colors = ['', 'var(--accent-red)', 'var(--accent-amber)', 'var(--accent-blue)', 'var(--accent-green)'];
+    label.textContent = pw.length < 8 ? 'Too short' : labels[score] || '';
+    label.style.color = pw.length < 8 ? 'var(--accent-red)' : colors[score] || '';
+  });
+</script>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card">
+  <a class="auth-card__brand" href="/">
+    <svg width="26" height="26" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+      <rect width="30" height="30" rx="6" fill="url(#rg)"/>
+      <path d="M8 22V8l14 14V8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <defs><linearGradient id="rg" x1="0" y1="0" x2="30" y2="30"><stop stop-color="hsl(217,90%,62%)"/><stop offset="1" stop-color="hsl(199,85%,58%)"/></linearGradient></defs>
+    </svg>
+    Nexura
+  </a>
+
+  <h1 class="auth-card__title">Create your account</h1>
+  <p class="auth-card__subtitle">Join thousands of tech enthusiasts. Free forever.</p>
+
+  {# Google OAuth #}
+  <a class="btn-social-google" href="{{ url_for('auth.google_login') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+    </svg>
+    Sign up with Google
+  </a>
+
+  <div class="auth-divider">
+    <span>or sign up with email</span>
+  </div>
+
+  <form method="post" action="{{ url_for('auth.register') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# Name #}
+    <div class="auth-field">
+      <label class="auth-field__label" for="name">
+        Full Name <span class="auth-field__required">*</span>
+      </label>
+      <input class="auth-field__input {% if errors.name %}error{% endif %}"
+             type="text"
+             id="name"
+             name="name"
+             value="{{ form_data.name | default('') }}"
+             placeholder="Your name"
+             autocomplete="name"
+             required>
+      {% if errors.name %}
+      <span class="auth-field__error" role="alert">{{ errors.name }}</span>
+      {% endif %}
+    </div>
+
+    {# Email #}
+    <div class="auth-field">
+      <label class="auth-field__label" for="email">
+        Email Address <span class="auth-field__required">*</span>
+      </label>
+      <input class="auth-field__input {% if errors.email %}error{% endif %}"
+             type="email"
+             id="email"
+             name="email"
+             value="{{ form_data.email | default('') }}"
+             placeholder="you@example.com"
+             autocomplete="email"
+             required>
+      {% if errors.email %}
+      <span class="auth-field__error" role="alert">{{ errors.email }}</span>
+      {% endif %}
+    </div>
+
+    {# Password #}
+    <div class="auth-field">
+      <label class="auth-field__label" for="password">
+        Password <span class="auth-field__required">*</span>
+      </label>
+      <input class="auth-field__input {% if errors.password %}error{% endif %}"
+             type="password"
+             id="password"
+             name="password"
+             placeholder="At least 8 characters"
+             autocomplete="new-password"
+             required>
+      <div class="password-strength" aria-hidden="true">
+        <div class="password-strength__bar" id="pw-strength-bar"></div>
+      </div>
+      <span class="password-strength__label" id="pw-strength-label" aria-live="polite"></span>
+      {% if errors.password %}
+      <span class="auth-field__error" role="alert">{{ errors.password }}</span>
+      {% endif %}
+    </div>
+
+    {# Confirm Password #}
+    <div class="auth-field">
+      <label class="auth-field__label" for="confirm_password">
+        Confirm Password <span class="auth-field__required">*</span>
+      </label>
+      <input class="auth-field__input {% if errors.confirm_password %}error{% endif %}"
+             type="password"
+             id="confirm_password"
+             name="confirm_password"
+             placeholder="Repeat your password"
+             autocomplete="new-password"
+             required>
+      {% if errors.confirm_password %}
+      <span class="auth-field__error" role="alert">{{ errors.confirm_password }}</span>
+      {% endif %}
+    </div>
+
+    <button class="btn btn--gradient btn--full btn--lg"
+            type="submit"
+            id="register-submit"
+            style="margin-top: var(--space-2);">
+      Create Account
+    </button>
+  </form>
+
+  <div class="auth-footer">
+    Already have an account?
+    <a class="auth-link" href="{{ url_for('auth.login') }}">Log in</a>
+  </div>
+</div>
+{% endblock %}

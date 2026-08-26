@@ -1,0 +1,28 @@
+{# templates/macros/meta_tags.html #}
+
+{% macro meta_tags(title, description, image=None, content_type='website', canonical=None, noindex=False) %}
+  <title>{{ title }} | Nexura</title>
+  <meta name="description" content="{{ description | truncate(160) }}">
+  {% if noindex %}
+  <meta name="robots" content="noindex, follow">
+  {% else %}
+  <meta name="robots" content="index, follow">
+  {% endif %}
+  {% if canonical %}
+  <link rel="canonical" href="{{ canonical }}">
+  {% endif %}
+
+  {# Open Graph #}
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description | truncate(200) }}">
+  <meta property="og:type" content="{{ content_type }}">
+  <meta property="og:site_name" content="Nexura">
+  {% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
+  {% if image %}<meta property="og:image" content="{{ image }}">{% endif %}
+
+  {# Twitter Card #}
+  <meta name="twitter:card" content="{% if image %}summary_large_image{% else %}summary{% endif %}">
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description | truncate(200) }}">
+  {% if image %}<meta name="twitter:image" content="{{ image }}">{% endif %}
+{% endmacro %}

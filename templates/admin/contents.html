@@ -1,0 +1,134 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Content Inventory{% endblock %}
+{% block page_title %}Content Library & Batch Operations{% endblock %}
+
+{% block content %}
+<div class="admin-panel">
+
+  {# ── Filter Toolbar ── #}
+  <form class="admin-toolbar" method="get" action="{{ url_for('admin.contents.index') }}">
+    <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Search title..." style="min-width:200px;">
+
+    <select class="admin-select" name="type">
+      <option value="">All Types</option>
+      <option value="article" {% if request.args.get('type') == 'article' %}selected{% endif %}>Articles</option>
+      <option value="video" {% if request.args.get('type') == 'video' %}selected{% endif %}>Videos</option>
+    </select>
+
+    <select class="admin-select" name="section_id">
+      <option value="">All Sections</option>
+      {% for s in sections %}
+      <option value="{{ s.id }}" {% if request.args.get('section_id')|int == s.id %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="admin-select" name="category_id">
+      <option value="">All Categories</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {% if request.args.get('category_id')|int == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="admin-select" name="is_published">
+      <option value="">All Statuses</option>
+      <option value="true" {% if request.args.get('is_published') == 'true' %}selected{% endif %}>Published</option>
+      <option value="false" {% if request.args.get('is_published') == 'false' %}selected{% endif %}>Unpublished</option>
+    </select>
+
+    <button class="btn btn--secondary btn--sm" type="submit">Filter</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.index') }}">Clear</a>
+
+    <div style="margin-left:auto; font-size:var(--text-xs); color:var(--text-muted);">
+      {{ total }} total items
+    </div>
+  </form>
+
+  {# ── Data Table ── #}
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width:40px;">
+            <input type="checkbox" id="select-all-rows">
+          </th>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th>Views</th>
+          <th>Published At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <input type="checkbox" class="row-select-checkbox" value="{{ item.id }}">
+          </td>
+          <td>#{{ item.id }}</td>
+          <td>
+            <a href="{{ url_for('admin.contents.inspect', content_id=item.id) }}" style="color:var(--text-primary); font-weight:var(--weight-medium); text-decoration:none;">
+              {{ item.title | truncate(55) }}
+            </a>
+          </td>
+          <td>
+            <span class="badge badge--{{ item.object_type }}" style="text-transform:capitalize;">{{ item.object_type }}</span>
+          </td>
+          <td>{{ item.category.name if item.category else '-' }}</td>
+          <td>
+            {% if item.is_published %}
+            <span class="badge badge--ready">Published</span>
+            {% else %}
+            <span class="badge badge--needs-work">Draft / Queued</span>
+            {% endif %}
+          </td>
+          <td>{{ '{:,}'.format(item.view_count or 0) }}</td>
+          <td style="font-size:var(--text-xs); color:var(--text-muted);">
+            {{ item.published_at.strftime('%Y-%m-%d %H:%M') if item.published_at else '-' }}
+          </td>
+          <td>
+            <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.inspect', content_id=item.id) }}">
+              Inspect
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align:center; padding:var(--space-8); color:var(--text-muted);">
+            No content matches your filters.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Pagination Bar ── #}
+  {% if total_pages > 1 %}
+  <div style="padding:var(--space-4) var(--space-6); display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle);">
+    <span style="font-size:var(--text-xs); color:var(--text-muted);">Page {{ page }} of {{ total_pages }}</span>
+    <div style="display:flex; gap:var(--space-2);">
+      {% if page > 1 %}
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.contents.index', page=page-1, q=q, type=request.args.get('type'), section_id=request.args.get('section_id'), category_id=request.args.get('category_id'), is_published=request.args.get('is_published')) }}">Previous</a>
+      {% endif %}
+      {% if page < total_pages %}
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.contents.index', page=page+1, q=q, type=request.args.get('type'), section_id=request.args.get('section_id'), category_id=request.args.get('category_id'), is_published=request.args.get('is_published')) }}">Next</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Floating Batch Actions Bar (shown on row selection) ── #}
+<div class="batch-bar" id="batch-action-bar">
+  <span id="selected-count-label" style="font-size:var(--text-sm); font-weight:var(--weight-semibold);">0 selected</span>
+  <button class="btn btn--secondary btn--sm" data-batch-action="publish">✓ Publish</button>
+  <button class="btn btn--secondary btn--sm" data-batch-action="unpublish">✗ Unpublish</button>
+  <button class="btn btn--secondary btn--sm" data-batch-action="deactivate">Deactivate</button>
+  <button class="btn btn--secondary btn--sm" data-batch-action="delete" style="color:var(--accent-red);">🗑 Delete</button>
+</div>
+{% endblock %}

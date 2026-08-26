@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "macros/content_card.html" import content_card %}
+{% from "macros/pagination.html" import pagination %}
+
+{% block title %}My Library{% endblock %}
+{% block description %}Your personal Nexura library — reading history and saved collections.{% endblock %}
+{% block robots %}noindex, follow{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: var(--space-8);">
+
+  <header class="page-header" style="margin-bottom: var(--space-8);">
+    <p class="page-header__eyebrow">Account</p>
+    <h1 class="page-header__title">My Library</h1>
+    <p class="page-header__desc">Your reading history and saved articles & videos.</p>
+  </header>
+
+  {# Tabs: History / Saved #}
+  <div class="filter-bar" role="tablist" style="margin-bottom: var(--space-8);">
+    <a class="filter-chip {% if tab == 'history' or not tab %}active{% endif %}"
+       href="/library?tab=history" role="tab"
+       aria-selected="{{ 'true' if (tab == 'history' or not tab) else 'false' }}">
+      Reading History
+    </a>
+    <a class="filter-chip {% if tab == 'saved' %}active{% endif %}"
+       href="/library?tab=saved" role="tab"
+       aria-selected="{{ 'true' if tab == 'saved' else 'false' }}">
+      Saved
+    </a>
+  </div>
+
+  {% if items %}
+  <p class="search-results-count" aria-live="polite">{{ total or items|length }} items</p>
+
+  <div class="grid-cards">
+    {% for item in items %}
+    {{ content_card(item) }}
+    {% endfor %}
+  </div>
+
+  {{ pagination(page, total_pages, endpoint='library.index', tab=tab) }}
+
+  {% else %}
+  <div class="empty-state">
+    <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+    <h2 class="empty-state__title">
+      {% if tab == 'saved' %}No saved items yet{% else %}No reading history yet{% endif %}
+    </h2>
+    <p class="empty-state__desc">
+      {% if tab == 'saved' %}
+        Click the bookmark icon on any article or video to save it here.
+      {% else %}
+        Start reading articles and watching videos to build your history.
+      {% endif %}
+    </p>
+    <a class="btn btn--primary" href="/">Explore content</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

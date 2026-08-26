@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "macros/content_card.html" import content_card %}
+{% from "macros/pagination.html" import pagination %}
+
+{% set query = request.args.get('q', '') %}
+
+{% block title %}{% if query %}Search: {{ query }}{% else %}Search{% endif %}{% endblock %}
+{% block description %}Search Nexura for technology articles, video reviews, and analysis. Find the best content organized by topic and brand.{% endblock %}
+{% block robots %}{{ 'noindex, follow' if query else 'index, follow' }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: var(--space-8);">
+
+  {# Large Search Bar #}
+  <div style="max-width: 680px; margin: 0 auto var(--space-10);">
+    <h1 style="font-family:var(--font-display); font-size:var(--text-3xl); font-weight:var(--weight-bold); letter-spacing:-0.02em; text-align:center; margin-bottom:var(--space-6);">
+      What are you looking for?
+    </h1>
+
+    <div class="search-container">
+      <form action="/search" method="get" role="search">
+        <div class="search-bar">
+          <svg class="search-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input class="search-bar__input"
+                 id="search-input"
+                 data-search-input
+                 type="search"
+                 name="q"
+                 value="{{ query }}"
+                 placeholder="Search articles, videos, topics…"
+                 autocomplete="off"
+                 aria-label="Search query"
+                 aria-autocomplete="list"
+                 aria-controls="autocomplete-dropdown"
+                 autofocus>
+          {% if query %}
+          <button type="submit" class="btn btn--primary btn--sm" aria-label="Search">Search</button>
+          {% endif %}
+        </div>
+        <div id="autocomplete-dropdown"
+             class="autocomplete-dropdown"
+             data-search-dropdown
+             role="listbox"></div>
+      </form>
+    </div>
+  </div>
+
+  {# Results area #}
+  {% if query %}
+
+  {# Filter bar #}
+  <div class="filter-bar" style="margin-bottom: var(--space-6);" aria-label="Search filters">
+    <span class="filter-bar__label">Filter:</span>
+    <a class="filter-chip {% if not request.args.get('type') %}active{% endif %}"
+       href="/search?q={{ query | urlencode }}">All</a>
+    <a class="filter-chip {% if request.args.get('type') == 'article' %}active{% endif %}"
+       href="/search?q={{ query | urlencode }}&type=article">Articles</a>
+    <a class="filter-chip {% if request.args.get('type') == 'video' %}active{% endif %}"
+       href="/search?q={{ query | urlencode }}&type=video">Videos</a>
+
+    {# Sort #}
+    <span class="filter-bar__label" style="margin-left: auto;">Sort:</span>
+    <a class="filter-chip {% if not request.args.get('sort') or request.args.get('sort') == 'relevance' %}active{% endif %}"
+       href="/search?q={{ query | urlencode }}&sort=relevance">Relevance</a>
+    <a class="filter-chip {% if request.args.get('sort') == 'recent' %}active{% endif %}"
+       href="/search?q={{ query | urlencode }}&sort=recent">Recent</a>
+  </div>
+
+  {% if items %}
+  <p class="search-results-count" aria-live="polite">
+    {{ total or items|length }} results for <strong>"{{ query }}"</strong>
+  </p>
+
+  <div class="grid-cards" data-search-results>
+    {% for item in items %}
+      {{ content_card(item) }}
+    {% endfor %}
+  </div>
+
+  {{ pagination(page, total_pages, endpoint='public.search', q=query) }}
+
+  {% else %}
+  <div class="empty-state">
+    <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <h2 class="empty-state__title">No results for "{{ query }}"</h2>
+    <p class="empty-state__desc">Try different keywords, check your spelling, or browse topics below.</p>
+    <a class="btn btn--secondary" href="/">Back to home</a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  {# No query — show suggestions #}
+  <div style="text-align: center; color: var(--text-muted); font-size:var(--text-sm);">
+    Type a query above to search articles and videos.
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

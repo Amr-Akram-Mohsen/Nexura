@@ -1,0 +1,146 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Inspect #{{ content.id }} — {{ content.title | truncate(40) }}{% endblock %}
+{% block page_title %}Editorial Inspection & Readiness #{{ content.id }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-6);">
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.index') }}">← Back to Content Library</a>
+  <div style="display:flex; gap:var(--space-2);">
+    {% if content.is_published %}
+    <a class="btn btn--secondary btn--sm" href="/{% if content.object_type == 'video' %}video{% else %}article{% endif %}/{{ content.id }}" target="_blank">
+      View Live Page ↗
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Readiness Score Card (Articles) ── #}
+{% if readiness %}
+<div class="admin-panel" style="background:linear-gradient(135deg, var(--bg-card), var(--bg-secondary));">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">Publishing Readiness Index (§9.2)</h2>
+    <span class="badge {% if readiness.tier == 'Ready' %}badge--ready{% elif readiness.tier == 'Almost Ready' %}badge--almost{% elif readiness.tier == 'Needs Work' %}badge--needs-work{% else %}badge--not-ready{% endif %}" style="font-size:var(--text-sm); padding:var(--space-1) var(--space-3);">
+      {{ readiness.tier }} ({{ readiness.score }} / 100)
+    </span>
+  </div>
+  <div style="padding:var(--space-6);">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:var(--space-4);">
+      <div style="background:var(--bg-card); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+        <span style="font-size:var(--text-xs); color:var(--text-muted); text-transform:uppercase;">Core Metadata</span>
+        <div style="font-size:var(--text-xl); font-weight:var(--weight-bold); margin-top:var(--space-1);">
+          {{ readiness.breakdown.core_metadata }} / 25
+        </div>
+      </div>
+      <div style="background:var(--bg-card); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+        <span style="font-size:var(--text-xs); color:var(--text-muted); text-transform:uppercase;">Body & Extraction</span>
+        <div style="font-size:var(--text-xl); font-weight:var(--weight-bold); margin-top:var(--space-1);">
+          {{ readiness.breakdown.body_extraction }} / 30
+        </div>
+      </div>
+      <div style="background:var(--bg-card); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+        <span style="font-size:var(--text-xs); color:var(--text-muted); text-transform:uppercase;">Taxonomy Mapping</span>
+        <div style="font-size:var(--text-xl); font-weight:var(--weight-bold); margin-top:var(--space-1);">
+          {{ readiness.breakdown.taxonomy_mapping }} / 20
+        </div>
+      </div>
+      <div style="background:var(--bg-card); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+        <span style="font-size:var(--text-xs); color:var(--text-muted); text-transform:uppercase;">Media Assets</span>
+        <div style="font-size:var(--text-xl); font-weight:var(--weight-bold); margin-top:var(--space-1);">
+          {{ readiness.breakdown.media_assets }} / 15
+        </div>
+      </div>
+      <div style="background:var(--bg-card); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+        <span style="font-size:var(--text-xs); color:var(--text-muted); text-transform:uppercase;">Source Attribution</span>
+        <div style="font-size:var(--text-xl); font-weight:var(--weight-bold); margin-top:var(--space-1);">
+          {{ readiness.breakdown.source_attribution }} / 10
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Metadata & Details Panel ── #}
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:var(--space-6);">
+
+  {# Left: Main content / Body #}
+  <div class="admin-panel">
+    <div class="admin-panel__header">
+      <h3 class="admin-panel__title">{{ content.title }}</h3>
+      <span class="badge badge--{{ content.object_type }}" style="text-transform:capitalize;">{{ content.object_type }}</span>
+    </div>
+    <div style="padding:var(--space-6); display:flex; flex-direction:column; gap:var(--space-4);">
+      <div>
+        <span style="font-size:var(--text-xs); font-weight:var(--weight-semibold); color:var(--text-muted); text-transform:uppercase;">Preview Excerpt</span>
+        <p style="font-size:var(--text-sm); margin-top:var(--space-1); color:var(--text-secondary);">
+          {{ content.preview_text or 'No preview text generated.' }}
+        </p>
+      </div>
+
+      {% if content.object_type == 'article' and content._article_obj %}
+      {% set art = content._article_obj %}
+      <div>
+        <span style="font-size:var(--text-xs); font-weight:var(--weight-semibold); color:var(--text-muted); text-transform:uppercase;">Extracted HTML Body Preview ({{ art.word_count or 0 }} words)</span>
+        <div style="margin-top:var(--space-2); padding:var(--space-4); background:var(--bg-secondary); border-radius:var(--radius-md); max-height:400px; overflow-y:auto; font-size:var(--text-sm); line-height:var(--leading-relaxed);">
+          {{ art.content_html | safe if art.content_html else 'No HTML body extracted yet.' }}
+        </div>
+      </div>
+      {% elif content.object_type == 'video' and content._video_obj %}
+      {% set vid = content._video_obj %}
+      <div>
+        <span style="font-size:var(--text-xs); font-weight:var(--weight-semibold); color:var(--text-muted); text-transform:uppercase;">YouTube Video Description</span>
+        <div style="margin-top:var(--space-2); padding:var(--space-4); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm); white-space:pre-wrap;">
+          {{ vid.description or 'No description.' }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Right: Sidebar stats #}
+  <div style="display:flex; flex-direction:column; gap:var(--space-6);">
+    <div class="admin-panel">
+      <div class="admin-panel__header">
+        <h3 class="admin-panel__title">Taxonomy & Source</h3>
+      </div>
+      <div style="padding:var(--space-6); display:flex; flex-direction:column; gap:var(--space-3); font-size:var(--text-sm);">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted);">Section</span>
+          <strong>{{ content.section.name if content.section else '-' }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted);">Category</span>
+          <strong>{{ content.category.name if content.category else '-' }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted);">Source</span>
+          <strong>{{ content.source.name if content.source else '-' }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted);">Calculated Score</span>
+          <strong>{{ content.score or 0.0 }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-panel">
+      <div class="admin-panel__header">
+        <h3 class="admin-panel__title">Linked Entities ({{ content.content_entities|length if content.content_entities else 0 }})</h3>
+      </div>
+      <div style="padding:var(--space-6); display:flex; flex-wrap:wrap; gap:var(--space-2);">
+        {% for ce in content.content_entities %}
+        {% if ce.entity %}
+        <span class="badge" style="background:var(--bg-tertiary);">
+          {{ ce.entity.name }} <small style="color:var(--text-muted);">({{ ce.entity.entity_type }})</small>
+        </span>
+        {% endif %}
+        {% else %}
+        <span style="font-size:var(--text-xs); color:var(--text-muted);">No entities tagged yet.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Deduplication Workbench{% endblock %}
+{% block page_title %}Story Deduplication & Canonicalization Workbench{% endblock %}
+
+{% block content %}
+<div class="admin-panel">
+  <div class="admin-panel__header">
+    <h2 class="admin-panel__title">Cross-Source Duplicate Story Clusters (§10, §18.4)</h2>
+    <span class="badge badge--almost">{{ clusters|length }} clusters detected (Jaccard ≥ 85%)</span>
+  </div>
+
+  <div style="padding:var(--space-6);">
+    <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:var(--space-6);">
+      When multiple media outlets publish articles covering the same breaking story or announcement, this workbench clusters them. Clicking <strong>Canonicalize & Merge</strong> links secondary publisher sources under the primary (oldest) article and unpublishes redundant duplicate pages.
+    </p>
+
+    {% for cluster in clusters %}
+    <div style="background:var(--bg-secondary); border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:var(--space-5); margin-bottom:var(--space-6);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-4);">
+        <div>
+          <span class="badge badge--ready" style="margin-bottom:var(--space-1);">Primary Canonical Story (Oldest)</span>
+          <h3 style="font-size:var(--text-md); font-weight:var(--weight-bold); margin-top:var(--space-1);">
+            {{ cluster.canonical.title }}
+          </h3>
+          <span style="font-size:var(--text-xs); color:var(--text-muted);">
+            Article ID #{{ cluster.canonical.id }} · Canonical URL: <a href="{{ cluster.canonical.canonical_url }}" target="_blank" style="color:var(--accent-blue);">{{ cluster.canonical.canonical_url | truncate(60) }}</a>
+          </span>
+        </div>
+
+        <form method="post" action="{{ url_for('admin.deduplication.resolve_cluster') }}" style="flex-shrink:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="canonical_id" value="{{ cluster.canonical.id }}">
+          {% for dup in cluster.duplicates %}
+          <input type="hidden" name="duplicate_ids" value="{{ dup.id }}">
+          {% endfor %}
+          <button class="btn btn--secondary btn--sm" type="submit">
+            🔗 Canonicalize & Merge ({{ cluster.duplicates|length }} Duplicates)
+          </button>
+        </form>
+      </div>
+
+      {# Duplicates list #}
+      <div style="padding-top:var(--space-3); border-top:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:var(--space-2);">
+        <span style="font-size:var(--text-xs); font-weight:var(--weight-semibold); text-transform:uppercase; color:var(--text-muted);">
+          Duplicate Stories to Consolidate:
+        </span>
+        {% for dup in cluster.duplicates %}
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:var(--space-2) var(--space-3); border-radius:var(--radius-md); font-size:var(--text-sm);">
+          <span>{{ dup.title }}</span>
+          <span style="font-size:var(--text-xs); color:var(--text-muted);">ID #{{ dup.id }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:var(--space-12) 0;">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <h3 class="empty-state__title">No Duplicate Story Clusters</h3>
+      <p class="empty-state__desc">All active published content is unique and properly canonicalized.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
