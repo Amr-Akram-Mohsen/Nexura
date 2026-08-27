@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import math
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required, current_user
 
 from app.repositories.user_repo import UserRepository
@@ -26,6 +26,8 @@ def index():
     """User library — reading history and saved collections (§15)."""
     tab = request.args.get("tab", "history")
     page = request.args.get("page", 1, type=int)
+
+    history_count, saved_count = UserRepository.get_counts(current_user.id)
 
     if tab == "saved":
         collection = request.args.get("collection")
@@ -51,6 +53,29 @@ def index():
         items=items,
         tab=tab,
         total=total,
+        history_count=history_count,
+        saved_count=saved_count,
         page=page,
         total_pages=total_pages,
     )
+
+
+@library_bp.route("/library/history/clear", methods=["POST"])
+@login_required
+def clear_history():
+    """Clear all reading history for the current user."""
+    UserRepository.clear_user_history(current_user.id)
+    flash("Reading history cleared.", "info")
+    return redirect(url_for("library.index", tab="history"))
+
+
+@library_bp.route("/library/history/remove/<int:content_id>", methods=["POST"])
+@login_required
+def remove_history_item(content_id: int):
+    """Remove a single item from user's reading history."""
+    UserRepository.remove_from_user_history(current_user.id, content_id)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+        return jsonify({"success": True})
+    flash("Item removed from history.", "info")
+    return redirect(url_for("library.index", tab="history"))
+

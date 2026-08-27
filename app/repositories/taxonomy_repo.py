@@ -41,12 +41,22 @@ class TaxonomyRepository:
         return db.session.query(Section).filter(Section.slug == slug).first()
 
     @staticmethod
-    def get_categories_for_section(section_id: int) -> list[Category]:
-        """Fetch active categories."""
+    def get_categories_for_section(section_id: int, min_items: int = 1, limit: int = 12) -> list[Category]:
+        """Fetch active categories that have published content in the specified section."""
+        from app.models.content import Content
         return (
             db.session.query(Category)
-            .filter(Category.is_active.is_(True))
-            .order_by(Category.sort_order.asc(), Category.name.asc())
+            .join(Content, Content.category_id == Category.id)
+            .filter(
+                Content.section_id == section_id,
+                Content.is_published.is_(True),
+                Content.is_active.is_(True),
+                Category.is_active.is_(True),
+            )
+            .group_by(Category.id)
+            .having(func.count(Content.id) >= min_items)
+            .order_by(func.count(Content.id).desc(), Category.name.asc())
+            .limit(limit)
             .all()
         )
 

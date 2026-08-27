@@ -118,7 +118,8 @@ endblock %}
       {# Interaction bar #}
       <div class="interaction-bar" aria-label="Video interactions">
         <button class="interaction-btn {% if user_state.liked %}active{% endif %}" data-interaction="like"
-          data-content-id="{{ content.id }}" aria-pressed="{{ 'true' if user_state.liked else 'false' }}" type="button">
+          data-content-id="{{ content.id }}" aria-label="Like this video"
+          aria-pressed="{{ 'true' if user_state.liked else 'false' }}" type="button">
           <svg viewBox="0 0 24 24" fill="{% if user_state.liked %}currentColor{% else %}none{% endif %}"
             stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
@@ -126,6 +127,18 @@ endblock %}
           </svg>
           <span data-count>{{ content.like_count }}</span>
         </button>
+
+        <button class="interaction-btn {% if user_state.disliked %}active dislike{% endif %}" data-interaction="dislike"
+          data-content-id="{{ content.id }}" aria-label="Dislike this video"
+          aria-pressed="{{ 'true' if user_state.disliked else 'false' }}" type="button">
+          <svg viewBox="0 0 24 24" fill="{% if user_state.disliked %}currentColor{% else %}none{% endif %}"
+            stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
+            <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+          </svg>
+          <span data-count>{{ content.dislike_count }}</span>
+        </button>
+
         <button class="interaction-btn {% if user_state.saved %}active{% endif %}" data-interaction="save"
           data-content-id="{{ content.id }}" aria-pressed="{{ 'true' if user_state.saved else 'false' }}" type="button">
           <svg viewBox="0 0 24 24" fill="{% if user_state.saved %}currentColor{% else %}none{% endif %}"

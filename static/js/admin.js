@@ -13,8 +13,31 @@
     if (window.Nexura && window.Nexura.toast) {
       window.Nexura.toast(message, type);
     } else {
-      alert(message);
+      const toast = document.createElement('div');
+      toast.className = `badge badge--${type === 'success' ? 'ready' : type === 'error' ? 'not-ready' : 'almost'}`;
+      toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.3);font-size:14px;border-radius:10px;animation:fadeIn 0.2s ease;';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     }
+  }
+  window.showAdminToast = showAdminToast;
+
+  // ─── 0. Mobile Sidebar Toggle ──────────────────────────────────────────────
+  const sidebar = document.querySelector('.admin-sidebar');
+  const hamburgerBtn = document.querySelector('.admin-hamburger');
+
+  if (hamburgerBtn && sidebar) {
+    hamburgerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebar.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+        sidebar.classList.remove('open');
+      }
+    });
   }
 
   // ─── 1. Table Row Checkboxes & Batch Actions ────────────────────────────────
@@ -229,5 +252,25 @@
       }
     });
   });
+
+  // ─── 5. Clipboard Copy Helper with Visual Feedback ──────────────────────────
+  window.copyToClipboard = function (text, btnElement) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        showAdminToast('Copied to clipboard! ✓', 'success');
+        if (btnElement) {
+          const original = btnElement.innerHTML;
+          btnElement.innerHTML = '✓ Copied';
+          btnElement.style.color = 'var(--accent-green)';
+          setTimeout(() => {
+            btnElement.innerHTML = original;
+            btnElement.style.color = '';
+          }, 2000);
+        }
+      }).catch(() => {
+        showAdminToast('Failed to copy', 'error');
+      });
+    }
+  };
 
 })();

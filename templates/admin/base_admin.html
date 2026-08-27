@@ -20,12 +20,12 @@
   <aside class="admin-sidebar" aria-label="Admin Navigation">
     <div class="admin-sidebar__header">
       <a class="admin-sidebar__brand" href="{{ url_for('admin.dashboard') }}">
-        <svg width="24" height="24" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 30 30" fill="none" aria-hidden="true">
           <rect width="30" height="30" rx="6" fill="url(#adminLogoGrad)"/>
           <path d="M8 22V8l14 14V8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <defs><linearGradient id="adminLogoGrad" x1="0" y1="0" x2="30" y2="30"><stop stop-color="hsl(217,90%,62%)"/><stop offset="1" stop-color="hsl(199,85%,58%)"/></linearGradient></defs>
         </svg>
-        Nexura <span class="badge" style="font-size:10px; padding:2px 6px; background:hsla(267,84%,68%,0.2); color:var(--accent-violet);">ADMIN</span>
+        Nexura <span class="badge" style="font-size:10px; padding:2px 6px; background:hsla(267,84%,68%,0.2); color:var(--accent-violet); border:1px solid hsla(267,84%,68%,0.3);">ADMIN</span>
       </a>
     </div>
 
@@ -64,9 +64,9 @@
     </nav>
 
     <div class="admin-sidebar__footer">
-      <a class="btn btn--ghost btn--sm" href="/" target="_blank" style="width:100%; justify-content:flex-start;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        View Public Site
+      <a class="btn btn--ghost btn--sm" href="/" target="_blank" style="width:100%; justify-content:flex-start; gap:var(--space-2);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <span>View Public Site</span>
       </a>
     </div>
   </aside>
@@ -74,9 +74,17 @@
   {# ── Main Layout ─────────────────────────────────────────────────────────── #}
   <div class="admin-main">
     <header class="admin-topbar">
-      <h1 class="admin-topbar__title">{% block page_title %}Overview{% endblock %}</h1>
-      <div style="display:flex; align-items:center; gap:var(--space-3);">
-        <span style="font-size:var(--text-xs); color:var(--text-secondary);">Logged in as <strong>{{ current_user.email }}</strong></span>
+      <div class="admin-topbar__left">
+        <button class="admin-hamburger" type="button" aria-label="Toggle navigation">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="admin-topbar__title">{% block page_title %}Overview{% endblock %}</h1>
+      </div>
+      <div class="admin-topbar__right">
+        <span style="font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; gap:var(--space-2);">
+          <span class="pulse-dot pulse-dot--green" title="System Operational"></span>
+          <span>Logged in as <strong>{{ current_user.email }}</strong></span>
+        </span>
         <a class="btn btn--ghost btn--sm" href="{{ url_for('auth.logout') }}">Logout</a>
       </div>
     </header>
@@ -87,7 +95,7 @@
       {% if messages %}
       <div style="margin-bottom: var(--space-6); display:flex; flex-direction:column; gap:var(--space-2);">
         {% for category, msg in messages %}
-        <div class="badge" style="padding:var(--space-3) var(--space-4); font-size:var(--text-sm); width:100%; border-radius:var(--radius-lg); {% if category == 'success' %}background:hsla(152,60%,52%,0.15); color:var(--accent-green);{% elif category == 'error' or category == 'danger' %}background:hsla(355,72%,58%,0.15); color:var(--accent-red);{% else %}background:hsla(217,90%,62%,0.15); color:var(--accent-blue);{% endif %}">
+        <div class="badge" style="padding:var(--space-3) var(--space-4); font-size:var(--text-sm); width:100%; border-radius:var(--radius-lg); {% if category == 'success' %}background:hsla(152,60%,52%,0.15); color:var(--accent-green); border:1px solid hsla(152,60%,52%,0.25);{% elif category == 'error' or category == 'danger' %}background:hsla(355,72%,58%,0.15); color:var(--accent-red); border:1px solid hsla(355,72%,58%,0.25);{% else %}background:hsla(217,90%,62%,0.15); color:var(--accent-blue); border:1px solid hsla(217,90%,62%,0.25);{% endif %}">
           {{ msg }}
         </div>
         {% endfor %}

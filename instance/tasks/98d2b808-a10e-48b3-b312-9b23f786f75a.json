@@ -1,0 +1,19 @@
+{
+  "task_id": "98d2b808-a10e-48b3-b312-9b23f786f75a",
+  "task_name": "Ingestion: News_ingestion",
+  "source": "news_ingestion",
+  "source_name": "news_ingestion",
+  "params": {
+    "query": "AI"
+  },
+  "status": "complete",
+  "progress": 100,
+  "message": "Done",
+  "result": {
+    "count": 10
+  },
+  "error": null,
+  "created_at": "2026-08-27T15:37:03.217231+00:00",
+  "started_at": "2026-08-27T15:37:03.238081+00:00",
+  "completed_at": "2026-08-27T15:37:03.259069+00:00"
+}

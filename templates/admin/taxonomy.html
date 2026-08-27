@@ -8,29 +8,38 @@
 {# ── Fuzzy Duplicate Merge Workbench ── #}
 <div class="admin-panel">
   <div class="admin-panel__header">
-    <h2 class="admin-panel__title">Fuzzy Duplicate Entity Merge (§18.5)</h2>
-    <span class="badge badge--needs-work">{{ merge_candidates|length }} merge candidates (≥ 82% similarity)</span>
+    <h2 class="admin-panel__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Fuzzy Duplicate Entity Merge (§18.5)
+    </h2>
+    <span class="badge badge--needs-work" style="font-weight:var(--weight-semibold);">{{ merge_candidates|length }} merge candidates (≥ 82% similarity)</span>
   </div>
   <div style="padding:var(--space-6);">
-    <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:var(--space-4);">
+    <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:var(--space-5); line-height:var(--leading-relaxed);">
       Merging re-points all linked articles and videos from the duplicate tag to the primary canonical entity, then deletes the redundant entity record.
     </p>
 
     {% for cand in merge_candidates %}
-    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:var(--space-4); margin-bottom:var(--space-3); font-size:var(--text-sm);">
-      <div style="display:flex; align-items:center; gap:var(--space-4);">
-        <div>
-          <strong>{{ cand.entity_1.name }}</strong>
-          <span style="font-size:var(--text-xs); color:var(--text-muted);">#{{ cand.entity_1.id }} ({{ cand.entity_1.type }})</span>
-        </div>
-        <span style="color:var(--text-muted); font-size:var(--text-xs);">⇄ {{ cand.similarity_pct }}% similar ⇄</span>
-        <div>
-          <strong>{{ cand.entity_2.name }}</strong>
-          <span style="font-size:var(--text-xs); color:var(--text-muted);">#{{ cand.entity_2.id }} ({{ cand.entity_2.type }})</span>
-        </div>
-      </div>
+    <div class="comparison-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-4);">
+        <div style="display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap;">
+          <div style="background:var(--bg-card); padding:var(--space-3) var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+            <strong style="font-size:var(--text-sm);">{{ cand.entity_1.name }}</strong>
+            <div style="font-size:var(--text-xs); color:var(--text-muted);">#{{ cand.entity_1.id }} · {{ cand.entity_1.type }}</div>
+          </div>
 
-      <div style="display:flex; gap:var(--space-2);">
+          <div class="similarity-meter">
+            <span>⇄</span>
+            <span>{{ cand.similarity_pct }}% Match</span>
+            <span>⇄</span>
+          </div>
+
+          <div style="background:var(--bg-card); padding:var(--space-3) var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+            <strong style="font-size:var(--text-sm);">{{ cand.entity_2.name }}</strong>
+            <div style="font-size:var(--text-xs); color:var(--text-muted);">#{{ cand.entity_2.id }} · {{ cand.entity_2.type }}</div>
+          </div>
+        </div>
+
         <button class="btn btn--secondary btn--sm" data-merge-entity-btn
                 data-source-id="{{ cand.entity_2.id }}"
                 data-target-id="{{ cand.entity_1.id }}"
@@ -41,7 +50,12 @@
       </div>
     </div>
     {% else %}
-    <p style="font-size:var(--text-sm); color:var(--text-muted);">No duplicate entity pairs detected.</p>
+    <div class="empty-state" style="padding:var(--space-8) 0; text-align:center;">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px; height:40px; margin:0 auto var(--space-3); color:var(--accent-green);">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <p style="font-size:var(--text-sm); color:var(--text-secondary); margin:0;">No duplicate entity pairs detected. Taxonomy is clean.</p>
+    </div>
     {% endfor %}
   </div>
 </div>
@@ -50,45 +64,45 @@
 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:var(--space-6);">
 
   {# Sections #}
-  <div class="admin-panel">
+  <div class="admin-panel" style="margin-bottom:0;">
     <div class="admin-panel__header">
       <h3 class="admin-panel__title">Sections ({{ sections|length }})</h3>
     </div>
-    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:300px; overflow-y:auto;">
+    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:320px; overflow-y:auto;">
       {% for s in sections %}
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm);">
-        <span>{{ s.name }}</span>
-        <code style="font-size:var(--text-xs); color:var(--text-muted);">/{{ s.slug }}</code>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm); border:1px solid var(--border-subtle);">
+        <strong>{{ s.name }}</strong>
+        <code style="font-size:var(--text-xs); color:var(--text-muted); font-family:monospace;">/{{ s.slug }}</code>
       </div>
       {% endfor %}
     </div>
   </div>
 
   {# Categories #}
-  <div class="admin-panel">
+  <div class="admin-panel" style="margin-bottom:0;">
     <div class="admin-panel__header">
       <h3 class="admin-panel__title">Categories ({{ categories|length }})</h3>
     </div>
-    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:300px; overflow-y:auto;">
+    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:320px; overflow-y:auto;">
       {% for c in categories %}
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm);">
-        <span>{{ c.name }}</span>
-        <code style="font-size:var(--text-xs); color:var(--text-muted);">/category/{{ c.slug }}</code>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm); border:1px solid var(--border-subtle);">
+        <strong>{{ c.name }}</strong>
+        <code style="font-size:var(--text-xs); color:var(--text-muted); font-family:monospace;">/category/{{ c.slug }}</code>
       </div>
       {% endfor %}
     </div>
   </div>
 
   {# Top Entities #}
-  <div class="admin-panel">
+  <div class="admin-panel" style="margin-bottom:0;">
     <div class="admin-panel__header">
       <h3 class="admin-panel__title">Top Entities by Tag Frequency</h3>
     </div>
-    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:300px; overflow-y:auto;">
+    <div style="padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); max-height:320px; overflow-y:auto;">
       {% for ent, count in popular_entities %}
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm);">
-        <span>{{ ent.name }} <small style="color:var(--text-muted);">({{ ent.entity_type }})</small></span>
-        <span class="badge" style="background:var(--bg-tertiary);">{{ count }} items</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); font-size:var(--text-sm); border:1px solid var(--border-subtle);">
+        <span><strong>{{ ent.name }}</strong> <small style="color:var(--text-muted);">({{ ent.entity_type }})</small></span>
+        <span class="badge" style="background:var(--bg-tertiary); border:1px solid var(--border-default);">{{ count }} items</span>
       </div>
       {% endfor %}
     </div>

@@ -160,7 +160,7 @@
       </div>
 
       {# Article body #}
-      <div class="article-body" itemprop="articleBody">
+      <div class="article-body article-html" itemprop="articleBody">
         {% if article.content_html %}
         {{ article.content_html | safe }}
         {% elif article.content_text %}

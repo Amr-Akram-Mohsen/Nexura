@@ -5,11 +5,12 @@
 
 {% block content %}
 <div class="kpi-grid">
-  <div class="kpi-card">
+  <div class="kpi-card" style="border-top: 3px solid var(--accent-blue);">
     <span class="kpi-card__label">Total Comments</span>
     <span class="kpi-card__value" style="color:var(--accent-blue);">{{ '{:,}'.format(total_comments) }}</span>
+    <span class="kpi-card__sub">Community discussions across articles & videos</span>
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card" style="border-top: 3px solid var(--accent-green);">
     <span class="kpi-card__label">Newsletter Subscribers</span>
     <span class="kpi-card__value" style="color:var(--accent-green);">{{ '{:,}'.format(total_subscribers) }}</span>
     <span class="kpi-card__sub">{{ confirmed_subscribers }} confirmed double opt-in</span>
@@ -19,19 +20,22 @@
 {# ── Comment Moderation Queue ── #}
 <div class="admin-panel">
   <div class="admin-panel__header">
-    <h2 class="admin-panel__title">Recent User Comments Queue (§19)</h2>
+    <h2 class="admin-panel__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Recent User Comments Queue (§19)
+    </h2>
   </div>
 
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead>
         <tr>
-          <th>User</th>
+          <th style="width:180px;">User</th>
           <th>Comment Text</th>
-          <th>Article / Video</th>
-          <th>AI Sentiment</th>
-          <th>Date</th>
-          <th>Moderation Actions</th>
+          <th style="width:200px;">Article / Video</th>
+          <th style="width:120px;">AI Sentiment</th>
+          <th style="width:140px;">Date</th>
+          <th style="width:150px; text-align:right;">Moderation Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -41,35 +45,39 @@
             <strong>{{ c.user.name or 'Community Member' if c.user else 'Anonymous' }}</strong>
             <div style="font-size:var(--text-xs); color:var(--text-muted);">{{ c.user.email if c.user else '-' }}</div>
           </td>
-          <td style="max-width:320px; font-size:var(--text-sm);">
+          <td style="max-width:320px; font-size:var(--text-sm); line-height:var(--leading-relaxed);">
             {{ c.content }}
           </td>
           <td>
-            <a href="/{% if c.content_ref.object_type == 'video' %}video{% else %}article{% endif %}/{{ c.content_id }}" target="_blank" style="color:var(--accent-blue); text-decoration:none;">
-              #{{ c.content_id }} {{ c.content_ref.title | truncate(35) if c.content_ref else '-' }}
+            <a href="/{% if c.content_ref.object_type == 'video' %}video{% else %}article{% endif %}/{{ c.content_id }}" target="_blank" style="color:var(--accent-blue); text-decoration:none; font-size:var(--text-xs);">
+              #{{ c.content_id }} {{ (c.content_ref.title or '-') | truncate(35) if c.content_ref else '-' }}
             </a>
           </td>
           <td>
             {% if c.sentiment == 'positive' %}
-            <span class="badge badge--ready">Positive</span>
+            <span class="badge badge--ready" style="display:inline-flex; align-items:center; gap:var(--space-1);">
+              <span class="pulse-dot pulse-dot--green"></span> Positive
+            </span>
             {% elif c.sentiment == 'negative' %}
-            <span class="badge badge--not-ready">Negative</span>
+            <span class="badge badge--not-ready" style="display:inline-flex; align-items:center; gap:var(--space-1);">
+              <span class="pulse-dot pulse-dot--amber"></span> Negative
+            </span>
             {% else %}
-            <span class="badge" style="background:var(--bg-tertiary);">{{ c.sentiment or 'Neutral' }}</span>
+            <span class="badge" style="background:var(--bg-tertiary); border:1px solid var(--border-default);">{{ c.sentiment or 'Neutral' }}</span>
             {% endif %}
           </td>
           <td style="font-size:var(--text-xs); color:var(--text-muted);">
             {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '-' }}
           </td>
-          <td>
-            <div style="display:flex; gap:var(--space-1);">
-              <button class="btn btn--secondary btn--sm" data-moderate-comment="approve" data-comment-id="{{ c.id }}" title="Approve">
+          <td style="text-align:right;">
+            <div style="display:inline-flex; gap:var(--space-1);">
+              <button class="btn btn--secondary btn--sm" data-moderate-comment="approve" data-comment-id="{{ c.id }}" title="Approve comment">
                 ✓
               </button>
-              <button class="btn btn--secondary btn--sm" data-moderate-comment="soft_delete" data-comment-id="{{ c.id }}" title="Soft-delete">
+              <button class="btn btn--secondary btn--sm" data-moderate-comment="soft_delete" data-comment-id="{{ c.id }}" title="Flag comment">
                 Flag
               </button>
-              <button class="btn btn--ghost btn--sm" data-moderate-comment="hard_delete" data-comment-id="{{ c.id }}" title="Delete" style="color:var(--accent-red);">
+              <button class="btn btn--ghost btn--sm" data-moderate-comment="hard_delete" data-comment-id="{{ c.id }}" title="Delete comment" style="color:var(--accent-red);">
                 🗑
               </button>
             </div>
@@ -90,16 +98,19 @@
 {# ── Newsletter Subscribers ── #}
 <div class="admin-panel">
   <div class="admin-panel__header">
-    <h2 class="admin-panel__title">Newsletter Subscribers</h2>
+    <h2 class="admin-panel__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-green);"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Newsletter Subscribers
+    </h2>
   </div>
 
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead>
         <tr>
-          <th>Email</th>
-          <th>Status</th>
-          <th>Subscribed Date</th>
+          <th>Email Address</th>
+          <th style="width:180px;">Subscription Status</th>
+          <th style="width:180px; text-align:right;">Subscribed Date</th>
         </tr>
       </thead>
       <tbody>
@@ -115,7 +126,7 @@
             <span class="badge badge--needs-work">Pending Confirmation</span>
             {% endif %}
           </td>
-          <td style="font-size:var(--text-xs); color:var(--text-muted);">
+          <td style="font-size:var(--text-xs); color:var(--text-muted); text-align:right;">
             {{ s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '-' }}
           </td>
         </tr>

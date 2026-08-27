@@ -8,7 +8,13 @@
 
   {# ── Filter Toolbar ── #}
   <form class="admin-toolbar" method="get" action="{{ url_for('admin.contents.index') }}">
-    <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Search title..." style="min-width:200px;">
+    <div style="position:relative; min-width:220px; flex:1; max-width:360px;">
+      <input class="admin-input" type="text" name="q" value="{{ q }}" placeholder="Search by title or topic..." style="width:100%; padding-left:var(--space-8);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted);" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
 
     <select class="admin-select" name="type">
       <option value="">All Types</option>
@@ -33,14 +39,14 @@
     <select class="admin-select" name="is_published">
       <option value="">All Statuses</option>
       <option value="true" {% if request.args.get('is_published') == 'true' %}selected{% endif %}>Published</option>
-      <option value="false" {% if request.args.get('is_published') == 'false' %}selected{% endif %}>Unpublished</option>
+      <option value="false" {% if request.args.get('is_published') == 'false' %}selected{% endif %}>Draft / Queued</option>
     </select>
 
     <button class="btn btn--secondary btn--sm" type="submit">Filter</button>
-    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.index') }}">Clear</a>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.index') }}">Reset</a>
 
     <div style="margin-left:auto; font-size:var(--text-xs); color:var(--text-muted);">
-      {{ total }} total items
+      Showing <strong>{{ items|length }}</strong> of <strong>{{ total }}</strong> total records
     </div>
   </form>
 
@@ -49,35 +55,35 @@
     <table class="admin-table">
       <thead>
         <tr>
-          <th style="width:40px;">
-            <input type="checkbox" id="select-all-rows">
+          <th style="width:40px; text-align:center;">
+            <input type="checkbox" id="select-all-rows" aria-label="Select all rows">
           </th>
-          <th>ID</th>
+          <th style="width:70px;">ID</th>
           <th>Title</th>
-          <th>Type</th>
-          <th>Category</th>
-          <th>Status</th>
-          <th>Views</th>
-          <th>Published At</th>
-          <th>Actions</th>
+          <th style="width:90px;">Type</th>
+          <th style="width:140px;">Category</th>
+          <th style="width:130px;">Status</th>
+          <th style="width:90px;">Views</th>
+          <th style="width:140px;">Published Date</th>
+          <th style="width:90px; text-align:right;">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for item in items %}
         <tr>
-          <td>
-            <input type="checkbox" class="row-select-checkbox" value="{{ item.id }}">
+          <td style="text-align:center;">
+            <input type="checkbox" class="row-select-checkbox" value="{{ item.id }}" aria-label="Select row {{ item.id }}">
           </td>
-          <td>#{{ item.id }}</td>
+          <td><code style="color:var(--text-muted); font-size:var(--text-xs);">#{{ item.id }}</code></td>
           <td>
             <a href="{{ url_for('admin.contents.inspect', content_id=item.id) }}" style="color:var(--text-primary); font-weight:var(--weight-medium); text-decoration:none;">
-              {{ item.title | truncate(55) }}
+              {{ (item.title or 'Untitled') | truncate(55) }}
             </a>
           </td>
           <td>
             <span class="badge badge--{{ item.object_type }}" style="text-transform:capitalize;">{{ item.object_type }}</span>
           </td>
-          <td>{{ item.category.name if item.category else '-' }}</td>
+          <td style="color:var(--text-secondary); font-size:var(--text-xs);">{{ item.category.name if item.category else '-' }}</td>
           <td>
             {% if item.is_published %}
             <span class="badge badge--ready">Published</span>
@@ -85,11 +91,11 @@
             <span class="badge badge--needs-work">Draft / Queued</span>
             {% endif %}
           </td>
-          <td>{{ '{:,}'.format(item.view_count or 0) }}</td>
+          <td style="color:var(--text-secondary);">{{ '{:,}'.format(item.view_count or 0) }}</td>
           <td style="font-size:var(--text-xs); color:var(--text-muted);">
             {{ item.published_at.strftime('%Y-%m-%d %H:%M') if item.published_at else '-' }}
           </td>
-          <td>
+          <td style="text-align:right;">
             <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.inspect', content_id=item.id) }}">
               Inspect
             </a>
@@ -108,7 +114,7 @@
 
   {# ── Pagination Bar ── #}
   {% if total_pages > 1 %}
-  <div style="padding:var(--space-4) var(--space-6); display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle);">
+  <div style="padding:var(--space-4) var(--space-6); display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); background:var(--bg-secondary);">
     <span style="font-size:var(--text-xs); color:var(--text-muted);">Page {{ page }} of {{ total_pages }}</span>
     <div style="display:flex; gap:var(--space-2);">
       {% if page > 1 %}
@@ -125,10 +131,10 @@
 
 {# ── Floating Batch Actions Bar (shown on row selection) ── #}
 <div class="batch-bar" id="batch-action-bar">
-  <span id="selected-count-label" style="font-size:var(--text-sm); font-weight:var(--weight-semibold);">0 selected</span>
+  <span class="batch-count-badge" id="selected-count-label">0 selected</span>
   <button class="btn btn--secondary btn--sm" data-batch-action="publish">✓ Publish</button>
   <button class="btn btn--secondary btn--sm" data-batch-action="unpublish">✗ Unpublish</button>
   <button class="btn btn--secondary btn--sm" data-batch-action="deactivate">Deactivate</button>
-  <button class="btn btn--secondary btn--sm" data-batch-action="delete" style="color:var(--accent-red);">🗑 Delete</button>
+  <button class="btn btn--secondary btn--sm" data-batch-action="delete" style="color:var(--accent-red); border-color:hsla(355,72%,58%,0.3);">🗑 Delete</button>
 </div>
 {% endblock %}

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Nexura Phase 7 — User Repository
 Data access layer for User accounts, Saved collections, View history,
 Newsletter subscribers, and Contact messages.
@@ -159,6 +159,39 @@ class UserRepository:
         )
         resolved = ContentRepository.resolve_polymorphic_payloads(contents)
         return resolved, total
+
+    @staticmethod
+    def clear_user_history(user_id: int) -> int:
+        """Clear all view history for a user."""
+        count = db.session.query(View).filter(View.user_id == user_id).delete()
+        db.session.commit()
+        return count
+
+    @staticmethod
+    def remove_from_user_history(user_id: int, content_id: int) -> bool:
+        """Remove a specific content item from user's view history."""
+        deleted = (
+            db.session.query(View)
+            .filter(View.user_id == user_id, View.content_id == content_id)
+            .delete()
+        )
+        db.session.commit()
+        return bool(deleted)
+
+    @staticmethod
+    def get_counts(user_id: int) -> tuple[int, int]:
+        """Get (history_count, saved_count) for a user."""
+        history_cnt = (
+            db.session.query(func.count(func.distinct(View.content_id)))
+            .filter(View.user_id == user_id)
+            .scalar() or 0
+        )
+        saved_cnt = (
+            db.session.query(func.count(Save.id))
+            .filter(Save.user_id == user_id)
+            .scalar() or 0
+        )
+        return history_cnt, saved_cnt
 
     # ---------- Newsletter Subscribers ----------
 
