@@ -66,7 +66,7 @@ def sitemap_page(page: int):
 
     offset = (page - 1) * SITEMAP_BATCH_SIZE
     rows = (
-        db.session.query(Content.id, Content.object_type, Content.published_at)
+        db.session.query(Content.id, Content.title, Content.object_type, Content.published_at)
         .filter(
             Content.is_published.is_(True),
             Content.is_active.is_(True),
@@ -83,12 +83,16 @@ def sitemap_page(page: int):
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
         )
 
+    from app.utils.slugify import make_slug
+
     entries = []
     for row in rows:
+        slug = make_slug(row.title or "", max_length=100) or ""
+        slug_id = f"{row.id}-{slug}" if slug else str(row.id)
         if row.object_type == "article":
-            loc = url_for("public.article", content_id=row.id, _external=True)
+            loc = url_for("public.article", slug_or_id=slug_id, _external=True)
         else:
-            loc = url_for("public.video", content_id=row.id, _external=True)
+            loc = url_for("public.video", slug_or_id=slug_id, _external=True)
 
         lastmod = ""
         if row.published_at:

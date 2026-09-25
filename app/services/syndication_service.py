@@ -49,15 +49,18 @@ class SyndicationService:
         tags = [ce.entity.name for ce in content.content_entities if ce.entity]
         hashtag_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]]) if tags else "#Tech #Innovation #Nexura"
 
+        slug_id = content.slug_id
+        target_path = f"{content.object_type}/{slug_id}"
+
         drafts = {
             "twitter": {
                 "platform": "Twitter / X",
                 "character_limit": 280,
-                "text": f"🔥 {title}\n\n{summary[:140]}...\n\nRead more on Nexura: https://nexura.tech/article/{content.id}\n\n{hashtag_str}",
+                "text": f"🔥 {title}\n\n{summary[:140]}...\n\nRead more on Nexura: https://nexura.tech/{target_path}\n\n{hashtag_str}",
             },
             "linkedin": {
                 "platform": "LinkedIn",
-                "text": f"💡 Industry Insight: {title}\n\n{summary}\n\nKey takeaways:\n• Breakdown of core trends\n• Practical analysis for builders & creators\n\nFull analysis: https://nexura.tech/article/{content.id}\n\n{hashtag_str}",
+                "text": f"💡 Industry Insight: {title}\n\n{summary}\n\nKey takeaways:\n• Breakdown of core trends\n• Practical analysis for builders & creators\n\nFull analysis: https://nexura.tech/{target_path}\n\n{hashtag_str}",
             },
             "youtube": {
                 "platform": "YouTube (Script & Description)",
@@ -67,7 +70,7 @@ class SyndicationService:
                     {"time": "0:15", "topic": "Key Feature / Breaking Development"},
                     {"time": "0:40", "topic": "Why It Matters & Final Verdict"},
                 ],
-                "description": f"{title}\n\n{summary}\n\nOriginally published on Nexura: https://nexura.tech/article/{content.id}\n\n{hashtag_str}",
+                "description": f"{title}\n\n{summary}\n\nOriginally published on Nexura: https://nexura.tech/{target_path}\n\n{hashtag_str}",
             },
             "pinterest": {
                 "platform": "Pinterest (Cheat Sheet)",

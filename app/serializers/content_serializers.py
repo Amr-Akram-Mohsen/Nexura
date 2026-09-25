@@ -107,6 +107,15 @@ def serialize_content_card(content, *, include_article: bool = True) -> dict[str
                 "view_count": video_obj.view_count or 0,
             }
 
+    from app.utils.slugify import make_slug
+
+    slug = make_slug(content.title or "", max_length=100) or ""
+    slug_id = f"{content.id}-{slug}" if slug else str(content.id)
+    url = f"/{content.object_type}/{slug_id}"
+
+    result["slug"] = slug
+    result["slug_id"] = slug_id
+    result["url"] = url
     result["thumbnail"] = thumbnail
     result["preview"] = content.preview_text
     result["reading_time"] = reading_time
@@ -117,7 +126,6 @@ def serialize_content_card(content, *, include_article: bool = True) -> dict[str
     result["category_slug"] = content.category.slug if content.category else None
     result["section_name"] = content.section.name if content.section else None
     result["section_slug"] = content.section.slug if content.section else None
-    result["tags"] = result.get("entities", [])
     result["channel_name"] = channel_name
     result["tags"] = result.get("entities", [])
 

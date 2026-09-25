@@ -280,28 +280,67 @@ async function handleInteraction(action, contentId, btn) {
 
     const data = await res.json();
     if (data.success) {
-      // Toggle active state
-      if (action === 'like' || action === 'dislike') {
-        const bar = btn.closest('.interaction-bar');
-        if (bar) {
-          bar.querySelectorAll('[data-interaction="like"], [data-interaction="dislike"]')
-             .forEach(b => b.classList.remove('active'));
-        }
-        if (data.toggled) btn.classList.add('active');
-      } else if (action === 'save') {
-        btn.classList.toggle('active', data.saved);
-        Toast.show(data.saved ? 'Saved to your library!' : 'Removed from library.', 'success');
-      }
+      const bar = btn.closest('.interaction-bar') || document.querySelector(`.interaction-bar[data-content-id="${contentId}"]`);
 
-      // Update counter in UI
-      const counter = btn.querySelector('[data-count]');
-      if (counter && data.count !== undefined) {
-        counter.textContent = data.count;
+      if (action === 'like' || action === 'dislike') {
+        const likeBtn = bar ? bar.querySelector('[data-interaction="like"]') : (action === 'like' ? btn : null);
+        const dislikeBtn = bar ? bar.querySelector('[data-interaction="dislike"]') : (action === 'dislike' ? btn : null);
+
+        const isLiked = data.liked !== undefined ? data.liked : (action === 'like' && data.toggled);
+        const isDisliked = data.disliked !== undefined ? data.disliked : (action === 'dislike' && data.toggled);
+
+        // Update Like Button state & count
+        if (likeBtn) {
+          likeBtn.classList.toggle('active', isLiked);
+          likeBtn.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
+          const svg = likeBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', isLiked ? 'currentColor' : 'none');
+
+          const likeCountEl = likeBtn.querySelector('[data-count]');
+          if (likeCountEl && data.like_count !== undefined) {
+            likeCountEl.textContent = data.like_count;
+          } else if (likeCountEl && action === 'like' && data.count !== undefined) {
+            likeCountEl.textContent = data.count;
+          }
+        }
+
+        // Update Dislike Button state & count
+        if (dislikeBtn) {
+          dislikeBtn.classList.toggle('active', isDisliked);
+          dislikeBtn.classList.toggle('dislike', isDisliked);
+          dislikeBtn.setAttribute('aria-pressed', isDisliked ? 'true' : 'false');
+          const svg = dislikeBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', isDisliked ? 'currentColor' : 'none');
+
+          const dislikeCountEl = dislikeBtn.querySelector('[data-count]');
+          if (dislikeCountEl && data.dislike_count !== undefined) {
+            dislikeCountEl.textContent = data.dislike_count;
+          } else if (dislikeCountEl && action === 'dislike' && data.count !== undefined) {
+            dislikeCountEl.textContent = data.count;
+          }
+        }
+      } else if (action === 'save') {
+        const isSaved = data.saved !== undefined ? data.saved : data.toggled;
+        btn.classList.toggle('active', isSaved);
+        btn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+        const svg = btn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', isSaved ? 'currentColor' : 'none');
+
+        const spanText = btn.querySelector('span:not([data-count])');
+        if (spanText) {
+          spanText.textContent = isSaved ? 'Saved' : 'Save';
+        } else {
+          const textNode = Array.from(btn.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+          if (textNode) {
+            textNode.textContent = isSaved ? ' Saved' : ' Save';
+          }
+        }
+        Toast.show(isSaved ? 'Saved to your library!' : 'Removed from library.', 'success');
       }
     } else {
       Toast.show(data.message || 'Something went wrong.', 'error');
     }
-  } catch {
+  } catch (err) {
     Toast.show('Could not complete action. Try again.', 'error');
   } finally {
     btn.disabled = false;

@@ -156,6 +156,7 @@
   </main>
 
   {# Footer #}
+  {% from "macros/social_links.html" import render_social_links %}
   <footer class="footer">
     <div class="container">
       <div class="footer__grid">
@@ -165,6 +166,7 @@
             Intelligent technology journalism — articles, video reviews, and analysis
             curated and organized to help you stay ahead.
           </p>
+          {{ render_social_links(social_links) }}
         </div>
 
         <div>

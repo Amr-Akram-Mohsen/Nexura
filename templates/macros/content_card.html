@@ -25,6 +25,7 @@
   {% else %}
     {% set cat_name = '' %}
   {% endif %}
+  {% set item_url = item.get('url') or ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.get('slug_id') or item_id)) %}
   {% set tag_items = item.get('tags') or item.get('entities') or [] %}
 {% else %}
   {% set is_video = (item.object_type == 'video') %}
@@ -39,11 +40,12 @@
   {% set item_views = item.view_count if item.view_count is defined else 0 %}
   {% set item_date = item.published_at.strftime('%b %d, %Y') if (item.published_at is defined and item.published_at) else '' %}
   {% set cat_name = item.category.name if (item.category is defined and item.category) else '' %}
+  {% set item_url = item.url if item.url is defined else ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.slug_id if item.slug_id is defined else item_id)) %}
   {% set tag_items = item.content_entities if item.content_entities is defined else [] %}
 {% endif %}
 
 <a class="card {{ class }}"
-   href="{% if is_video %}/video/{{ item_id }}{% else %}/article/{{ item_id }}{% endif %}"
+   href="{{ item_url }}"
    data-content-id="{{ item_id }}"
    aria-label="{{ item_title }}">
 

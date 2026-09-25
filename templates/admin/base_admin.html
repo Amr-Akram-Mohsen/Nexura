@@ -82,7 +82,6 @@
       </div>
       <div class="admin-topbar__right">
         <span style="font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; gap:var(--space-2);">
-          <span class="pulse-dot pulse-dot--green" title="System Operational"></span>
           <span>Logged in as <strong>{{ current_user.email }}</strong></span>
         </span>
         <a class="btn btn--ghost btn--sm" href="{{ url_for('auth.logout') }}">Logout</a>

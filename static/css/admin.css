@@ -331,36 +331,26 @@
 .badge--needs-work { background: hsla(38, 92%, 50%, 0.15); color: var(--accent-amber); border: 1px solid hsla(38, 92%, 50%, 0.25); }
 .badge--not-ready { background: hsla(355, 72%, 58%, 0.15); color: var(--accent-red); border: 1px solid hsla(355, 72%, 58%, 0.25); }
 
-/* ── Status Pulsing Dots ── */
-.pulse-dot {
+/* ── Status Indicator Dots (Static, Non-Animated) ── */
+.pulse-dot,
+.status-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  position: relative;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
-.pulse-dot::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  animation: pulseBeacon 2s infinite ease-out;
+.pulse-dot::after,
+.status-dot::after {
+  display: none !important;
+  content: none !important;
 }
 
-.pulse-dot--green { background: var(--accent-green); }
-.pulse-dot--green::after { border: 2px solid var(--accent-green); }
-
-.pulse-dot--blue { background: var(--accent-blue); }
-.pulse-dot--blue::after { border: 2px solid var(--accent-blue); }
-
-.pulse-dot--amber { background: var(--accent-amber); }
-.pulse-dot--amber::after { border: 2px solid var(--accent-amber); }
-
-@keyframes pulseBeacon {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(2.4); opacity: 0; }
-}
+.pulse-dot--green, .status-dot--green { background: var(--accent-green); }
+.pulse-dot--blue, .status-dot--blue { background: var(--accent-blue); }
+.pulse-dot--amber, .status-dot--amber { background: var(--accent-amber); }
 
 /* ── Progress Bar for Tasks ── */
 .progress-bar-wrap {

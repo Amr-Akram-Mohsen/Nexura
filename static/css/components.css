@@ -545,18 +545,35 @@
 
 .interaction-btn.active {
   background: var(--accent-blue);
-  color: var(--text-on-accent);
+  color: #ffffff;
   border-color: var(--accent-blue);
 }
 
-.interaction-btn.active.dislike {
+.interaction-btn.active svg {
+  fill: currentColor;
+}
+
+.interaction-btn.active.dislike,
+.interaction-btn[data-interaction="dislike"].active {
   background: var(--accent-red);
   border-color: var(--accent-red);
+  color: #ffffff;
+}
+
+.interaction-btn[data-interaction="dislike"]:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  background: hsla(355, 72%, 58%, 0.08);
 }
 
 .interaction-btn svg {
   width: 16px; height: 16px;
   flex-shrink: 0;
+  transition: fill var(--duration-fast), transform var(--duration-fast);
+}
+
+.interaction-btn:hover svg {
+  transform: scale(1.1);
 }
 
 .interaction-bar__share-group {

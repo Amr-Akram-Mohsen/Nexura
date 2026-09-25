@@ -202,8 +202,11 @@ class SearchRepository:
                 .limit(remaining_slots)
                 .all()
             )
+            from app.utils.slugify import make_slug
             for c in contents:
-                url = f"/article/{c.id}" if c.object_type == "article" else f"/video/{c.id}"
+                slug = make_slug(c.title or "", max_length=100) or ""
+                slug_id = f"{c.id}-{slug}" if slug else str(c.id)
+                url = f"/{c.object_type}/{slug_id}"
                 suggestions.append({
                     "type": "content",
                     "label": c.title,

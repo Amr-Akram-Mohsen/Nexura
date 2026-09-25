@@ -118,6 +118,48 @@ def test_analytics_and_interactions(app):
             updated = ContentRepository.get_by_id(cid)
             assert updated.view_count == initial_views + 1
 
+            # Test reaction service
+            from app.models.user import User
+            from app.services.interaction_service import toggle_reaction, toggle_save
+            user = db.session.query(User).first()
+            if not user:
+                user = User(email="interaction_tester@nexura.com", name="Tester", password_hash="hash")
+                db.session.add(user)
+                db.session.commit()
+
+            test_user_id = user.id
+
+            # 1. Like
+            res_like = toggle_reaction(test_user_id, cid, "like")
+            assert res_like["success"] is True
+            assert res_like["liked"] is True
+            assert res_like["disliked"] is False
+            assert res_like["like_count"] >= 1
+
+            # 2. Swap to Dislike
+            res_dislike = toggle_reaction(test_user_id, cid, "dislike")
+            assert res_dislike["success"] is True
+            assert res_dislike["liked"] is False
+            assert res_dislike["disliked"] is True
+            assert res_dislike["dislike_count"] >= 1
+
+            # 3. Untoggle Dislike
+            res_untoggle = toggle_reaction(test_user_id, cid, "dislike")
+            assert res_untoggle["success"] is True
+            assert res_untoggle["liked"] is False
+            assert res_untoggle["disliked"] is False
+
+            # 4. Save and Unsave
+            res_save = toggle_save(test_user_id, cid)
+            assert res_save["success"] is True
+            assert res_save["saved"] is True
+
+            res_unsave = toggle_save(test_user_id, cid)
+            assert res_unsave["success"] is True
+            assert res_unsave["saved"] is False
+
+
+
 
 def test_serializers_and_compaction(app):
     with app.app_context():

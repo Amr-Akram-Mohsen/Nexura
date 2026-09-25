@@ -134,6 +134,20 @@ class Content(db.Model):
     user_interests = relationship("UserInterest", back_populates="content", cascade="all, delete-orphan")
     distribution_posts = relationship("DistributionPost", back_populates="content", cascade="all, delete-orphan")
 
+    @property
+    def slug(self) -> str:
+        from app.utils.slugify import make_slug
+        return make_slug(self.title or "", max_length=100) or ""
+
+    @property
+    def slug_id(self) -> str:
+        s = self.slug
+        return f"{self.id}-{s}" if s else str(self.id)
+
+    @property
+    def url(self) -> str:
+        return f"/{self.object_type}/{self.slug_id}"
+
     def __repr__(self) -> str:
         return f"<Content {self.id} {self.object_type}/{self.object_id}>"
 

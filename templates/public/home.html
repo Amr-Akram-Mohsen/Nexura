@@ -45,7 +45,7 @@
           <span class="hero-slide__tag">{{ hero_cat }}</span>
           {% endif %}
           <h2 class="hero-slide__title">
-            <a href="{% if item.object_type == 'video' %}/video/{{ item.id }}{% else %}/article/{{ item.id }}{% endif %}"
+            <a href="{{ item.url or ('/video/' ~ (item.slug_id or item.id) if item.object_type == 'video' else '/article/' ~ (item.slug_id or item.id)) }}"
                style="color: inherit; text-decoration: none;">
               {{ item.title }}
             </a>
@@ -54,7 +54,7 @@
           <p class="hero-slide__excerpt">{{ item.preview | truncate(180) }}</p>
           {% endif %}
           <a class="btn btn--gradient"
-             href="{% if item.object_type == 'video' %}/video/{{ item.id }}{% else %}/article/{{ item.id }}{% endif %}"
+             href="{{ item.url or ('/video/' ~ (item.slug_id or item.id) if item.object_type == 'video' else '/article/' ~ (item.slug_id or item.id)) }}"
              aria-label="Read: {{ item.title }}">
             {% if item.object_type == 'video' %}Watch Now{% else %}Read Article{% endif %}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>

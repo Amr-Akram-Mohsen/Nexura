@@ -31,6 +31,7 @@ from app.repositories.taxonomy_repo import TaxonomyRepository
 from app.repositories.search_repo import SearchRepository
 from app.repositories.user_repo import UserRepository
 from app.repositories.analytics_repo import AnalyticsRepository
+from config import SOCIAL_LINKS
 from app.serializers.content_serializers import serialize_content_card, serialize_content_detail
 
 log = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ public_bp = Blueprint("public", __name__)
 # ─── Context processor — inject nav_sections into all templates ───────────────
 @public_bp.app_context_processor
 def inject_nav_context() -> dict[str, Any]:
-    """Provides nav_sections and active_section to every template."""
+    """Provides nav_sections, active_section, and social_links to every template."""
     cached = cache.get("layout_context")
     if cached is None:
         sections = TaxonomyRepository.get_active_sections()
@@ -52,6 +53,7 @@ def inject_nav_context() -> dict[str, Any]:
         "nav_sections": cached["sections"],
         "active_section": None,
         "current_year": datetime.now(timezone.utc).year,
+        "social_links": SOCIAL_LINKS,
     }
 
 
@@ -236,9 +238,30 @@ def topic(entity_slug: str):
     )
 
 
+# ─── Helper: extract content ID from slug or ID ─────────────────────────────
+def _extract_content_id(slug_or_id: str | int | None) -> int | None:
+    if slug_or_id is None:
+        return None
+    if isinstance(slug_or_id, int):
+        return slug_or_id
+    s = str(slug_or_id).strip()
+    if s.isdigit():
+        return int(s)
+    prefix = s.split("-", 1)[0]
+    if prefix.isdigit():
+        return int(prefix)
+    return None
+
+
 # ─── Article Detail ───────────────────────────────────────────────────────────
+@public_bp.route("/article/<slug_or_id>")
 @public_bp.route("/article/<int:content_id>")
-def article(content_id: int):
+def article(slug_or_id: str | None = None, content_id: int | None = None):
+    cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
+    if not cid:
+        abort(404)
+    content_id = cid
+
     cache_key = f"content_page_{content_id}"
     page_data = cache.get(cache_key)
 
@@ -272,12 +295,21 @@ def article(content_id: int):
         }
         cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
 
+    # Fetch live content to ensure fresh like/dislike/view counts
+    content_live = ContentRepository.get_published_content(content_id)
+    if not content_live:
+        abort(404)
+
+    # Canonical redirect if accessed via bare ID or outdated slug and a slug exists
+    if content_live.slug:
+        expected_slug = content_live.slug_id
+        if slug_or_id != expected_slug:
+            return redirect(url_for("public.article", slug_or_id=expected_slug), code=301)
+
     _record_view(content_id)
     user_state = _user_state(content_id)
 
-    # Enrich content object with section/category for template
-    content = page_data["content"]
-    # Attach names from page_data to content for template access
+    content = content_live
     content.section_slug = page_data.get("section_slug")
     content.section_name = page_data.get("section_name")
     content.category_slug = page_data.get("category_slug")
@@ -296,8 +328,14 @@ def article(content_id: int):
 
 
 # ─── Video Detail ─────────────────────────────────────────────────────────────
+@public_bp.route("/video/<slug_or_id>")
 @public_bp.route("/video/<int:content_id>")
-def video(content_id: int):
+def video(slug_or_id: str | None = None, content_id: int | None = None):
+    cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
+    if not cid:
+        abort(404)
+    content_id = cid
+
     cache_key = f"content_page_{content_id}"
     page_data = cache.get(cache_key)
 
@@ -339,14 +377,26 @@ def video(content_id: int):
         }
         cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
 
+    # Fetch live content to ensure fresh like/dislike/view counts
+    content_live = ContentRepository.get_published_content(content_id)
+    if not content_live:
+        abort(404)
+
+    # Canonical redirect if accessed via bare ID or outdated slug and a slug exists
+    if content_live.slug:
+        expected_slug = content_live.slug_id
+        if slug_or_id != expected_slug:
+            return redirect(url_for("public.video", slug_or_id=expected_slug), code=301)
+
     _record_view(content_id)
     user_state = _user_state(content_id)
 
-    content = page_data["content"]
+    content = content_live
     content.section_slug = page_data.get("section_slug")
     content.section_name = page_data.get("section_name")
     content.category_slug = page_data.get("category_slug")
     content.category_name = page_data.get("category_name")
+
 
     return render_template(
         "public/video.html",
@@ -359,39 +409,50 @@ def video(content_id: int):
     )
 
 
-# ─── Search ───────────────────────────────────────────────────────────────────
+# ─── Search Results Page (§11.2) ─────────────────────────────────────────────
 @public_bp.route("/search")
 def search():
     q = request.args.get("q", "").strip()
+    if not q:
+        return redirect(url_for("public.home"))
+
     page = request.args.get("page", 1, type=int)
-    content_type = request.args.get("type")
-    sort = request.args.get("sort", "relevance")
+    object_type = request.args.get("type")
+    section_slug = request.args.get("section")
 
-    items = []
-    total = 0
-    total_pages = 1
+    section_id = None
+    if section_slug:
+        sec = TaxonomyRepository.get_section_by_slug(section_slug)
+        if sec:
+            section_id = sec.id
 
-    if q and len(q) >= 2:
-        cache_key = f"search:unified:v1:{q.lower()}:{content_type or 'all'}:{sort}:{page}"
-        cached = cache.get(cache_key)
+    cache_key = f"search:v1:{q.lower()}:{page}:{object_type}:{section_slug}"
+    cached = cache.get(cache_key)
 
-        if cached is None:
-            pagination_obj = SearchRepository.full_text_search(
-                query=q,
-                object_type=content_type or None,
-                sort=sort,
-                page=page,
-                per_page=24,
-            )
-            items = [serialize_content_card(c) for c in pagination_obj.items]
-            total = pagination_obj.total
-            total_pages = pagination_obj.pages
-            cached = {"items": items, "total": total, "pages": total_pages}
-            cache.set(cache_key, cached, timeout=CACHE_TTL_SEARCH_RESULTS)
-        else:
-            items = cached["items"]
-            total = cached["total"]
-            total_pages = cached["pages"]
+    if cached is None:
+        pagination_obj = ContentRepository.search_published(
+            query=q,
+            object_type=object_type or None,
+            section_id=section_id,
+            page=page,
+            per_page=24,
+        )
+        items = [serialize_content_card(c) for c in pagination_obj.items]
+        cache.set(
+            cache_key,
+            {
+                "items": items,
+                "total": pagination_obj.total,
+                "pages": pagination_obj.pages,
+            },
+            timeout=CACHE_TTL_SEARCH_RESULTS,
+        )
+        total = pagination_obj.total
+        total_pages = pagination_obj.pages
+    else:
+        items = cached["items"]
+        total = cached["total"]
+        total_pages = cached["pages"]
 
     return render_template(
         "public/search.html",
@@ -420,7 +481,7 @@ def search_suggestions():
         "articles": [
             {
                 "title": r.title,
-                "url": url_for("public.article", content_id=r.id),
+                "url": url_for("public.article", slug_or_id=getattr(r, "slug_id", r.id)),
                 "thumb": getattr(r, "_article_obj", None).image_url if getattr(r, "_article_obj", None) else None,
                 "category": r.category.name if r.category else None,
             }
@@ -429,7 +490,7 @@ def search_suggestions():
         "videos": [
             {
                 "title": r.title,
-                "url": url_for("public.video", content_id=r.id),
+                "url": url_for("public.video", slug_or_id=getattr(r, "slug_id", r.id)),
                 "thumb": getattr(r, "_video_obj", None).thumbnail_url if getattr(r, "_video_obj", None) else None,
                 "channel": getattr(r, "_video_obj", None).channel_name if getattr(r, "_video_obj", None) else None,
             }

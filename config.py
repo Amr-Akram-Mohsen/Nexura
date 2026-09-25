@@ -101,3 +101,13 @@ config_map: dict[str, type[Config]] = {
 def get_config(env: str | None = None) -> type[Config]:
     env = env or os.environ.get("FLASK_ENV", "development")
     return config_map.get(env, DevelopmentConfig)
+
+# ================================================
+SOCIAL_LINKS = [
+  ("facebook", "https://www.facebook.com/profile.php?id=61590735370977"),
+  ("instagram", "https://instagram.com/nexorasignals"),
+  ("pinterest", "https://pinterest.com/nexorasignals"),
+  ("youtube", "https://youtube.com/@nexorasignals"),
+  ("tiktok", "https://tiktok.com/@nexora.signals"),
+  ("x", "https://x.com/nexorasignals")
+]

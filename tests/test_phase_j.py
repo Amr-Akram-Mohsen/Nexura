@@ -75,3 +75,53 @@ def test_subscribe_validation_and_rate_limit(app):
     assert res.status_code == 400
     data = res.get_json()
     assert data["success"] is False
+
+
+def test_slug_url_routing_and_canonical_redirect(app):
+    """Verify SEO slug URLs and canonical 301 redirects for articles and videos."""
+    with app.app_context():
+        from app.models.content import Content
+        article = db.session.query(Content).filter(Content.object_type == "article", Content.is_published.is_(True)).first()
+        video = db.session.query(Content).filter(Content.object_type == "video", Content.is_published.is_(True)).first()
+
+        client = app.test_client()
+
+        if article:
+            # 1. Bare ID redirects to canonical slug URL
+            res_redirect = client.get(f"/article/{article.id}")
+            assert res_redirect.status_code == 301
+            assert article.slug in res_redirect.location
+
+            # 2. Slug URL loads successfully with 200 OK
+            res_slug = client.get(f"/article/{article.slug_id}")
+            assert res_slug.status_code == 200
+            assert bytes(article.slug_id, "utf-8") in res_slug.data or bytes(article.title[:20], "utf-8") in res_slug.data
+
+        if video:
+            # 1. Bare ID redirects to canonical slug URL
+            res_redirect = client.get(f"/video/{video.id}")
+            assert res_redirect.status_code == 301
+            assert video.slug in res_redirect.location
+
+            # 2. Slug URL loads successfully with 200 OK
+            res_slug = client.get(f"/video/{video.slug_id}")
+            assert res_slug.status_code == 200
+
+
+def test_social_links_rendered_in_footer(app):
+    """Verify social media channels from config.py are rendered in the footer."""
+    from config import SOCIAL_LINKS
+    assert len(SOCIAL_LINKS) >= 6
+
+    client = app.test_client()
+    res = client.get("/")
+    assert res.status_code == 200
+
+    html = res.data.decode("utf-8")
+    assert 'aria-label="Nexura on Social Media"' in html
+
+    for platform, url in SOCIAL_LINKS:
+        assert url in html
+        assert f'footer__social-link--{platform.lower()}' in html
+
+

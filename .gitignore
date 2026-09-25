@@ -42,3 +42,6 @@ Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 instance/
+
+tests/
+

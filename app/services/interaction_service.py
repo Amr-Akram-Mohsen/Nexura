@@ -11,6 +11,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -31,12 +32,14 @@ def toggle_reaction(
     - If same reaction exists → remove it (untoggle).
     - If opposite reaction exists → swap it.
     - If no reaction → create it.
-    Returns: {toggled: bool, count: int, action: str}
+    Returns: {success: bool, toggled: bool, user_reaction: str|None, liked: bool, disliked: bool, like_count: int, dislike_count: int, count: int, reaction_type: str}
     """
     if reaction_type not in ("like", "dislike"):
         return {"success": False, "message": "Invalid reaction type."}
 
-    opposite = "dislike" if reaction_type == "like" else "like"
+    content = db.session.get(Content, content_id)
+    if not content:
+        return {"success": False, "message": "Content not found."}
 
     with db.session.begin_nested():
         existing = (
@@ -49,34 +52,17 @@ def toggle_reaction(
             .first()
         )
 
-        content = db.session.get(Content, content_id)
-        if not content:
-            return {"success": False, "message": "Content not found."}
-
-        toggled = False
-
+        user_reaction = None
         if existing:
             if existing.type == reaction_type:
-                # Same → untoggle
+                # Same → untoggle (remove)
                 db.session.delete(existing)
-                if reaction_type == "like":
-                    content.like_count = max(0, (content.like_count or 0) - 1)
-                else:
-                    content.dislike_count = max(0, (content.dislike_count or 0) - 1)
-                toggled = False
+                user_reaction = None
             else:
-                # Swap → remove opposite, add new
-                if existing.type == "like":
-                    content.like_count = max(0, (content.like_count or 0) - 1)
-                else:
-                    content.dislike_count = max(0, (content.dislike_count or 0) - 1)
+                # Swap → switch reaction type
                 existing.type = reaction_type
                 existing.created_at = datetime.now(timezone.utc)
-                if reaction_type == "like":
-                    content.like_count = (content.like_count or 0) + 1
-                else:
-                    content.dislike_count = (content.dislike_count or 0) + 1
-                toggled = True
+                user_reaction = reaction_type
         else:
             # Create new reaction
             new_reaction = Reaction(
@@ -87,19 +73,53 @@ def toggle_reaction(
                 created_at=datetime.now(timezone.utc),
             )
             db.session.add(new_reaction)
-            if reaction_type == "like":
-                content.like_count = (content.like_count or 0) + 1
-            else:
-                content.dislike_count = (content.dislike_count or 0) + 1
-            toggled = True
+            user_reaction = reaction_type
+
+        db.session.flush()
+
+        # Recalculate true counts from reactions table
+        likes = (
+            db.session.query(func.count(Reaction.id))
+            .filter(
+                Reaction.target_type == "content",
+                Reaction.target_id == content_id,
+                Reaction.type == "like",
+            )
+            .scalar()
+            or 0
+        )
+        dislikes = (
+            db.session.query(func.count(Reaction.id))
+            .filter(
+                Reaction.target_type == "content",
+                Reaction.target_id == content_id,
+                Reaction.type == "dislike",
+            )
+            .scalar()
+            or 0
+        )
+
+        content.like_count = likes
+        content.dislike_count = dislikes
 
     db.session.commit()
 
-    count = content.like_count if reaction_type == "like" else content.dislike_count
+    try:
+        from app.extensions import cache
+        cache.delete(f"content_page_{content_id}")
+        cache.delete("home_page_data")
+    except Exception as e:
+        log.debug("Cache clear error: %s", e)
+
     return {
         "success": True,
-        "toggled": toggled,
-        "count": count,
+        "toggled": user_reaction is not None,
+        "user_reaction": user_reaction,
+        "liked": user_reaction == "like",
+        "disliked": user_reaction == "dislike",
+        "like_count": likes,
+        "dislike_count": dislikes,
+        "count": likes if reaction_type == "like" else dislikes,
         "reaction_type": reaction_type,
     }
 
@@ -131,8 +151,8 @@ def toggle_save(
     if existing_save:
         db.session.delete(existing_save)
         content.save_count = max(0, (content.save_count or 0) - 1)
-        db.session.commit()
-        return {"success": True, "saved": False, "message": "Removed from library."}
+        is_saved = False
+        msg = "Removed from library."
     else:
         save = Save(
             user_id=user_id,
@@ -142,8 +162,24 @@ def toggle_save(
         )
         db.session.add(save)
         content.save_count = (content.save_count or 0) + 1
-        db.session.commit()
-        return {"success": True, "saved": True, "message": "Saved to library!"}
+        is_saved = True
+        msg = f"Saved to {collection_name}."
+
+    db.session.commit()
+
+    try:
+        from app.extensions import cache
+        cache.delete(f"content_page_{content_id}")
+    except Exception as e:
+        log.debug("Cache clear error: %s", e)
+
+    return {
+        "success": True,
+        "saved": is_saved,
+        "toggled": is_saved,
+        "save_count": content.save_count,
+        "message": msg,
+    }
 
 
 # ─── Record Share ─────────────────────────────────────────────────────────────

@@ -198,3 +198,29 @@ class ContentService:
         content.score = round(score, 2)
         db.session.commit()
         return content.score
+
+    @staticmethod
+    def get_slug(content: Content) -> str:
+        """Return URL-safe slug for a content item."""
+        return content.slug
+
+    @staticmethod
+    def get_slug_id(content: Content) -> str:
+        """Return unique slug identifier (e.g. 123-my-article-title)."""
+        return content.slug_id
+
+    @staticmethod
+    def parse_content_id(slug_or_id: str | int | None) -> int | None:
+        """Extract integer content ID from either a pure ID or slugified string (e.g. 123-my-title)."""
+        if slug_or_id is None:
+            return None
+        if isinstance(slug_or_id, int):
+            return slug_or_id
+        s = str(slug_or_id).strip()
+        if s.isdigit():
+            return int(s)
+        prefix = s.split("-", 1)[0]
+        if prefix.isdigit():
+            return int(prefix)
+        return None
+
