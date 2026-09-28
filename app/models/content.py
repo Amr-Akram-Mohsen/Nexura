@@ -29,6 +29,7 @@ class Content(db.Model):
         Index("ix_contents_section_published_at", "section_id", "published_at"),
         Index("ix_contents_active_published_at", "is_active", "published_at"),
         Index("ix_contents_title", "title"),
+        Index("ix_contents_search_vector", "search_vector", postgresql_using="gin"),
     )
 
     id = Column(Integer, primary_key=True)

@@ -314,7 +314,7 @@ class ContentRepository:
         """Search published contents with pagination."""
         from app.repositories.search_repo import SearchRepository
 
-        return SearchRepository.full_text_search(query=query, object_type=object_type, sort=sort, page=page, per_page=per_page)
+        return SearchRepository.full_text_search(query=query, section_id=section_id, object_type=object_type, sort=sort, page=page, per_page=per_page)
 
 
 class PaginationResult:

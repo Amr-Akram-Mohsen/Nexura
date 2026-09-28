@@ -17,19 +17,22 @@ class SearchRepository:
     """Multi-component search engine and autocomplete index."""
 
     @staticmethod
-    def search(
-        query_text: str,
+    def full_text_search(
+        query: str,
         *,
+        section_id: int | None = None,
         section_slug: str | None = None,
+        category_id: int | None = None,
         category_slug: str | None = None,
         object_type: str | None = None,
         sort: str = "relevance",
         page: int = 1,
         per_page: int = 24,
-    ) -> tuple[list[Content], int]:
-        """Execute unified search using title and preview matching with scoring and filters."""
-        if not query_text or not query_text.strip():
-            return ContentRepository.list_contents(
+    ) -> PaginationResult:
+        """Unified PostgreSQL full-text search using TSVECTOR, GIN index, and ts_rank_cd."""
+        clean = (query or "").strip()
+        if not clean:
+            items, total = ContentRepository.list_contents(
                 section_slug=section_slug,
                 category_slug=category_slug,
                 object_type=object_type,
@@ -37,65 +40,105 @@ class SearchRepository:
                 page=page,
                 per_page=per_page,
             )
+            return PaginationResult(items=items, total=total, page=page, per_page=per_page)
 
-        clean_query = re.sub(r"[^\w\s]", " ", query_text).strip()
-        if not clean_query:
-            return [], 0
-
-        query = (
-            db.session.query(Content)
-            .options(
-                joinedload(Content.section),
-                joinedload(Content.category),
-                joinedload(Content.source),
-                selectinload(Content.content_entities).joinedload(ContentEntity.entity),
+        def _build_base_query():
+            q = (
+                db.session.query(Content)
+                .options(
+                    joinedload(Content.section),
+                    joinedload(Content.category),
+                    joinedload(Content.source),
+                    selectinload(Content.content_entities).joinedload(ContentEntity.entity),
+                )
+                .filter(Content.is_active.is_(True), Content.is_published.is_(True))
             )
-            .filter(Content.is_active.is_(True), Content.is_published.is_(True))
-        )
 
-        if object_type in ("article", "video"):
-            query = query.filter(Content.object_type == object_type)
+            if object_type in ("article", "video"):
+                q = q.filter(Content.object_type == object_type)
 
-        if section_slug:
-            query = query.join(Content.section).filter(Section.slug == section_slug)
+            if section_id:
+                q = q.filter(Content.section_id == section_id)
+            elif section_slug:
+                q = q.join(Content.section).filter(Section.slug == section_slug)
 
-        if category_slug:
-            query = query.join(Content.category).filter(Category.slug == category_slug)
+            if category_id:
+                q = q.filter(Content.category_id == category_id)
+            elif category_slug:
+                q = q.join(Content.category).filter(Category.slug == category_slug)
 
-        title_match = Content.title.ilike(f"%{clean_query}%")
-        query = query.filter(title_match)
+            return q
 
-        total = query.with_entities(func.count(func.distinct(Content.id))).scalar() or 0
+        # 1. Primary: PostgreSQL full-text search with plainto_tsquery and ts_rank_cd
+        tsquery = func.plainto_tsquery("english", clean)
+        rank_expr = func.ts_rank_cd(Content.search_vector, tsquery).label("rank")
+
+        fts_query = _build_base_query().filter(Content.search_vector.op("@@")(tsquery))
+        total = fts_query.with_entities(func.count(func.distinct(Content.id))).scalar() or 0
+
+        target_query = fts_query
+        is_fts = True
+
+        # 2. Fallback: If FTS matches 0 rows (e.g. stop words, symbols, or unindexed terms), fallback to ILIKE
+        if total == 0:
+            clean_sub = re.sub(r"[^\w\s]", " ", clean).strip()
+            if clean_sub:
+                pattern = f"%{clean_sub}%"
+                ilike_query = _build_base_query().filter(
+                    or_(
+                        Content.title.ilike(pattern),
+                        Content.preview_text.ilike(pattern),
+                        Content.search_text.ilike(pattern),
+                    )
+                )
+                total = ilike_query.with_entities(func.count(func.distinct(Content.id))).scalar() or 0
+                target_query = ilike_query
+                is_fts = False
 
         if sort == "popular":
-            query = query.order_by(desc(Content.view_count), desc(Content.published_at))
+            target_query = target_query.order_by(desc(Content.view_count), desc(Content.published_at))
         elif sort == "score":
-            query = query.order_by(desc(Content.score), desc(Content.published_at))
-        else:
-            query = query.order_by(desc(Content.published_at))
+            target_query = target_query.order_by(desc(Content.score), desc(Content.published_at))
+        elif sort == "latest":
+            target_query = target_query.order_by(desc(Content.published_at))
+        else:  # relevance
+            if is_fts:
+                target_query = target_query.order_by(desc(rank_expr), desc(Content.published_at))
+            else:
+                target_query = target_query.order_by(desc(Content.score), desc(Content.published_at))
 
         offset = max(0, (page - 1) * per_page)
-        contents = query.offset(offset).limit(per_page).all()
-
+        contents = target_query.offset(offset).limit(per_page).all()
         resolved = ContentRepository.resolve_polymorphic_payloads(contents)
-        return resolved, total
+
+        return PaginationResult(items=resolved, total=total, page=page, per_page=per_page)
 
     @staticmethod
-    def full_text_search(
-        query: str,
+    def search(
+        query_text: str,
         *,
+        section_id: int | None = None,
         section_slug: str | None = None,
+        category_id: int | None = None,
         category_slug: str | None = None,
         object_type: str | None = None,
         sort: str = "relevance",
         page: int = 1,
         per_page: int = 24,
-    ) -> PaginationResult:
-        """Alias for search returning PaginationResult."""
-        contents, total = SearchRepository.search(
-            query, section_slug=section_slug, category_slug=category_slug, object_type=object_type, sort=sort, page=page, per_page=per_page
+    ) -> tuple[list[Content], int]:
+        """Execute unified search returning (items, total) tuple."""
+        res = SearchRepository.full_text_search(
+            query=query_text,
+            section_id=section_id,
+            section_slug=section_slug,
+            category_id=category_id,
+            category_slug=category_slug,
+            object_type=object_type,
+            sort=sort,
+            page=page,
+            per_page=per_page,
         )
-        return PaginationResult(items=contents, total=total, page=page, per_page=per_page)
+        return res.items, res.total
 
     @staticmethod
     def autocomplete(query: str, limit: int = 5) -> dict[str, list[Content]]:
