@@ -1,10 +1,5 @@
-"""
-Nexura Phase 7 — Admin Moderation & Community Safety Controller (§18.6, §19)
-Handles:
-1. Threaded user comment moderation queue (Approve, Soft-delete, Hard-delete).
-2. AI Sentiment & spam inspection.
-3. Newsletter subscriber hygiene and confirmation tracking.
-"""
+"""Admin moderation controller for comment moderation and subscriber tracking."""
+
 from __future__ import annotations
 import logging
 from typing import Any
@@ -27,29 +22,14 @@ moderation_bp = Blueprint("moderation", __name__)
 @moderation_bp.route("/")
 @admin_required
 def index():
-    """Community Moderation & Discussion Queue."""
-    comments = (
-        db.session.query(Comment)
-        .options(joinedload(Comment.user), joinedload(Comment.content_ref))
-        .order_by(desc(Comment.id))
-        .limit(50)
-        .all()
-    )
+    """Render community moderation and discussion queue with subscriber metrics."""
+    comments = db.session.query(Comment).options(joinedload(Comment.user), joinedload(Comment.content_ref)).order_by(desc(Comment.id)).limit(50).all()
 
-    subscribers = (
-        db.session.query(NewsletterSubscriber)
-        .order_by(desc(NewsletterSubscriber.created_at))
-        .limit(50)
-        .all()
-    )
+    subscribers = db.session.query(NewsletterSubscriber).order_by(desc(NewsletterSubscriber.created_at)).limit(50).all()
 
     total_comments = db.session.query(func.count(Comment.id)).scalar() or 0
     total_subscribers = db.session.query(func.count(NewsletterSubscriber.id)).scalar() or 0
-    confirmed_subscribers = (
-        db.session.query(func.count(NewsletterSubscriber.id))
-        .filter(NewsletterSubscriber.is_confirmed.is_(True))
-        .scalar() or 0
-    )
+    confirmed_subscribers = db.session.query(func.count(NewsletterSubscriber.id)).filter(NewsletterSubscriber.is_confirmed.is_(True)).scalar() or 0
 
     return render_template(
         "admin/moderation.html",
@@ -65,10 +45,7 @@ def index():
 @moderation_bp.route("/comments/<int:comment_id>/<action>", methods=["POST"])
 @admin_required
 def moderate_comment(comment_id: int, action: str):
-    """
-    Moderate user comment (Phase 7 §19):
-    Actions: approve, soft_delete, hard_delete.
-    """
+    """Execute moderation action (approve, soft_delete, hard_delete) on a user comment."""
     comment = db.session.get(Comment, comment_id)
     if not comment:
         return jsonify({"success": False, "message": "Comment not found."}), 404

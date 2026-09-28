@@ -1,7 +1,5 @@
-"""
-Nexura Phase 7 â€” Source Model
-Covers: Source (publishers, outlets, channels)
-"""
+"""Source model representing media outlets, publishers, and channels."""
+
 from __future__ import annotations
 from sqlalchemy import Boolean, Column, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -9,13 +7,10 @@ from app.extensions import db
 
 
 class Source(db.Model):
-    """Media outlet profile."""
+    """Media outlet or publisher profile."""
+
     __tablename__ = "sources"
-    __table_args__ = (
-        Index("ix_sources_slug", "slug"),
-        Index("ix_sources_domain", "domain"),
-        Index("ix_sources_external_uri", "external_uri"),
-    )
+    __table_args__ = (Index("ix_sources_slug", "slug"), Index("ix_sources_domain", "domain"), Index("ix_sources_external_uri", "external_uri"))
 
     id = Column(Integer, primary_key=True)
     external_uri = Column(String(255), unique=True)

@@ -1,11 +1,7 @@
-"""
-Nexura Phase 7 — Content Repository
-Authoritative query layer for master contents.
-Enforces eager loading invariants (joinedload on single relations, selectinload on collections)
-and polymorphic batch resolution (2 queries total for batch article/video payloads).
-"""
+"""Content repository for querying, listing, and polymorphic batch resolution."""
+
 from __future__ import annotations
-from typing import Sequence
+from typing import Sequence, Any
 from datetime import datetime, timezone
 
 from sqlalchemy import desc, asc, func, and_, or_
@@ -23,7 +19,7 @@ class ContentRepository:
 
     @staticmethod
     def get_by_id(content_id: int, *, published_only: bool = True) -> Content | None:
-        """Fetch single Content with base relations eager-loaded."""
+        """Fetch a single Content item with relations eager-loaded."""
         query = (
             db.session.query(Content)
             .options(
@@ -44,11 +40,7 @@ class ContentRepository:
 
     @staticmethod
     def resolve_polymorphic_payloads(contents: Sequence[Content]) -> list[Content]:
-        """
-        Polymorphic batch resolver (Phase 7 §25.1).
-        Resolves underlying Article and Video objects in exactly 2 batch queries.
-        Attaches _article_obj or _video_obj to each Content instance.
-        """
+        """Resolve underlying Article and Video objects in 2 batch queries."""
         if not contents:
             return []
 
@@ -59,10 +51,7 @@ class ContentRepository:
         if article_ids:
             articles = (
                 db.session.query(Article)
-                .options(
-                    selectinload(Article.authors),
-                    selectinload(Article.article_sources).joinedload(ArticleSource.source),
-                )
+                .options(selectinload(Article.authors), selectinload(Article.article_sources).joinedload(ArticleSource.source))
                 .filter(Article.id.in_(article_ids))
                 .all()
             )
@@ -70,14 +59,7 @@ class ContentRepository:
 
         videos_by_id: dict[int, Video] = {}
         if video_ids:
-            videos = (
-                db.session.query(Video)
-                .options(
-                    selectinload(Video.video_comments),
-                )
-                .filter(Video.id.in_(video_ids))
-                .all()
-            )
+            videos = db.session.query(Video).options(selectinload(Video.video_comments)).filter(Video.id.in_(video_ids)).all()
             videos_by_id = {v.id: v for v in videos}
 
         for c in contents:
@@ -132,11 +114,7 @@ class ContentRepository:
             query = query.join(Content.category).filter(Category.slug == category_slug)
 
         if entity_slug:
-            query = (
-                query.join(Content.content_entities)
-                .join(ContentEntity.entity)
-                .filter(Entity.slug == entity_slug)
-            )
+            query = query.join(Content.content_entities).join(ContentEntity.entity).filter(Entity.slug == entity_slug)
 
         if source_slug:
             query = query.join(Content.source).filter(Source.slug == source_slug)
@@ -227,24 +205,14 @@ class ContentRepository:
                 joinedload(Content.source),
                 selectinload(Content.content_entities).joinedload(ContentEntity.entity),
             )
-            .filter(
-                Content.id != content.id,
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(Content.id != content.id, Content.is_active.is_(True), Content.is_published.is_(True))
         )
 
         conditions = []
         if content.category_id:
             conditions.append(Content.category_id == content.category_id)
         if entity_ids:
-            conditions.append(
-                Content.id.in_(
-                    db.session.query(ContentEntity.content_id)
-                    .filter(ContentEntity.entity_id.in_(entity_ids))
-                    .scalar_subquery()
-                )
-            )
+            conditions.append(Content.id.in_(db.session.query(ContentEntity.content_id).filter(ContentEntity.entity_id.in_(entity_ids)).scalar_subquery()))
 
         if conditions:
             query = query.filter(or_(*conditions))
@@ -271,12 +239,7 @@ class ContentRepository:
 
     @staticmethod
     def list_published(
-        *,
-        section_id: int | None = None,
-        category_id: int | None = None,
-        object_type: str | None = None,
-        page: int = 1,
-        per_page: int = 24,
+        *, section_id: int | None = None, category_id: int | None = None, object_type: str | None = None, page: int = 1, per_page: int = 24
     ) -> PaginationResult:
         """List published contents returning pagination object with .items, .total, .pages."""
         query = (
@@ -303,13 +266,7 @@ class ContentRepository:
         return PaginationResult(items=resolved, total=total, page=page, per_page=per_page)
 
     @staticmethod
-    def list_by_entity(
-        *,
-        entity_id: int,
-        object_type: str | None = None,
-        page: int = 1,
-        per_page: int = 24,
-    ) -> PaginationResult:
+    def list_by_entity(*, entity_id: int, object_type: str | None = None, page: int = 1, per_page: int = 24) -> PaginationResult:
         """List contents tagged with a specific entity."""
         query = (
             db.session.query(Content)
@@ -320,11 +277,7 @@ class ContentRepository:
                 selectinload(Content.content_entities).joinedload(ContentEntity.entity),
             )
             .join(Content.content_entities)
-            .filter(
-                ContentEntity.entity_id == entity_id,
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(ContentEntity.entity_id == entity_id, Content.is_active.is_(True), Content.is_published.is_(True))
         )
         if object_type in ("article", "video"):
             query = query.filter(Content.object_type == object_type)
@@ -343,12 +296,7 @@ class ContentRepository:
     @staticmethod
     def get_entities_for_content(content_id: int) -> list[Entity]:
         """Fetch linked Entity records for a content item."""
-        links = (
-            db.session.query(ContentEntity)
-            .options(joinedload(ContentEntity.entity))
-            .filter(ContentEntity.content_id == content_id)
-            .all()
-        )
+        links = db.session.query(ContentEntity).options(joinedload(ContentEntity.entity)).filter(ContentEntity.content_id == content_id).all()
         return [link.entity for link in links if link.entity]
 
     @staticmethod
@@ -358,6 +306,15 @@ class ContentRepository:
         if not content:
             return []
         return ContentRepository.get_related(content, limit=limit)
+
+    @staticmethod
+    def search_published(
+        query: str, *, section_id: int | None = None, object_type: str | None = None, sort: str = "relevance", page: int = 1, per_page: int = 24
+    ) -> PaginationResult:
+        """Search published contents with pagination."""
+        from app.repositories.search_repo import SearchRepository
+
+        return SearchRepository.full_text_search(query=query, object_type=object_type, sort=sort, page=page, per_page=per_page)
 
 
 class PaginationResult:

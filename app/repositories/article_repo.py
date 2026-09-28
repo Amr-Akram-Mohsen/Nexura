@@ -1,7 +1,5 @@
-"""
-Nexura Phase 7 — Article Repository
-Authoritative data access layer for Article entities, authors, and source syndications.
-"""
+"""Article repository for article entities, authors, and source syndications."""
+
 from __future__ import annotations
 from typing import Sequence
 from datetime import datetime, timezone
@@ -10,7 +8,8 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import selectinload, joinedload
 
 from app.extensions import db
-from app.models.content import Article, ArticleSource, Author, article_authors, article_categories
+from app.models.article import Article, ArticleSource, article_categories
+from app.models.author import Author, article_authors
 from app.models.taxonomy import Category, Event
 
 
@@ -19,7 +18,7 @@ class ArticleRepository:
 
     @staticmethod
     def get_by_id(article_id: int) -> Article | None:
-        """Fetch article with authors, primary/syndicated sources, and categories."""
+        """Fetch article with authors, sources, categories, and event."""
         return (
             db.session.query(Article)
             .options(
@@ -34,14 +33,10 @@ class ArticleRepository:
 
     @staticmethod
     def get_by_canonical_url(url: str) -> Article | None:
-        """Look up existing article by canonical URL (used during ingestion dedup)."""
+        """Look up existing article by canonical URL."""
         if not url:
             return None
-        return (
-            db.session.query(Article)
-            .filter(Article.canonical_url == url)
-            .first()
-        )
+        return db.session.query(Article).filter(Article.canonical_url == url).first()
 
     @staticmethod
     def get_authors(article_id: int) -> list[Author]:
@@ -54,40 +49,18 @@ class ArticleRepository:
         """Look up article via its syndicated article_sources URL."""
         if not url:
             return None
-        article_source = (
-            db.session.query(ArticleSource)
-            .filter(ArticleSource.url == url)
-            .first()
-        )
+        article_source = db.session.query(ArticleSource).filter(ArticleSource.url == url).first()
         return article_source.article if article_source else None
 
     @staticmethod
     def get_needing_enrichment(limit: int = 20) -> list[Article]:
-        """
-        Fetch articles queued for 2-phase Diffbot body extraction and sentiment enrichment.
-        Orders by enrichment_priority descending (Phase 7 §8.1).
-        """
-        return (
-            db.session.query(Article)
-            .filter(Article.status == "discovered")
-            .order_by(desc(Article.enrichment_priority), Article.id.asc())
-            .limit(limit)
-            .all()
-        )
+        """Fetch discovered articles ordered by enrichment priority."""
+        return db.session.query(Article).filter(Article.status == "discovered").order_by(desc(Article.enrichment_priority), Article.id.asc()).limit(limit).all()
 
     @staticmethod
-    def list_admin(
-        *,
-        status: str | None = None,
-        search: str | None = None,
-        page: int = 1,
-        per_page: int = 30,
-    ) -> tuple[list[Article], int]:
+    def list_admin(*, status: str | None = None, search: str | None = None, page: int = 1, per_page: int = 30) -> tuple[list[Article], int]:
         """Admin content curation listing with status and search filters."""
-        query = db.session.query(Article).options(
-            selectinload(Article.authors),
-            selectinload(Article.article_sources).joinedload(ArticleSource.source),
-        )
+        query = db.session.query(Article).options(selectinload(Article.authors), selectinload(Article.article_sources).joinedload(ArticleSource.source))
 
         if status:
             query = query.filter(Article.status == status)
@@ -96,12 +69,7 @@ class ArticleRepository:
             query = query.filter(Article.title.ilike(f"%{search}%"))
 
         total = query.with_entities(func.count(Article.id)).scalar() or 0
-        articles = (
-            query.order_by(desc(Article.id))
-            .offset(max(0, (page - 1) * per_page))
-            .limit(per_page)
-            .all()
-        )
+        articles = query.order_by(desc(Article.id)).offset(max(0, (page - 1) * per_page)).limit(per_page).all()
         return articles, total
 
     @staticmethod
@@ -124,7 +92,7 @@ class ArticleRepository:
         status: str = "discovered",
         event_id: int | None = None,
     ) -> Article:
-        """Create a new Article instance."""
+        """Create and persist a new Article instance."""
         article = Article(
             title=title,
             description=description,
@@ -154,10 +122,6 @@ class ArticleRepository:
         if new_status not in valid_statuses:
             raise ValueError(f"Invalid article status: {new_status}")
 
-        updated = (
-            db.session.query(Article)
-            .filter(Article.id == article_id)
-            .update({"status": new_status})
-        )
+        updated = db.session.query(Article).filter(Article.id == article_id).update({"status": new_status})
         db.session.commit()
         return bool(updated)

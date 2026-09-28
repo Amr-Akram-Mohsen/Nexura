@@ -1,18 +1,13 @@
-"""
-Nexura Phase 7 — Admin Ingestions Controller (§18.1, §21)
-Handles:
-1. Provider health & quota status (NewsAPI, YouTube, Diffbot).
-2. Asynchronous manual ingestion runner backed by TaskTracker & daemon threads.
-3. Dynamic task status polling API (/api/task/<task_id>).
-"""
+"""Admin ingestions controller for provider health, manual execution, and task polling."""
+
 from __future__ import annotations
 import logging
+import json
+import time
 from threading import Thread
 from typing import Any
 
-from flask import (
-    Blueprint, jsonify, render_template, request, current_app,
-)
+from flask import Blueprint, jsonify, render_template, request, current_app, Response, stream_with_context
 from sqlalchemy import func, desc
 
 from app.extensions import db
@@ -29,19 +24,11 @@ ingestions_bp = Blueprint("ingestions", __name__)
 @ingestions_bp.route("/")
 @admin_required
 def index():
-    """
-    Ingestion Health Dashboard (Phase 7 §18.1):
-    Displays source status, API quotas, and recent task execution logs.
-    """
-    sources = (
-        db.session.query(Source)
-        .order_by(desc(Source.authority_score), Source.name.asc())
-        .all()
-    )
+    """Render ingestion health dashboard with sources, API quotas, and recent tasks."""
+    sources = db.session.query(Source).order_by(desc(Source.authority_score), Source.name.asc()).all()
 
     recent_tasks = TaskTracker.list_tasks(limit=15)
 
-    # Provider health summary
     providers = [
         {
             "name": "NewsAPI",
@@ -69,34 +56,19 @@ def index():
         },
     ]
 
-    return render_template(
-        "admin/ingestions.html",
-        sources=sources,
-        providers=providers,
-        recent_tasks=recent_tasks,
-        active_tab="ingestions",
-    )
+    return render_template("admin/ingestions.html", sources=sources, providers=providers, recent_tasks=recent_tasks, active_tab="ingestions")
 
 
 @ingestions_bp.route("/run", methods=["POST"])
 @admin_required
 def run_ingestion():
-    """
-    Trigger async ingestion pipeline runner (Phase 7 §21):
-    Spawns worker in daemon thread and returns task_id for frontend progress polling.
-    """
+    """Trigger background ingestion pipeline runner and return task ID."""
     source_name = request.form.get("source", "newsapi").strip().lower()
     category = request.form.get("category", "technology")
     limit = request.form.get("limit", 20, type=int)
 
-    # Create background task in TaskTracker
-    task_id = TaskTracker.create_task(
-        task_name=f"Ingestion: {source_name.capitalize()}",
-        source=source_name,
-        params={"category": category, "limit": limit},
-    )
+    task_id = TaskTracker.create_task(task_name=f"Ingestion: {source_name.capitalize()}", source=source_name, params={"category": category, "limit": limit})
 
-    # Spawn daemon worker thread with application context
     app = current_app._get_current_object()
 
     def _worker():
@@ -109,12 +81,7 @@ def run_ingestion():
                 result = pipeline.run(source_name=source_name, category=category, limit=limit, task_id=task_id)
 
                 TaskTracker.complete_task(
-                    task_id,
-                    result={
-                        "ingested": result.get("ingested", 0),
-                        "duplicates": result.get("duplicates", 0),
-                        "failed": result.get("failed", 0),
-                    },
+                    task_id, result={"ingested": result.get("ingested", 0), "duplicates": result.get("duplicates", 0), "failed": result.get("failed", 0)}
                 )
             except Exception as exc:
                 log.exception("Background ingestion task failed: %s", exc)
@@ -123,18 +90,56 @@ def run_ingestion():
     worker_thread = Thread(target=_worker, daemon=True)
     worker_thread.start()
 
-    return jsonify({
-        "success": True,
-        "task_id": task_id,
-        "message": f"Ingestion task for {source_name} started in background.",
-    })
+    return jsonify({"success": True, "task_id": task_id, "message": f"Ingestion task for {source_name} started in background."})
 
 
 @ingestions_bp.route("/api/task/<task_id>")
 @admin_required
 def get_task_status(task_id: str):
-    """Poll live task progress and status JSON (Phase 7 §21)."""
+    """Return status and progress details for an ingestion task."""
     task = TaskTracker.get_task(task_id)
     if not task:
         return jsonify({"error": "Task not found"}), 404
     return jsonify(task)
+
+
+@ingestions_bp.route("/api/task/<task_id>/stream")
+@admin_required
+def stream_task_status(task_id: str):
+    """Stream live task execution updates via Server-Sent Events (SSE)."""
+
+    def event_stream():
+        last_progress = -1
+        last_status = None
+        max_duration = 300
+        start_time = time.time()
+
+        while time.time() - start_time < max_duration:
+            state = TaskTracker.get_task(task_id)
+            if not state:
+                yield f"data: {json.dumps({'error': 'Task not found'})}\n\n"
+                break
+
+            current_progress = state.get("progress", 0)
+            current_status = state.get("status")
+
+            if current_progress != last_progress or current_status != last_status:
+                last_progress = current_progress
+                last_status = current_status
+                yield f"data: {json.dumps(state)}\n\n"
+
+            if current_status in ("completed", "complete", "failed"):
+                break
+
+            time.sleep(0.5)
+
+    return Response(
+        stream_with_context(event_stream()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+

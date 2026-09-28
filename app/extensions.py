@@ -1,7 +1,5 @@
-"""
-Nexura Phase 7 â€” Flask Extension Singletons
-Instantiated here; initialized with app inside create_app().
-"""
+"""Flask extension singletons initialized inside create_app()."""
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -20,4 +18,3 @@ limiter = Limiter(key_func=get_remote_address)
 mail = Mail()
 cache = Cache()
 oauth = OAuth()
-

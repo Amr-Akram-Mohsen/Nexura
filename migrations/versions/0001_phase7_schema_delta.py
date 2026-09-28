@@ -44,7 +44,6 @@ down_revision = "cffe9cd40bfc"
 branch_labels = None
 depends_on = None
 
-
 def upgrade() -> None:
     # =========================================================
     # 1. Add videos.channel_id (only genuinely missing column)
@@ -169,7 +168,6 @@ def upgrade() -> None:
     conn.execute(sa.text(
         "CREATE INDEX IF NOT EXISTS ix_contents_active_published_at ON contents (is_active, published_at)"
     ))
-
 
 def downgrade() -> None:
     # Remove added indexes

@@ -1,0 +1,270 @@
+/* Nexura — Article & Media Detail Component (article.css)
+   Detail page layout, article typography, author bar, source badge, video facade. */
+
+/* Article/Video Detail Page */
+.article-header { margin-bottom: var(--space-8); }
+
+.article-header__kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.article-header__title {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-black);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: var(--space-5);
+}
+
+.article-header__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.author-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.author-bar__avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--accent-gradient);
+  flex-shrink: 0;
+}
+
+.author-bar__avatar-placeholder {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.author-bar__info { display: flex; flex-direction: column; gap: 1px; }
+
+.author-bar__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.author-bar__date {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.article-header__reading-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Source badge */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* Hero image */
+.article-hero-image {
+  width: 100%;
+  aspect-ratio: 16/7;
+  object-fit: cover;
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-8);
+  box-shadow: var(--card-elevation-2);
+}
+
+/* Article Body */
+.article-body {
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+.article-body h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-top: var(--space-10);
+  margin-bottom: var(--space-4);
+}
+
+.article-body h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  margin-top: var(--space-8);
+  margin-bottom: var(--space-3);
+}
+
+.article-body p {
+  margin-bottom: var(--space-6);
+}
+
+.article-body a {
+  color: var(--accent-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.article-body a:hover { opacity: 0.80; }
+
+.article-body blockquote {
+  border-left: 4px solid var(--accent-blue);
+  padding: var(--space-4) var(--space-6);
+  background: hsla(217,90%,62%,0.06);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  margin-block: var(--space-8);
+  font-size: var(--text-lg);
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.article-body ul, .article-body ol {
+  padding-left: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.article-body ul { list-style: disc; }
+.article-body ol { list-style: decimal; }
+.article-body li { margin-bottom: var(--space-2); }
+
+.article-body code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-tertiary);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--accent-cyan);
+}
+
+.article-body pre {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  overflow-x: auto;
+  margin-block: var(--space-8);
+}
+.article-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.article-body img {
+  border-radius: var(--radius-lg);
+  margin-block: var(--space-6);
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Video Facade (§24 — no iframe on load) */
+.video-facade {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: hsl(220,18%,5%);
+  cursor: pointer;
+  box-shadow: var(--card-elevation-3);
+}
+
+.video-facade__thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--duration-slow) var(--ease-out),
+              brightness var(--duration-normal) var(--ease-out);
+  filter: brightness(0.85);
+}
+
+.video-facade:hover .video-facade__thumb {
+  transform: scale(1.02);
+  filter: brightness(0.72);
+}
+
+.video-facade__play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.video-facade__play-btn {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: hsla(0,0%,100%,0.15);
+  backdrop-filter: blur(8px);
+  border: 2px solid hsla(0,0%,100%,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-fast) var(--ease-spring),
+              background var(--duration-fast);
+}
+
+.video-facade:hover .video-facade__play-btn {
+  transform: scale(1.12);
+  background: var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+.video-facade__play-icon {
+  width: 28px; height: 28px;
+  color: #fff;
+  margin-left: 4px; /* visual centering */
+}
+
+.video-facade__duration {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  padding: var(--space-1) var(--space-3);
+  background: hsla(0,0%,0%,0.80);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-sm);
+}
+
+.video-facade iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

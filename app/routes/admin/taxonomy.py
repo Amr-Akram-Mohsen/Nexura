@@ -1,10 +1,5 @@
-"""
-Nexura Phase 7 — Admin Taxonomy & Entity Merge Controller (§18.5)
-Handles:
-1. Taxonomy dimensions inspection (Sections, Categories, Entities, Sources).
-2. Fuzzy duplicate entity detection (>= 85% similarity).
-3. 1-Click atomic entity merge via TaxonomyRepository.
-"""
+"""Admin taxonomy controller for taxonomy overview, duplicate entity detection, and merging."""
+
 from __future__ import annotations
 import difflib
 import logging
@@ -27,15 +22,8 @@ taxonomy_bp = Blueprint("taxonomy", __name__)
 
 
 def find_duplicate_entities(threshold: float = 0.85, limit: int = 20) -> list[dict[str, Any]]:
-    """
-    Finds entity pairs with high string similarity for admin review (Phase 7 §18.5).
-    """
-    entities = (
-        db.session.query(Entity.id, Entity.name, Entity.slug, Entity.entity_type)
-        .order_by(Entity.name.asc())
-        .limit(300)
-        .all()
-    )
+    """Find entity pairs with high string similarity for editorial merge review."""
+    entities = db.session.query(Entity.id, Entity.name, Entity.slug, Entity.entity_type).order_by(Entity.name.asc()).limit(300).all()
 
     candidates: list[dict[str, Any]] = []
     visited: set[tuple[int, int]] = set()
@@ -51,11 +39,13 @@ def find_duplicate_entities(threshold: float = 0.85, limit: int = 20) -> list[di
             ratio = difflib.SequenceMatcher(None, e1.name.lower(), e2.name.lower()).ratio()
             if ratio >= threshold and e1.name.lower() != e2.name.lower():
                 visited.add(pair_key)
-                candidates.append({
-                    "entity_1": {"id": e1.id, "name": e1.name, "slug": e1.slug, "type": e1.entity_type},
-                    "entity_2": {"id": e2.id, "name": e2.name, "slug": e2.slug, "type": e2.entity_type},
-                    "similarity_pct": int(ratio * 100),
-                })
+                candidates.append(
+                    {
+                        "entity_1": {"id": e1.id, "name": e1.name, "slug": e1.slug, "type": e1.entity_type},
+                        "entity_2": {"id": e2.id, "name": e2.name, "slug": e2.slug, "type": e2.entity_type},
+                        "similarity_pct": int(ratio * 100),
+                    }
+                )
                 if len(candidates) >= limit:
                     return candidates
 
@@ -65,7 +55,7 @@ def find_duplicate_entities(threshold: float = 0.85, limit: int = 20) -> list[di
 @taxonomy_bp.route("/")
 @admin_required
 def index():
-    """Taxonomy & Entity Merge Workbench UI."""
+    """Render taxonomy overview with sections, categories, popular entities, and merge suggestions."""
     sections = TaxonomyRepository.get_sections(active_only=False)
     categories = db.session.query(Category).order_by(Category.name.asc()).all()
     popular_entities = TaxonomyRepository.get_popular_entities(limit=30)
@@ -86,10 +76,7 @@ def index():
 @taxonomy_bp.route("/merge", methods=["POST"])
 @admin_required
 def merge_entities():
-    """
-    Atomic entity merge (Phase 7 §18.5):
-    Re-points all content_entities from source to target and deletes source entity.
-    """
+    """Re-point all content entities from source to target and remove source entity."""
     source_id = request.form.get("source_id", type=int)
     target_id = request.form.get("target_id", type=int)
 
@@ -99,8 +86,4 @@ def merge_entities():
     moved_count = TaxonomyRepository.merge_entities(source_id, target_id)
     invalidate_layout()
 
-    return jsonify({
-        "success": True,
-        "moved_count": moved_count,
-        "message": f"Successfully merged entities. Updated {moved_count} associations.",
-    })
+    return jsonify({"success": True, "moved_count": moved_count, "message": f"Successfully merged entities. Updated {moved_count} associations."})

@@ -1,6 +1,5 @@
-"""
-Nexura Phase 7 â€” Application Factory
-"""
+"""Application factory for Nexura."""
+
 from __future__ import annotations
 import logging
 import os
@@ -13,27 +12,16 @@ from app.extensions import db, migrate, login_manager, csrf, limiter, mail, cach
 
 def create_app(env: str | None = None) -> Flask:
     """Create and configure the Nexura Flask application."""
-    app = Flask(
-        __name__,
-        static_folder="../static",
-        template_folder="../templates",
-    )
+    app = Flask(__name__, static_folder="../static", template_folder="../templates")
 
-    # --- Configuration ---
     cfg = get_config(env)
     app.config.from_object(cfg)
 
-    # --- Instance folder (task state files, etc.) ---
     os.makedirs(app.config["TASK_STATE_DIR"], exist_ok=True)
 
-    # --- Logging ---
-    logging.basicConfig(
-        level=logging.DEBUG if app.config.get("DEBUG") else logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
+    logging.basicConfig(level=logging.DEBUG if app.config.get("DEBUG") else logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     app.logger.setLevel(logging.DEBUG if app.config.get("DEBUG") else logging.INFO)
 
-    # --- Extensions ---
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -43,7 +31,6 @@ def create_app(env: str | None = None) -> Flask:
     cache.init_app(app)
     oauth.init_app(app)
 
-    # Google OAuth registration
     if app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET"):
         oauth.register(
             name="google",
@@ -54,22 +41,29 @@ def create_app(env: str | None = None) -> Flask:
         )
     app.google = getattr(oauth, "google", None) or oauth.create_client("google")
 
-    # Login configuration
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Please log in to access this page."
     login_manager.login_message_category = "warning"
 
-    # --- Import models so Alembic/SQLAlchemy sees them ---
     with app.app_context():
         from app.models import (  # noqa: F401
-            taxonomy, source, content, video, user, interaction,
-            recommendation, distribution,
+            taxonomy,
+            source,
+            content,
+            video,
+            user,
+            interaction,
+            recommendation,
+            distribution,
+            article,
+            author,
         )
 
-    # --- Register blueprints ---
     _register_blueprints(app)
 
-    # --- Security Headers (Phase 7 §26.3) ---
+    from app.services.scheduler_service import init_scheduler
+    init_scheduler(app)
+
     @app.after_request
     def set_security_headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -89,7 +83,6 @@ def create_app(env: str | None = None) -> Flask:
         )
         return response
 
-    # --- Error Handlers (Phase 7 §26.4) ---
     from flask import render_template
 
     @app.errorhandler(400)
@@ -113,10 +106,13 @@ def create_app(env: str | None = None) -> Flask:
         db.session.rollback()
         return render_template("errors/500.html"), 500
 
-    # --- Shell context ---
     @app.shell_context_processor
     def make_shell_context():
         return {"db": db, "app": app}
+
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     return app
 

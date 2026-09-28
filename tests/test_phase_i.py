@@ -21,14 +21,12 @@ from app.models.interaction import Comment
 from app.repositories.user_repo import UserRepository
 from app.services.syndication_service import SyndicationService, calculate_platform_engagement_index
 
-
 @pytest.fixture(scope="module")
 def app():
     app = create_app()
     app.config["TESTING"] = True
     app.config["WTF_CSRF_ENABLED"] = False
     yield app
-
 
 def _setup_test_user(email: str, is_admin: bool) -> int:
     """Helper to ensure a clean test user account with known password."""
@@ -46,7 +44,6 @@ def _setup_test_user(email: str, is_admin: bool) -> int:
         user.is_active = True
         UserRepository.update_password(user, "Password123!")
     return user.id
-
 
 def test_admin_access_control(app):
     """Verify Phase 7 @admin_required security gate."""
@@ -74,7 +71,6 @@ def test_admin_access_control(app):
     res = client.get("/admin/")
     assert res.status_code == 200
     assert b"Dashboard Overview" in res.data
-
 
 def test_content_batch_operations(app):
     """Verify Phase 7 §18.2 batch publish, unpublish, and delete."""
@@ -123,7 +119,6 @@ def test_content_batch_operations(app):
         c = db.session.get(Content, cid)
         assert c.is_published is False
 
-
 def test_syndication_draft_generation(app):
     """Verify Phase 7 §20 multichannel social draft generator."""
     with app.app_context():
@@ -158,7 +153,6 @@ def test_syndication_draft_generation(app):
         # Engagement index computation
         idx = calculate_platform_engagement_index(likes=10, clicks=5, shares=2, views=100)
         assert idx == (20 + 25 + 20 + 10)  # 75.0
-
 
 def test_comment_moderation_actions(app):
     """Verify Phase 7 §19 comment moderation actions."""

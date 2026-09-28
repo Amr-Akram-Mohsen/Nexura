@@ -8,6 +8,8 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -43,5 +45,44 @@ $RECYCLE.BIN/
 .DS_Store
 instance/
 
-tests/
+# tests/  # Kept commented out so tests (e.g. tests/test_phase_*.py) stay tracked in Git
 
+util_files/
+
+# =====================================================================
+# ADDED ADDITIONS (Frontend, Packaging, Ingestion & Runtime Caching)
+# =====================================================================
+
+# Node & Frontend dependencies/builds
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+.parcel-cache/
+
+# Python packaging & distribution (pyproject.toml build artifacts)
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg
+
+# Caching & Background Task Logs (Celery / Ingestion pipelines)
+celerybeat-schedule
+celerybeat.pid
+*.log
+logs/
+
+# Flask / Temporary upload dumps
+instance/
+uploads/
+tmp/
+.webassets-cache

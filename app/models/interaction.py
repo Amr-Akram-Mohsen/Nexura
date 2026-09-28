@@ -1,14 +1,7 @@
-"""
-Nexura Phase 7 â€” User Interaction Models
-Covers: View, Save, Reaction, Comment (threaded), Share
-Phase 7 schema: comments/shares use concrete content_id FK (not polymorphic).
-"""
-from __future__ import annotations
+"""User interaction models: View, Save, Reaction, Comment, and Share."""
 
-from sqlalchemy import (
-    CheckConstraint, Column, Float, ForeignKey, Index, Integer,
-    String, Text, UniqueConstraint,
-)
+from __future__ import annotations
+from sqlalchemy import CheckConstraint, Column, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 
@@ -16,15 +9,11 @@ from app.extensions import db
 
 
 class View(db.Model):
-    """Content view/read history â€” authenticated or anonymous."""
+    """Content view history for authenticated or anonymous users."""
+
     __tablename__ = "views"
     __table_args__ = (
-        # Partial unique indexes â€” defined via __table_args__ strings for PostgreSQL
-        # These match exactly what Phase 7 specifies.
-        CheckConstraint(
-            "(user_id IS NOT NULL AND ip_address IS NULL) OR (user_id IS NULL AND ip_address IS NOT NULL)",
-            name="ck_view_one_identity",
-        ),
+        CheckConstraint("(user_id IS NOT NULL AND ip_address IS NULL) OR (user_id IS NULL AND ip_address IS NOT NULL)", name="ck_view_one_identity"),
         Index("ix_views_content", "content_id"),
     )
 
@@ -39,12 +28,10 @@ class View(db.Model):
 
 
 class Save(db.Model):
-    """Bookmark/save to a named collection."""
+    """Saved or bookmarked content for a user collection."""
+
     __tablename__ = "saves"
-    __table_args__ = (
-        UniqueConstraint("user_id", "content_id", "collection_name", name="uq_user_save_collection"),
-        Index("ix_saves_content", "content_id"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "content_id", "collection_name", name="uq_user_save_collection"), Index("ix_saves_content", "content_id"))
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -57,7 +44,8 @@ class Save(db.Model):
 
 
 class Reaction(db.Model):
-    """Like or dislike on content or comment."""
+    """Likes or dislikes on content items or comments."""
+
     __tablename__ = "reactions"
     __table_args__ = (
         CheckConstraint("target_type IN ('content', 'comment')", name="ck_reaction_target_type"),
@@ -67,10 +55,9 @@ class Reaction(db.Model):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    # target_type: 'content' | 'comment'
     target_type = Column(String(20), nullable=False)
     target_id = Column(Integer, nullable=False)
-    type = Column(String(20), nullable=False)   # 'like' | 'dislike'
+    type = Column(String(20), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default="CURRENT_TIMESTAMP")
 
     user = relationship("User", back_populates="reactions")
@@ -79,17 +66,16 @@ class Reaction(db.Model):
     def content(self):
         if self.target_type == "content":
             from app.models.content import Content
+
             return db.session.get(Content, self.target_id)
         return None
 
 
 class Comment(db.Model):
-    """Threaded user comment on a content item."""
+    """Threaded user comments on content items."""
+
     __tablename__ = "comments"
-    __table_args__ = (
-        Index("ix_comments_content", "content_id"),
-        Index("ix_comments_parent", "parent_id"),
-    )
+    __table_args__ = (Index("ix_comments_content", "content_id"), Index("ix_comments_parent", "parent_id"))
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -105,24 +91,21 @@ class Comment(db.Model):
     replies_count = Column(Integer, default=0, nullable=False)
 
     user = relationship("User", back_populates="comments")
-    content_ref = relationship("Content", back_populates="comments",
-                               foreign_keys=[content_id])
+    content_ref = relationship("Content", back_populates="comments", foreign_keys=[content_id])
     parent = relationship("Comment", remote_side="Comment.id", back_populates="replies")
     replies = relationship("Comment", back_populates="parent")
 
 
 class Share(db.Model):
-    """Social share of content by a registered user."""
+    """Social share tracking on content items."""
+
     __tablename__ = "shares"
-    __table_args__ = (
-        Index("ix_shares_content", "content_id"),
-        Index("ix_shares_user_created", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_shares_content", "content_id"), Index("ix_shares_user_created", "user_id", "created_at"))
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     content_id = Column(Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False)
-    channel = Column(String(50))    # 'twitter', 'facebook', 'linkedin', 'copy'
+    channel = Column(String(50))
     created_at = Column(TIMESTAMP(timezone=True), server_default="CURRENT_TIMESTAMP")
 
     user = relationship("User", back_populates="shares")

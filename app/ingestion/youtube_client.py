@@ -1,26 +1,21 @@
-﻿"""
-Nexura Phase 7 — YouTube Ingestion Client (§7.2)
-Interacts with YouTube Data API v3 to fetch videos, channel metadata, statistics, and top comments.
-"""
+"""YouTube Data API v3 client for video ingestion, statistics, and top comments."""
+
 from __future__ import annotations
 import logging
 import re
 from typing import Any
 from datetime import datetime, timezone
 import requests
-
 from flask import current_app
 
 log = logging.getLogger(__name__)
 
 YOUTUBE_BASE_URL = "https://www.googleapis.com/youtube/v3"
-_ISO_DURATION_RE = re.compile(
-    r"P(?:(?P<days>\d+)D)?T?(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?"
-)
+_ISO_DURATION_RE = re.compile(r"P(?:(?P<days>\d+)D)?T?(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?")
 
 
 def parse_iso_duration(duration_str: str | None) -> int:
-    """Parse ISO-8601 duration (e.g. PT14M33S, PT1H2M10S) to total seconds."""
+    """Parse ISO-8601 duration (e.g. PT14M33S) to total seconds."""
     if not duration_str:
         return 0
     match = _ISO_DURATION_RE.match(duration_str)
@@ -38,19 +33,10 @@ class YouTubeClient:
     """Client for YouTube Data API v3 video ingestion."""
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or (
-            current_app.config.get("YOUTUBE_API_KEY") if current_app else None
-        )
+        self.api_key = api_key or (current_app.config.get("YOUTUBE_API_KEY") if current_app else None)
 
-    def search_videos(
-        self,
-        query: str,
-        *,
-        max_results: int = 25,
-        order: str = "date",
-        relevance_language: str = "en",
-    ) -> list[dict[str, Any]]:
-        """Search YouTube for videos matching a topic/query and fetch full video statistics."""
+    def search_videos(self, query: str, *, max_results: int = 25, order: str = "date", relevance_language: str = "en") -> list[dict[str, Any]]:
+        """Search YouTube for videos matching a query and fetch full video statistics."""
         if not self.api_key:
             log.warning("YouTubeClient: No API key configured. Skipping fetch.")
             return []
@@ -75,7 +61,6 @@ class YouTubeClient:
             if not video_ids:
                 return []
 
-            # Enrich with video details (durations, statistics)
             return self.get_videos_details(video_ids)
 
         except requests.RequestException as exc:
@@ -88,11 +73,7 @@ class YouTubeClient:
             return []
 
         videos_url = f"{YOUTUBE_BASE_URL}/videos"
-        params = {
-            "key": self.api_key,
-            "part": "snippet,contentDetails,statistics",
-            "id": ",".join(video_ids[:50]),
-        }
+        params = {"key": self.api_key, "part": "snippet,contentDetails,statistics", "id": ",".join(video_ids[:50])}
 
         try:
             res = requests.get(videos_url, params=params, timeout=20)
@@ -128,7 +109,6 @@ class YouTubeClient:
         try:
             res = requests.get(comments_url, params=params, timeout=15)
             if res.status_code == 403:
-                # Comments disabled for video
                 return []
             res.raise_for_status()
             items = res.json().get("items", [])
@@ -145,15 +125,19 @@ class YouTubeClient:
                         except ValueError:
                             pass
 
-                    comments.append({
-                        "external_id": it.get("id"),
-                        "author_name": top.get("authorDisplayName"),
-                        "author_channel_id": top.get("authorChannelId", {}).get("value") if isinstance(top.get("authorChannelId"), dict) else top.get("authorChannelId"),
-                        "text": top.get("textDisplay"),
-                        "like_count": int(top.get("likeCount") or 0),
-                        "reply_count": int(it.get("snippet", {}).get("totalReplyCount") or 0),
-                        "published_at": pub_dt,
-                    })
+                    comments.append(
+                        {
+                            "external_id": it.get("id"),
+                            "author_name": top.get("authorDisplayName"),
+                            "author_channel_id": top.get("authorChannelId", {}).get("value")
+                            if isinstance(top.get("authorChannelId"), dict)
+                            else top.get("authorChannelId"),
+                            "text": top.get("textDisplay"),
+                            "like_count": int(top.get("likeCount") or 0),
+                            "reply_count": int(it.get("snippet", {}).get("totalReplyCount") or 0),
+                            "published_at": pub_dt,
+                        }
+                    )
             return comments
 
         except requests.RequestException as exc:
@@ -170,7 +154,6 @@ class YouTubeClient:
         if not video_id or not title:
             return None
 
-        # Thumbnails priority: maxres -> high -> medium -> default
         thumbs = snippet.get("thumbnails", {})
         thumb_url = (
             thumbs.get("maxres", {}).get("url")
@@ -208,8 +191,5 @@ class YouTubeClient:
             "comments_count": int(stats.get("commentCount") or 0),
             "published_at": pub_dt,
             "tags": snippet.get("tags", []),
-            "platform_metadata": {
-                "categoryId": snippet.get("categoryId"),
-                "defaultAudioLanguage": snippet.get("defaultAudioLanguage"),
-            },
+            "platform_metadata": {"categoryId": snippet.get("categoryId"), "defaultAudioLanguage": snippet.get("defaultAudioLanguage")},
         }

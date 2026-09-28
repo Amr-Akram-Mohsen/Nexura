@@ -1,12 +1,8 @@
-"""
-Nexura Phase 7 â€” User, NewsletterSubscriber, ContactMessage
-"""
-from __future__ import annotations
+"""User, NewsletterSubscriber, and ContactMessage models."""
 
+from __future__ import annotations
 from flask_login import UserMixin
-from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Index, Integer, String, Text,
-)
+from sqlalchemy import Boolean, CheckConstraint, Column, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 
@@ -15,12 +11,10 @@ from app.extensions import db, login_manager
 
 class User(UserMixin, db.Model):
     """Registered platform user."""
+
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint(
-            "(google_id IS NULL AND provider IS NULL) OR (google_id IS NOT NULL AND provider IS NOT NULL)",
-            name="ck_google_user",
-        ),
+        CheckConstraint("(google_id IS NULL AND provider IS NULL) OR (google_id IS NOT NULL AND provider IS NOT NULL)", name="ck_google_user"),
         Index("ix_users_email", "email"),
     )
 
@@ -40,8 +34,9 @@ class User(UserMixin, db.Model):
     password_changed_at = Column(TIMESTAMP(timezone=True))
     password_reset_token = Column(String(255))
     password_reset_sent_at = Column(TIMESTAMP(timezone=True))
+    email_verification_token = Column(String(255))
+    email_verification_sent_at = Column(TIMESTAMP(timezone=True))
 
-    # Relationships
     views = relationship("View", back_populates="user", cascade="all, delete-orphan")
     saves = relationship("Save", back_populates="user", cascade="all, delete-orphan")
     reactions = relationship("Reaction", back_populates="user", cascade="all, delete-orphan")
@@ -60,10 +55,10 @@ def load_user(user_id: str) -> User | None:
 
 
 class NewsletterSubscriber(db.Model):
+    """Newsletter subscription records."""
+
     __tablename__ = "newsletter_subscribers"
-    __table_args__ = (
-        Index("ix_newsletter_subscribers_email", "email"),
-    )
+    __table_args__ = (Index("ix_newsletter_subscribers_email", "email"),)
 
     id = Column(Integer, primary_key=True)
     email = Column(String(150), nullable=False, unique=True)
@@ -81,10 +76,10 @@ class NewsletterSubscriber(db.Model):
 
 
 class ContactMessage(db.Model):
+    """User inquiries and editorial contact submissions."""
+
     __tablename__ = "contact_messages"
-    __table_args__ = (
-        Index("ix_contact_messages_created_at", "created_at"),
-    )
+    __table_args__ = (Index("ix_contact_messages_created_at", "created_at"),)
 
     id = Column(Integer, primary_key=True)
     name = Column(String(120), nullable=False)

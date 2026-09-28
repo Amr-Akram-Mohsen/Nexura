@@ -1,8 +1,5 @@
-"""
-Nexura Phase 7 â€” TaskTracker: Atomic JSON File State (Â§21)
-Task progress is persisted atomically: <task_id>.tmp -> <task_id>.json
-Supports UI polling at GET /admin/ingestions/api/task/<task_id>.
-"""
+"""TaskTracker for atomic JSON task state persistence."""
+
 from __future__ import annotations
 import json
 import os
@@ -17,10 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class TaskTracker:
-    """
-    Manages long-running background task state using atomic JSON file writes.
-    Corrupted state files are backed up and reinitialized (Phase 7 Â§29).
-    """
+    """Manages background task states using atomic JSON file writes."""
 
     def __init__(self, state_dir: str = "instance/tasks") -> None:
         self.state_dir = Path(state_dir)
@@ -83,25 +77,10 @@ class TaskTracker:
         cls.update_status(task_id, status="failed", message="Task failed", error=error)
 
     @classmethod
-    def update_status(
-        cls,
-        task_id: str,
-        *,
-        status: str,
-        progress: int = 0,
-        message: str = "",
-        result: dict | None = None,
-        error: str | None = None,
-    ) -> None:
+    def update_status(cls, task_id: str, *, status: str, progress: int = 0, message: str = "", result: dict | None = None, error: str | None = None) -> None:
         tracker = cls.get_instance()
         state = tracker._get_task(task_id) or {}
-        state.update({
-            "status": status,
-            "progress": progress,
-            "message": message,
-            "result": result,
-            "error": error,
-        })
+        state.update({"status": status, "progress": progress, "message": message, "result": result, "error": error})
         if status == "running" and not state.get("started_at"):
             state["started_at"] = datetime.now(timezone.utc).isoformat()
         if status in ("complete", "completed", "failed"):
@@ -113,11 +92,7 @@ class TaskTracker:
         return cls.get_instance()._list_tasks(limit=limit)
 
     def _list_tasks(self, limit: int = 20) -> list[dict]:
-        files = sorted(
-            self.state_dir.glob("*.json"),
-            key=lambda f: f.stat().st_mtime,
-            reverse=True,
-        )[:limit]
+        files = sorted(self.state_dir.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[:limit]
         tasks = []
         for f in files:
             try:
@@ -126,13 +101,11 @@ class TaskTracker:
                 pass
         return tasks
 
-    # --- Private -------------------------------------------------------------
-
     def _path(self, task_id: str) -> Path:
         return self.state_dir / f"{task_id}.json"
 
     def _write(self, task_id: str, state: dict) -> None:
-        """Atomic write: write to .tmp then rename to .json (Phase 7 Â§21)."""
+        """Atomic write: write to temp file then rename."""
         tmp = self.state_dir / f"{task_id}.tmp"
         final = self._path(task_id)
         try:
@@ -142,14 +115,11 @@ class TaskTracker:
             log.error("TaskTracker: failed to write state for %s: %s", task_id, exc)
 
     def _recover_corrupted(self, path: Path, exc: Exception) -> None:
-        """Backup corrupted file and reinitialize (Phase 7 Â§29)."""
+        """Backup corrupted file and log warning."""
         ts = int(time.time())
         backup = path.with_suffix(f".corrupt.{ts}")
         try:
             shutil.copy2(str(path), str(backup))
-            log.warning(
-                "TaskTracker: corrupted state file backed up to %s (error: %s)",
-                backup, exc,
-            )
+            log.warning("TaskTracker: corrupted state file backed up to %s (error: %s)", backup, exc)
         except OSError:
             pass

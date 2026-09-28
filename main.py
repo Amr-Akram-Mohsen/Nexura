@@ -1,9 +1,5 @@
-"""
-Nexura Phase 7 — WSGI Entry Point
-Usage:
-  flask run           (development)
-  gunicorn main:app   (production)
-"""
+"""WSGI application entry point."""
+
 from app import create_app
 
 app = create_app()

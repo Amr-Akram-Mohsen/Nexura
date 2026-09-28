@@ -1,4 +1,4 @@
-/* ── Article Content Styles (Generated from DB / Diffbot) ─────────────────── */
+/* Article Content Styles (Generated from DB / Diffbot) */
 
 .article-html {
     font-size: 1rem;
@@ -7,7 +7,7 @@
     font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
 }
 
-/* ── Typography ──────────────────────────────────────────────────────────── */
+/* Typography */
 .article-html p {
     margin-bottom: 1.5rem;
 }
@@ -56,7 +56,7 @@
     background-color: rgba(var(--domain-primary-rgb), 0.05);
 }
 
-/* ── Media (Images, Figures, SVGs) ────────────────────────────────────────── */
+/* Media (Images, Figures, SVGs) */
 .article-html figure {
     margin: 1rem 0;
     width: 100%;
@@ -71,7 +71,7 @@
     object-fit: cover;
 }
 
-/* ── Media Skeleton Loading ─────────────────────────────────────────────── */
+/* Media Skeleton Loading */
 .article-html img:not(.is-loaded),
 .article-html video:not(.is-loaded),
 .article-html iframe:not(.is-loaded) {
@@ -139,7 +139,7 @@
     width: 100%;
 }
 
-/* ── Lists ───────────────────────────────────────────────────────────────── */
+/* Lists */
 .article-html ul,
 .article-html ol {
     margin: 1.5rem 0;
@@ -164,7 +164,7 @@
     color: rgba(var(--foreground-rgb), 0.5);
 }
 
-/* ── Blockquotes ─────────────────────────────────────────────────────────── */
+/* Blockquotes */
 .article-html blockquote {
     border-left: 3px solid var(--domain-primary);
     padding: 1rem 1.5rem;
@@ -180,7 +180,7 @@
     margin-bottom: 0;
 }
 
-/* ── Code blocks & Tables ────────────────────────────────────────────────── */
+/* Code blocks & Tables */
 .article-html pre {
     background: var(--card);
     border: 1px solid var(--border);

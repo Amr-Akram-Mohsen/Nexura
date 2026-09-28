@@ -1,10 +1,5 @@
-"""
-Nexura Phase 7 — Search Service (§11)
-Implements:
-1. 4-Component Multi-Factor Search Ranking Formula (§11.2):
-   SearchScore(C, Q) = 4.0*S_text(C, Q) + 0.8*S_pop(C) + 0.6*S_fresh(C) + 1.2*S_intent(C, Q)
-2. Autocomplete suggestions with entity, category, and title enrichment (§11.3).
-"""
+"""Search service for ranking, full-text queries, and autocomplete."""
+
 from __future__ import annotations
 import logging
 import math
@@ -31,15 +26,8 @@ INTENT_KEYWORDS: dict[str, list[str]] = {
 }
 
 
-def calculate_search_score(
-    content: Content,
-    query_text: str,
-    now: datetime | None = None,
-) -> float:
-    """
-    Computes 4-component search relevance score (Phase 7 §11.2):
-    SearchScore = 4.0*S_text + 0.8*S_pop + 0.6*S_fresh + 1.2*S_intent
-    """
+def calculate_search_score(content: Content, query_text: str, now: datetime | None = None) -> float:
+    """Compute 4-component search relevance score: text, popularity, freshness, and intent."""
     now_utc = now or datetime.now(timezone.utc)
     clean_query = query_text.strip().lower()
     query_tokens = set(re.findall(r"\w+", clean_query))
@@ -48,29 +36,21 @@ def calculate_search_score(
     preview_lower = (content.preview_text or "").lower()
     entity_names = [ce.entity.name.lower() for ce in (content.content_entities or []) if ce.entity]
 
-    # 1. Text Score (S_text)
     s_text = 0.0
-    # Exact phrase in title (+3.0)
     if clean_query in title_lower:
         s_text += 3.0
 
-    # Individual keyword in title (+1.2)
     for token in query_tokens:
         if token in title_lower:
             s_text += 1.2
-
-    # Keyword in preview or entity tags (+0.6)
-    for token in query_tokens:
         if token in preview_lower or any(token in ename for ename in entity_names):
             s_text += 0.6
 
-    # 2. Popularity Score: ln(1 + views + comments + reactions)
     views = content.view_count or 0
     comments = content.comment_count or 0
     reactions = (content.like_count or 0) + (content.save_count or 0)
     s_pop = math.log(1.0 + views + (comments * 2) + reactions)
 
-    # 3. Freshness Score: 0.6 / (1 + age_days / 30)
     age_days = 0.0
     if content.published_at:
         pub = content.published_at
@@ -80,7 +60,6 @@ def calculate_search_score(
 
     s_fresh = 0.6 / (1.0 + (age_days / 30.0))
 
-    # 4. Intent Score: Boosts content matching query intent keywords
     s_intent = 0.0
     content_intent = content.intent_facet.slug if content.intent_facet else None
 
@@ -107,16 +86,11 @@ class SearchService:
         page: int = 1,
         per_page: int = 24,
     ) -> PaginationResult:
-        """
-        Execute multi-factor ranked search (Phase 7 §11).
-        """
+        """Execute multi-factor ranked search with faceted filters and pagination."""
         clean_query = query_text.strip()
         if not clean_query:
-            return ContentRepository.list_published(
-                object_type=object_type, page=page, per_page=per_page
-            )
+            return ContentRepository.list_published(object_type=object_type, page=page, per_page=per_page)
 
-        # Initial broad match candidate pool
         query = (
             db.session.query(Content)
             .options(
@@ -148,13 +122,10 @@ class SearchService:
 
         now = datetime.now(timezone.utc)
         if sort == "popular":
-            candidates.sort(key=lambda c: (c.view_count or 0), reverse=True)
+            candidates.sort(key=lambda c: c.view_count or 0, reverse=True)
         elif sort == "recent":
-            candidates.sort(
-                key=lambda c: c.published_at or datetime.min.replace(tzinfo=timezone.utc),
-                reverse=True,
-            )
-        else:  # "relevance" (default)
+            candidates.sort(key=lambda c: c.published_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+        else:
             candidates.sort(key=lambda c: calculate_search_score(c, clean_query, now=now), reverse=True)
 
         total = len(candidates)
@@ -165,7 +136,7 @@ class SearchService:
 
     @staticmethod
     def get_autocomplete_suggestions(query_text: str, limit: int = 8) -> dict[str, Any]:
-        """Fast instant autocomplete suggestions (Phase 7 §11.3)."""
+        """Fetch instant autocomplete suggestions for articles and videos."""
         clean = query_text.strip()
         if len(clean) < 2:
             return {"articles": [], "videos": [], "entities": [], "categories": []}
@@ -175,12 +146,7 @@ class SearchService:
         articles = (
             db.session.query(Content)
             .options(joinedload(Content.category))
-            .filter(
-                Content.object_type == "article",
-                Content.title.ilike(pattern),
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(Content.object_type == "article", Content.title.ilike(pattern), Content.is_active.is_(True), Content.is_published.is_(True))
             .order_by(desc(Content.published_at))
             .limit(5)
             .all()
@@ -189,12 +155,7 @@ class SearchService:
         videos = (
             db.session.query(Content)
             .options(joinedload(Content.category))
-            .filter(
-                Content.object_type == "video",
-                Content.title.ilike(pattern),
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(Content.object_type == "video", Content.title.ilike(pattern), Content.is_active.is_(True), Content.is_published.is_(True))
             .order_by(desc(Content.published_at))
             .limit(5)
             .all()
@@ -203,7 +164,4 @@ class SearchService:
         ContentRepository.resolve_polymorphic_payloads(articles)
         ContentRepository.resolve_polymorphic_payloads(videos)
 
-        return {
-            "articles": articles,
-            "videos": videos,
-        }
+        return {"articles": articles, "videos": videos}

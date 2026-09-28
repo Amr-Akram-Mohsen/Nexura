@@ -1,35 +1,30 @@
-"""
-Nexura Phase 7 — Auth Blueprint (§14)
-Handles: register, login, logout, email verify, password reset.
-Password hashing via Werkzeug; verification token via secrets.
-"""
+"""Authentication blueprint for register, login, logout, password reset, and OAuth."""
+
 from __future__ import annotations
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from flask import (
-    Blueprint, abort, flash, jsonify,
-    redirect, render_template, request, url_for, current_app, session,
-)
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for, current_app, session
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import generate_password_hash
 
 from app.extensions import db, limiter, oauth
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
-from app.services.interaction_service import score_password
+from app.services.email_service import EmailService
+from app.utils.security import score_password
 
 log = logging.getLogger(__name__)
 
 auth_bp = Blueprint("auth", __name__)
 
-_RESET_EXPIRY_HOURS = 1  # §14: 1-hour password reset token window
+_RESET_EXPIRY_HOURS = 1
 
 
-# ─── Register ─────────────────────────────────────────────────────────────────
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
+    """Register a new user account with validation."""
     if current_user.is_authenticated:
         return redirect(url_for("public.home"))
 
@@ -43,7 +38,6 @@ def register():
         confirm = request.form.get("confirm_password", "")
         form_data = {"name": name, "email": email}
 
-        # Validation
         if not name or len(name) < 2:
             errors["name"] = "Full name must be at least 2 characters."
         if not email or "@" not in email:
@@ -57,13 +51,12 @@ def register():
         if password and password != confirm:
             errors["confirm_password"] = "Passwords do not match."
 
-        if not errors:
-            if UserRepository.get_by_email(email):
-                errors["email"] = "An account with this email already exists."
+        if not errors and UserRepository.get_by_email(email):
+            errors["email"] = "An account with this email already exists."
 
         if not errors:
-            # Create unverified user
             token = secrets.token_urlsafe(32)
+            now_utc = datetime.now(timezone.utc)
             user = User(
                 email=email,
                 name=name,
@@ -71,41 +64,35 @@ def register():
                 is_verified=False,
                 is_active=True,
                 is_admin=False,
-                created_at=datetime.now(timezone.utc),
-                verification_sent_at=datetime.now(timezone.utc),
-                # Store token on the model — email would send it
+                created_at=now_utc,
+                verification_sent_at=now_utc,
+                email_verification_token=token,
+                email_verification_sent_at=now_utc,
                 password_reset_token=None,
             )
-            # We'll reuse password_reset_token column space for verification
-            # Actually store as a separate attribute on model
             db.session.add(user)
             db.session.flush()
 
-            # In production, send email with token link
+            EmailService.send_verification_email(user, token)
             log.info("Verification token for %s: %s", email, token)
-
             db.session.commit()
 
-            flash(
-                "Account created! Check your inbox to verify your email before logging in.",
-                "success",
-            )
+            flash("Account created! Check your inbox to verify your email before logging in.", "success")
             return redirect(url_for("auth.login"))
 
-    return render_template(
-        "auth/register.html", errors=errors, form_data=form_data
-    )
+    return render_template("auth/register.html", errors=errors, form_data=form_data)
 
 
-# ─── Login ────────────────────────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20 per minute")
 def login():
+    """Authenticate user with email and password credentials."""
     if current_user.is_authenticated:
         return redirect(url_for("public.home"))
 
     error: str | None = None
     email_value = ""
+    needs_verification = False
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -120,38 +107,36 @@ def login():
             log.warning("Failed login attempt for email: %s", email)
         elif not user.is_active:
             error = "This account has been deactivated. Contact support."
+        elif not user.is_verified:
+            error = "Please verify your email address before logging in. Check your inbox for the confirmation link."
+            needs_verification = True
         else:
             login_user(user, remember=remember)
             user.last_login_at = datetime.now(timezone.utc)
             db.session.commit()
             log.info("User %s logged in.", user.email)
             next_url = request.args.get("next") or url_for("public.home")
-            # Prevent open redirect
             if not next_url.startswith("/"):
                 next_url = url_for("public.home")
             return redirect(next_url)
 
-    return render_template("auth/login.html", error=error, email_value=email_value)
+    return render_template("auth/login.html", error=error, email_value=email_value, needs_verification=needs_verification)
 
 
-# ─── Logout ───────────────────────────────────────────────────────────────────
 @auth_bp.route("/logout")
 @login_required
 def logout():
+    """Log out the current user session."""
     log.info("User %s logged out.", current_user.email)
     logout_user()
     flash("You've been logged out.", "info")
     return redirect(url_for("public.home"))
 
 
-# ─── Email Verify ─────────────────────────────────────────────────────────────
 @auth_bp.route("/verify/<token>")
 def verify_email(token: str):
-    user = (
-        db.session.query(User)
-        .filter(User.password_reset_token == token)  # Note: reuse field or add col
-        .first()
-    )
+    """Verify email address using confirmation token."""
+    user = UserRepository.get_by_verification_token(token)
     if not user:
         flash("Verification link is invalid or has expired.", "error")
         return redirect(url_for("auth.login"))
@@ -162,17 +147,45 @@ def verify_email(token: str):
 
     user.is_verified = True
     user.verified_at = datetime.now(timezone.utc)
-    user.password_reset_token = None
+    user.email_verification_token = None
     db.session.commit()
 
     flash("Email verified! You can now log in.", "success")
     return redirect(url_for("auth.login"))
 
 
-# ─── Forgot Password ──────────────────────────────────────────────────────────
+@auth_bp.route("/resend-verification", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def resend_verification():
+    """Resend email verification link."""
+    if current_user.is_authenticated:
+        return redirect(url_for("public.home"))
+
+    sent = False
+    email_value = request.args.get("email", "")
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        email_value = email
+        user = UserRepository.get_by_email(email)
+        sent = True
+        if user and not user.is_verified and user.is_active:
+            token = secrets.token_urlsafe(32)
+            now_utc = datetime.now(timezone.utc)
+            user.email_verification_token = token
+            user.email_verification_sent_at = now_utc
+            user.verification_sent_at = now_utc
+            db.session.commit()
+            EmailService.send_verification_email(user, token)
+            log.info("Resent verification token for %s: %s", email, token)
+
+    return render_template("auth/resend_verification.html", sent=sent, email_value=email_value)
+
+
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def forgot_password():
+    """Request a password reset link."""
     if current_user.is_authenticated:
         return redirect(url_for("public.home"))
 
@@ -181,32 +194,29 @@ def forgot_password():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         user = UserRepository.get_by_email(email)
-        # Always show success to prevent email enumeration
         sent = True
         if user and user.is_active:
             token = secrets.token_urlsafe(32)
             user.password_reset_token = token
             user.password_reset_sent_at = datetime.now(timezone.utc)
             db.session.commit()
+            EmailService.send_password_reset_email(user, token)
             log.info("Password reset token for %s: %s", email, token)
-            # In production: send email with url_for('auth.reset_password', token=token)
 
     return render_template("auth/forgot_password.html", sent=sent)
 
 
-# ─── Reset Password ───────────────────────────────────────────────────────────
 @auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token: str):
+    """Reset account password using reset token within 1-hour window."""
     user = UserRepository.get_by_reset_token(token)
 
-    # Check token validity: max 1 hour (§14)
     if not user or not user.password_reset_sent_at:
         flash("This reset link is invalid or has expired.", "error")
         return redirect(url_for("auth.forgot_password"))
 
     expiry = user.password_reset_sent_at + timedelta(hours=_RESET_EXPIRY_HOURS)
     now_utc = datetime.now(timezone.utc)
-    # Normalize timezone for comparison
     if expiry.tzinfo is None:
         expiry = expiry.replace(tzinfo=timezone.utc)
     if now_utc > expiry:
@@ -232,22 +242,21 @@ def reset_password(token: str):
     return render_template("auth/reset_password.html", token=token, error=error)
 
 
-# ─── Profile (authenticated) ──────────────────────────────────────────────────
 @auth_bp.route("/profile")
 @login_required
 def profile():
+    """Render profile view for authenticated user."""
     return render_template("auth/profile.html")
 
 
 def handle_google_oauth_login(user_info: dict) -> User:
-    """Helper to provision or retrieve user from Google OAuth user_info."""
+    """Provision or retrieve user from Google OAuth user info."""
     email = (user_info.get("email") or "").lower().strip()
     google_id = str(user_info.get("sub") or user_info.get("id") or "")
     name = user_info.get("name") or (email.split("@")[0] if email else "Google User")
 
     user = UserRepository.get_by_email(email)
     if not user:
-        # Create new verified user via Google OAuth
         user = User(
             email=email,
             name=name,
@@ -265,7 +274,6 @@ def handle_google_oauth_login(user_info: dict) -> User:
         db.session.commit()
         log.info("[AUTH] New user registered via Google OAuth: %s", email)
     else:
-        # Link Google account if not linked
         if not user.google_id:
             user.google_id = google_id
             user.provider = "google"
@@ -276,10 +284,9 @@ def handle_google_oauth_login(user_info: dict) -> User:
     return user
 
 
-# ─── Google OAuth 2.0 ────────────────────────────────────────────────────────
 @auth_bp.route("/google/login")
 def google_login():
-    """Initiates Google OAuth 2.0 authorization redirect."""
+    """Initiate Google OAuth 2.0 authorization redirect."""
     if current_user.is_authenticated:
         return redirect(url_for("public.home"))
 
@@ -289,12 +296,14 @@ def google_login():
         return redirect(url_for("auth.login"))
 
     redirect_uri = url_for("auth.google_authorize", _external=True)
-    return google.authorize_redirect(redirect_uri, prompt="select_account")
+    nonce = secrets.token_urlsafe(16)
+    session["oauth_nonce"] = nonce
+    return google.authorize_redirect(redirect_uri, nonce=nonce, prompt="select_account")
 
 
 @auth_bp.route("/google/authorize")
 def google_authorize():
-    """Handles Google OAuth 2.0 callback, parsing id_token or userinfo."""
+    """Handle Google OAuth 2.0 callback and sign in user."""
     if current_user.is_authenticated:
         return redirect(url_for("public.home"))
 
@@ -306,9 +315,10 @@ def google_authorize():
     try:
         token = google.authorize_access_token()
         user_info = None
+        nonce = session.pop("oauth_nonce", None)
         if hasattr(google, "parse_id_token"):
             try:
-                user_info = google.parse_id_token(token, nonce=None)
+                user_info = google.parse_id_token(token, nonce=nonce)
             except Exception as e:
                 log.warning("[AUTH] parse_id_token failed: %s, falling back to userinfo", e)
         if not user_info:
@@ -335,5 +345,3 @@ def google_authorize():
         log.error("[AUTH] Google OAuth error: %s", e)
         flash("Google sign-in failed. Please try again or log in with email and password.", "error")
         return redirect(url_for("auth.login"))
-
-

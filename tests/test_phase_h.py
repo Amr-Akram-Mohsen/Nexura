@@ -27,12 +27,10 @@ from app.services.content_service import (
     ContentService,
 )
 
-
 @pytest.fixture(scope="module")
 def app():
     app = create_app()
     yield app
-
 
 def test_relevance_scoring_formula(app):
     """Verify Phase 7 §16.1 multi-signal content relevance formula."""
@@ -86,7 +84,6 @@ def test_relevance_scoring_formula(app):
     assert score_a > score_b
     assert score_a > 0.0
 
-
 def test_4_component_search_scoring(app):
     """Verify Phase 7 §11.2 multi-factor search ranking."""
     now = datetime.now(timezone.utc)
@@ -124,7 +121,6 @@ def test_4_component_search_scoring(app):
     assert score_1 > score_2
     assert score_1 >= 5.0
 
-
 def test_editorial_readiness_evaluation(app):
     """Verify Phase 7 §9.2 5-dimension Publishing Readiness Index."""
     with app.app_context():
@@ -158,7 +154,6 @@ def test_editorial_readiness_evaluation(app):
         assert readiness["score"] >= 50
         assert readiness["tier"] in ("Almost Ready", "Ready")
         assert "breakdown" in readiness
-
 
 def test_content_lifecycle_and_invalidation(app):
     """Verify publish/unpublish/archive lifecycle."""
@@ -197,7 +192,6 @@ def test_content_lifecycle_and_invalidation(app):
         assert ContentService.archive_content(content.id) is True
         c = db.session.get(Content, content.id)
         assert c.is_active is False
-
 
 def test_demand_supply_matrix_and_momentum(app):
     """Verify analytics service demand vs. supply and momentum computations."""

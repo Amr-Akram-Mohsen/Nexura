@@ -1,14 +1,9 @@
-﻿"""
-Nexura Phase 7 — Diffbot Extraction Client (§8.1)
-2-Phase extraction:
-  Phase 1: Full Article Body Extraction (HTML, word count, media assets)
-  Phase 2: Named Entity Recognition & Classification (Entities, Wikidata, Wikipedia)
-"""
+"""Diffbot client for article body extraction and named entity recognition."""
+
 from __future__ import annotations
 import logging
 from typing import Any
 import requests
-
 from flask import current_app
 
 log = logging.getLogger(__name__)
@@ -17,28 +12,18 @@ DIFFBOT_ARTICLE_API_URL = "https://api.diffbot.com/v3/article"
 
 
 class DiffbotClient:
-    """Client for Diffbot Article and Entity Extraction."""
+    """Client for Diffbot article and entity extraction API."""
 
     def __init__(self, token: str | None = None) -> None:
-        self.token = token or (
-            current_app.config.get("DIFFBOT_TOKEN") if current_app else None
-        )
+        self.token = token or (current_app.config.get("DIFFBOT_TOKEN") if current_app else None)
 
     def extract_article(self, target_url: str) -> dict[str, Any] | None:
-        """
-        Phase 1: Extract article body HTML, text, word count, images, and author.
-        Phase 2: Extract tags/entities with confidence and relevance scores.
-        """
+        """Extract article content, metadata, media, and entity tags from target URL."""
         if not self.token:
             log.warning("DiffbotClient: No DIFFBOT_TOKEN configured. Skipping extraction.")
             return None
 
-        params = {
-            "token": self.token,
-            "url": target_url,
-            "discussion": "false",
-            "extractPresence": "true",
-        }
+        params = {"token": self.token, "url": target_url, "discussion": "false", "extractPresence": "true"}
 
         try:
             res = requests.get(DIFFBOT_ARTICLE_API_URL, params=params, timeout=30)
@@ -51,19 +36,15 @@ class DiffbotClient:
                 return None
 
             obj = objects[0]
-
-            # Phase 1: Core content payload
             content_html = obj.get("html") or ""
             content_text = obj.get("text") or ""
             word_count = len(content_text.split()) if content_text else 0
 
-            # Images
             images = obj.get("images", [])
             primary_image = None
             if images and isinstance(images, list):
                 primary_image = images[0].get("url")
 
-            # Authors
             authors = []
             if obj.get("author"):
                 authors.append(obj.get("author"))
@@ -73,7 +54,6 @@ class DiffbotClient:
                     if name and name not in authors:
                         authors.append(name)
 
-            # Phase 2: Entity tags
             raw_tags = obj.get("tags", [])
             extracted_entities: list[dict[str, Any]] = []
             for tag in raw_tags:
@@ -81,14 +61,16 @@ class DiffbotClient:
                 if not label:
                     continue
 
-                extracted_entities.append({
-                    "name": label.strip(),
-                    "type": self._classify_entity_type(tag),
-                    "wikidata_id": tag.get("wikidataUri", "").split("/")[-1] if tag.get("wikidataUri") else None,
-                    "wikipedia_url": tag.get("wikipediaUrl") or tag.get("uri"),
-                    "relevance_score": float(tag.get("score") or 0.0),
-                    "confidence": float(tag.get("confidence") or 0.5),
-                })
+                extracted_entities.append(
+                    {
+                        "name": label.strip(),
+                        "type": self._classify_entity_type(tag),
+                        "wikidata_id": tag.get("wikidataUri", "").split("/")[-1] if tag.get("wikidataUri") else None,
+                        "wikipedia_url": tag.get("wikipediaUrl") or tag.get("uri"),
+                        "relevance_score": float(tag.get("score") or 0.0),
+                        "confidence": float(tag.get("confidence") or 0.5),
+                    }
+                )
 
             return {
                 "title": obj.get("title"),
@@ -111,7 +93,7 @@ class DiffbotClient:
             return None
 
     def _classify_entity_type(self, tag: dict[str, Any]) -> str:
-        """Map Diffbot tag types to Phase 7 entity_type categories."""
+        """Map Diffbot tag types to internal entity_type categories."""
         types = tag.get("types", [])
         if any("Brand" in t or "Product" in t for t in types):
             return "brand"

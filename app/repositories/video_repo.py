@@ -1,7 +1,5 @@
-"""
-Nexura Phase 7 — Video Repository
-Data access layer for YouTube videos and synced comments.
-"""
+"""Video repository for YouTube video data and synced comments."""
+
 from __future__ import annotations
 from typing import Sequence
 from datetime import datetime, timezone
@@ -19,42 +17,21 @@ class VideoRepository:
     @staticmethod
     def get_by_id(video_id: int) -> Video | None:
         """Fetch video with its top comments eager-loaded."""
-        return (
-            db.session.query(Video)
-            .options(selectinload(Video.video_comments))
-            .filter(Video.id == video_id)
-            .first()
-        )
+        return db.session.query(Video).options(selectinload(Video.video_comments)).filter(Video.id == video_id).first()
 
     @staticmethod
     def get_top_comments(video_id: int, limit: int = 15) -> list[VideoComment]:
-        """Fetch top comments for a video ordered by like_count."""
-        return (
-            db.session.query(VideoComment)
-            .filter(VideoComment.video_id == video_id)
-            .order_by(desc(VideoComment.like_count))
-            .limit(limit)
-            .all()
-        )
+        """Fetch top comments for a video ordered by like count."""
+        return db.session.query(VideoComment).filter(VideoComment.video_id == video_id).order_by(desc(VideoComment.like_count)).limit(limit).all()
 
     @staticmethod
     def get_by_external_id(external_id: str, platform: str = "youtube") -> Video | None:
-        """Fetch video by YouTube external ID for deduplication."""
-        return (
-            db.session.query(Video)
-            .filter(Video.external_id == external_id, Video.platform == platform)
-            .first()
-        )
+        """Fetch video by external ID for deduplication."""
+        return db.session.query(Video).filter(Video.external_id == external_id, Video.platform == platform).first()
 
     @staticmethod
-    def list_videos(
-        *,
-        channel_name: str | None = None,
-        creator: str | None = None,
-        page: int = 1,
-        per_page: int = 24,
-    ) -> tuple[list[Video], int]:
-        """List videos with optional channel/creator filter and pagination."""
+    def list_videos(*, channel_name: str | None = None, creator: str | None = None, page: int = 1, per_page: int = 24) -> tuple[list[Video], int]:
+        """List videos with optional channel or creator filter and pagination."""
         query = db.session.query(Video)
 
         if channel_name:
@@ -63,12 +40,7 @@ class VideoRepository:
             query = query.filter(Video.creator == creator)
 
         total = query.with_entities(func.count(Video.id)).scalar() or 0
-        videos = (
-            query.order_by(desc(Video.published_at))
-            .offset(max(0, (page - 1) * per_page))
-            .limit(per_page)
-            .all()
-        )
+        videos = query.order_by(desc(Video.published_at)).offset(max(0, (page - 1) * per_page)).limit(per_page).all()
         return videos, total
 
     @staticmethod
@@ -91,7 +63,7 @@ class VideoRepository:
         published_at: datetime | None = None,
         platform_metadata: dict | None = None,
     ) -> Video:
-        """Create a new Video record."""
+        """Create and persist a new Video record."""
         video = Video(
             external_id=external_id,
             platform=platform,
@@ -127,11 +99,7 @@ class VideoRepository:
         published_at: datetime | None = None,
     ) -> VideoComment:
         """Upsert a top YouTube comment for a video."""
-        comment = (
-            db.session.query(VideoComment)
-            .filter(VideoComment.external_id == external_id)
-            .first()
-        )
+        comment = db.session.query(VideoComment).filter(VideoComment.external_id == external_id).first()
         if comment:
             comment.like_count = like_count
             comment.reply_count = reply_count

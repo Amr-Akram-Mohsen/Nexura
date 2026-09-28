@@ -62,7 +62,7 @@
   {# Content Area #}
   {% if items %}
 
-    {# ── TAB 1: READING HISTORY (Compact, streamlined list) ───────────────── #}
+    {# TAB 1: READING HISTORY (Compact, streamlined list) #}
     {% if tab == 'history' %}
     <div class="library-history-list" role="feed" aria-label="Reading history">
       {% for item in items %}
@@ -121,7 +121,7 @@
       {% endfor %}
     </div>
 
-    {# ── TAB 2: SAVED ITEMS (Medium tailored horizontal cards) ───────────── #}
+    {# TAB 2: SAVED ITEMS (Medium tailored horizontal cards) #}
     {% else %}
     <div class="library-saved-grid">
       {% for item in items %}
@@ -220,4 +220,3 @@
 
 </div>
 {% endblock %}
-

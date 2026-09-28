@@ -1,10 +1,5 @@
-"""
-Nexura Phase 7 — Multichannel Content Syndication Service (§20)
-Implements:
-1. Rule-based platform draft generator (YouTube, Pinterest, Instagram, TikTok, Twitter/X, LinkedIn).
-2. Platform Engagement Index computation: Index = 2.0*Likes + 5.0*Clicks + 10.0*Shares + 0.1*Views.
-3. Distribution post scheduling and management.
-"""
+"""Multichannel social draft generation and distribution tracking service."""
+
 from __future__ import annotations
 import logging
 import re
@@ -20,13 +15,8 @@ from app.models.distribution import DistributionPlatform, DistributionPost
 log = logging.getLogger(__name__)
 
 
-def calculate_platform_engagement_index(
-    likes: int, clicks: int, shares: int, views: int
-) -> float:
-    """
-    Computes weighted channel effectiveness score (Phase 7 §20):
-    Index = 2.0*Likes + 5.0*Clicks + 10.0*Shares + 0.1*Views
-    """
+def calculate_platform_engagement_index(likes: int, clicks: int, shares: int, views: int) -> float:
+    """Compute weighted channel engagement index: 2*likes + 5*clicks + 10*shares + 0.1*views."""
     return round((2.0 * likes) + (5.0 * clicks) + (10.0 * shares) + (0.1 * views), 2)
 
 
@@ -35,9 +25,7 @@ class SyndicationService:
 
     @staticmethod
     def generate_drafts_for_article(content_id: int) -> dict[str, Any]:
-        """
-        Transforms an article into platform-specific social drafts (Phase 7 §20).
-        """
+        """Generate platform-tailored social media drafts for a published article."""
         content = db.session.get(Content, content_id)
         if not content:
             return {}
@@ -97,12 +85,7 @@ class SyndicationService:
     @staticmethod
     def get_syndication_stats() -> dict[str, Any]:
         """Fetch overall social syndication reach metrics."""
-        posts = (
-            db.session.query(DistributionPost)
-            .order_by(desc(DistributionPost.created_at))
-            .limit(30)
-            .all()
-        )
+        posts = db.session.query(DistributionPost).order_by(desc(DistributionPost.created_at)).limit(30).all()
 
         total_posts = db.session.query(func.count(DistributionPost.id)).scalar() or 0
         total_views = db.session.query(func.coalesce(func.sum(DistributionPost.views_count), 0)).scalar() or 0
@@ -111,10 +94,7 @@ class SyndicationService:
         total_likes = db.session.query(func.coalesce(func.sum(DistributionPost.likes_count), 0)).scalar() or 0
 
         engagement_index = calculate_platform_engagement_index(
-            likes=int(total_likes),
-            clicks=int(total_clicks),
-            shares=int(total_shares),
-            views=int(total_views),
+            likes=int(total_likes), clicks=int(total_clicks), shares=int(total_shares), views=int(total_views)
         )
 
         return {

@@ -17,7 +17,6 @@ down_revision = "0002_phase7_brands"
 branch_labels = None
 depends_on = None
 
-
 def upgrade() -> None:
     conn = op.get_bind()
 
@@ -114,7 +113,6 @@ def upgrade() -> None:
         batch_op.alter_column("content_id", server_default=None)
 
     op.create_index("ix_distribution_posts_content", "distribution_posts", ["content_id"])
-
 
 def downgrade() -> None:
     pass

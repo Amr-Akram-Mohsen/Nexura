@@ -1,8 +1,5 @@
-"""
-Nexura Phase 7 — Library Blueprint (§12, §15)
-Handles: /library?tab=history|saved
-Reading history and organized save collections for authenticated users.
-"""
+"""Library blueprint for reading history and saved bookmark collections."""
+
 from __future__ import annotations
 import logging
 import math
@@ -23,7 +20,7 @@ PER_PAGE = 24
 @library_bp.route("/library")
 @login_required
 def index():
-    """User library — reading history and saved collections (§15)."""
+    """Render user library with history or saved collections tab."""
     tab = request.args.get("tab", "history")
     page = request.args.get("page", 1, type=int)
 
@@ -31,32 +28,16 @@ def index():
 
     if tab == "saved":
         collection = request.args.get("collection")
-        items_raw, total = UserRepository.get_user_saves(
-            current_user.id,
-            collection_name=collection,
-            page=page,
-            per_page=PER_PAGE,
-        )
+        items_raw, total = UserRepository.get_user_saves(current_user.id, collection_name=collection, page=page, per_page=PER_PAGE)
     else:
-        tab = "history"  # Normalize
-        items_raw, total = UserRepository.get_user_history(
-            current_user.id,
-            page=page,
-            per_page=PER_PAGE,
-        )
+        tab = "history"
+        items_raw, total = UserRepository.get_user_history(current_user.id, page=page, per_page=PER_PAGE)
 
     items = [serialize_content_card(c) for c in items_raw]
     total_pages = max(1, math.ceil(total / PER_PAGE))
 
     return render_template(
-        "public/library.html",
-        items=items,
-        tab=tab,
-        total=total,
-        history_count=history_count,
-        saved_count=saved_count,
-        page=page,
-        total_pages=total_pages,
+        "public/library.html", items=items, tab=tab, total=total, history_count=history_count, saved_count=saved_count, page=page, total_pages=total_pages
     )
 
 
@@ -78,4 +59,3 @@ def remove_history_item(content_id: int):
         return jsonify({"success": True})
     flash("Item removed from history.", "info")
     return redirect(url_for("library.index", tab="history"))
-

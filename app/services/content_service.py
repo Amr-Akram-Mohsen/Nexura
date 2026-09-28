@@ -1,16 +1,11 @@
-"""
-Nexura Phase 7 — Content Lifecycle & Editorial Readiness Service (§9.2, §25)
-Implements:
-1. Publishing lifecycle transitions (publish, unpublish, archive) with cascaded invalidation.
-2. 5-Dimension Editorial Publishing Readiness Index (0–100 score) (§9.2).
-3. Holistic Content Score computation.
-"""
+"""Content lifecycle, editorial readiness evaluation, and scoring service."""
+
 from __future__ import annotations
 import logging
 import math
 from datetime import datetime, timezone
 from typing import Any
-
+from dataclasses import dataclass
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.extensions import db
@@ -23,93 +18,116 @@ from app.repositories.content_repo import ContentRepository
 log = logging.getLogger(__name__)
 
 
-def evaluate_editorial_readiness(article_id: int) -> dict[str, Any]:
-    """
-    Evaluates 5-dimension Publishing Readiness Index (0–100 score) (Phase 7 §9.2):
-    1. Core Metadata (25 pts): valid title, non-empty description/summary
-    2. Body & Extraction (30 pts): word count >= 150, scraped HTML body present
-    3. Taxonomy Mapping (20 pts): Category assigned, >= 2 Entity tags linked
-    4. Media Assets (15 pts): Valid high-res thumbnail / header image
-    5. Source Attribution (10 pts): Known publisher, source authority >= 40
-    """
-    article = db.session.query(Article).filter(Article.id == article_id).first()
-    if not article:
-        return {"score": 0, "tier": "Not Ready", "breakdown": {}}
+@dataclass
+class ReadinessResult:
+    """Editorial Publishing Readiness Index result."""
 
-    content = (
-        db.session.query(Content)
-        .options(
-            joinedload(Content.category),
-            joinedload(Content.source),
-            selectinload(Content.content_entities),
-        )
-        .filter(Content.object_type == "article", Content.object_id == article_id)
-        .first()
-    )
+    total: int
+    core_metadata: int
+    body_extraction: int
+    taxonomy_mapping: int
+    media_assets: int
+    source_attribution: int
 
+    @property
+    def score(self) -> int:
+        return self.total
+
+    @property
+    def tier(self) -> str:
+        if self.total >= 80:
+            return "Ready"
+        if self.total >= 60:
+            return "Almost Ready"
+        if self.total >= 40:
+            return "Needs Work"
+        return "Not Ready"
+
+    @property
+    def tier_class(self) -> str:
+        return {"Ready": "success", "Almost Ready": "warning", "Needs Work": "warning", "Not Ready": "danger"}[self.tier]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "score": self.total,
+            "tier": self.tier,
+            "tier_class": self.tier_class,
+            "breakdown": {
+                "core_metadata": self.core_metadata,
+                "body_extraction": self.body_extraction,
+                "taxonomy_mapping": self.taxonomy_mapping,
+                "media_assets": self.media_assets,
+                "source_attribution": self.source_attribution,
+            },
+        }
+
+
+def compute_readiness(article: Any, content: Any) -> ReadinessResult:
+    """Compute 5-dimension Editorial Readiness Index (0-100 score)."""
     pts_metadata = 0
     pts_body = 0
     pts_taxonomy = 0
     pts_media = 0
     pts_source = 0
 
-    # 1. Core Metadata (25 pts)
-    if article.title and len(article.title.strip()) >= 5:
-        pts_metadata += 15
-    if (article.description and len(article.description.strip()) >= 10) or (article.summary and len(article.summary.strip()) >= 10):
-        pts_metadata += 10
+    if article:
+        if getattr(article, "title", None) and len(str(article.title).strip()) >= 5:
+            pts_metadata += 15
+        desc = getattr(article, "description", None) or ""
+        summ = getattr(article, "summary", None) or ""
+        if len(str(desc).strip()) >= 10 or len(str(summ).strip()) >= 10:
+            pts_metadata += 10
 
-    # 2. Body & Extraction (30 pts)
-    words = article.word_count or 0
-    if words >= 250:
-        pts_body += 20
-    elif words >= 150:
-        pts_body += 10
+        words = getattr(article, "word_count", 0) or 0
+        if words >= 250:
+            pts_body += 20
+        elif words >= 150:
+            pts_body += 10
 
-    if article.content_html and len(article.content_html.strip()) >= 50:
-        pts_body += 10
+        html_body = getattr(article, "content_html", None) or ""
+        if len(str(html_body).strip()) >= 50:
+            pts_body += 10
 
-    # 3. Taxonomy Mapping (20 pts)
-    if content and content.category_id:
-        pts_taxonomy += 10
-    entity_count = len(content.content_entities) if content and content.content_entities else 0
-    if entity_count >= 2:
-        pts_taxonomy += 10
-    elif entity_count >= 1:
-        pts_taxonomy += 5
+        img = getattr(article, "image_url", None) or ""
+        if str(img).startswith("http"):
+            pts_media += 15
 
-    # 4. Media Assets (15 pts)
-    if article.image_url and article.image_url.startswith("http"):
-        pts_media += 15
+    if content:
+        if getattr(content, "category_id", None):
+            pts_taxonomy += 10
+        entities = getattr(content, "content_entities", None)
+        entity_count = len(entities) if entities is not None else 0
+        if entity_count >= 2:
+            pts_taxonomy += 10
+        elif entity_count >= 1:
+            pts_taxonomy += 5
 
-    # 5. Source Attribution (10 pts)
-    if content and content.source:
-        pts_source += 5
-        if (content.source.authority_score or 0) >= 40:
+        source = getattr(content, "source", None)
+        if source:
             pts_source += 5
+            if (getattr(source, "authority_score", 0) or 0) >= 40:
+                pts_source += 5
 
-    total_score = pts_metadata + pts_body + pts_taxonomy + pts_media + pts_source
+    total = min(pts_metadata + pts_body + pts_taxonomy + pts_media + pts_source, 100)
+    return ReadinessResult(
+        total=total, core_metadata=pts_metadata, body_extraction=pts_body, taxonomy_mapping=pts_taxonomy, media_assets=pts_media, source_attribution=pts_source
+    )
 
-    if total_score >= 80:
-        tier = "Ready"
-    elif total_score >= 60:
-        tier = "Almost Ready"
-    elif total_score >= 40:
-        tier = "Needs Work"
-    else:
-        tier = "Not Ready"
 
-    return {
-        "score": total_score,
-        "tier": tier,
-        "breakdown": {
-            "core_metadata": pts_metadata,
-            "body_extraction": pts_body,
-            "taxonomy_mapping": pts_taxonomy,
-            "media_assets": pts_media,
-            "source_attribution": pts_source,
-        },
-    }
+def evaluate_editorial_readiness(article_id: int) -> dict[str, Any]:
+    """Evaluate publishing readiness score and breakdown for an article ID."""
+    article = db.session.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        return {"score": 0, "tier": "Not Ready", "breakdown": {}}
+
+    content = (
+        db.session.query(Content)
+        .options(joinedload(Content.category), joinedload(Content.source), selectinload(Content.content_entities))
+        .filter(Content.object_type == "article", Content.object_id == article_id)
+        .first()
+    )
+
+    return compute_readiness(article, content).to_dict()
 
 
 class ContentService:
@@ -168,10 +186,7 @@ class ContentService:
 
     @staticmethod
     def calculate_content_score(content: Content) -> float:
-        """
-        Recalculate holistic content score:
-        Base = Quality * 0.4 + ln(1 + Views) * 0.3 + Reactions * 0.2 + Freshness * 0.1
-        """
+        """Calculate and store composite content score."""
         quality = 50.0
         if content.object_type == "article":
             readiness = evaluate_editorial_readiness(content.object_id)
@@ -179,11 +194,7 @@ class ContentService:
 
         views = max(0, content.view_count or 0)
         pop_term = math.log(1.0 + views) * 5.0
-        engagement_term = (
-            ((content.like_count or 0) * 2.0)
-            + ((content.save_count or 0) * 3.0)
-            + ((content.comment_count or 0) * 2.5)
-        )
+        engagement_term = ((content.like_count or 0) * 2.0) + ((content.save_count or 0) * 3.0) + ((content.comment_count or 0) * 2.5)
 
         freshness_term = 10.0
         if content.published_at:
@@ -211,7 +222,7 @@ class ContentService:
 
     @staticmethod
     def parse_content_id(slug_or_id: str | int | None) -> int | None:
-        """Extract integer content ID from either a pure ID or slugified string (e.g. 123-my-title)."""
+        """Extract integer content ID from either a pure ID or slugified string."""
         if slug_or_id is None:
             return None
         if isinstance(slug_or_id, int):
@@ -223,4 +234,3 @@ class ContentService:
         if prefix.isdigit():
             return int(prefix)
         return None
-

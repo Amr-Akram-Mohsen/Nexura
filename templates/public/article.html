@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "macros/content_card.html" import content_card %}
+{% from "macros/comments.html" import comments_section %}
 
 {% block title %}{{ article.title }}{% endblock %}
 {% block description %}{{ article.summary or article.preview or (article.content_text[:160] if article.content_text else
@@ -33,15 +34,11 @@
 </script>
 {% endblock %}
 
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/video.js') }}" defer></script>
-{% endblock %}
-
 {% block content %}
 <div class="container">
   <div class="content-with-sidebar" style="padding-top: var(--space-8);">
 
-    {# ── Article Main Column ──────────────────────────────────────────────── #}
+    {# Article Main Column #}
     <article itemscope itemtype="https://schema.org/NewsArticle">
 
       {# Article header #}
@@ -113,7 +110,7 @@
         loading="eager" fetchpriority="high" itemprop="image">
       {% endif %}
 
-      {# ── Interaction bar ── #}
+      {# Interaction bar #}
       <div class="interaction-bar" aria-label="Article interactions">
         <button class="interaction-btn {% if user_state.liked %}active{% endif %}" data-interaction="like"
           data-content-id="{{ content.id }}" aria-label="Like this article"
@@ -136,6 +133,13 @@
           </svg>
           <span data-count>{{ content.dislike_count or 0 }}</span>
         </button>
+
+        <a class="interaction-btn" href="#comments" aria-label="Comments" data-action="scroll-to-comments">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span data-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
+        </a>
 
         <button class="interaction-btn {% if user_state.saved %}active{% endif %}" data-interaction="save"
           data-content-id="{{ content.id }}"
@@ -188,9 +192,12 @@
       </div>
       {% endif %}
 
+      {# Discussion / Comments Section #}
+      {{ comments_section(content, comments_tree, current_user) }}
+
     </article>
 
-    {# ── Sidebar ──────────────────────────────────────────────────────────── #}
+    {# Sidebar #}
     <aside class="sidebar" aria-label="Related content">
 
       {# Related articles widget #}
@@ -236,7 +243,7 @@
     </aside>
   </div>
 
-  {# ── Related Content Section (below article) ──────────────────────────── #}
+  {# Related Content Section (below article) #}
   {% if related_items %}
   <section aria-labelledby="related-content"
     style="margin-top: var(--space-12); padding-top: var(--space-8); border-top: 1px solid var(--border-subtle);">

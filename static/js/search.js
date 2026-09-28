@@ -1,12 +1,6 @@
-/**
- * Nexura Phase 7 — Search Autocomplete + TreeWalker Highlighting (search.js)
- * §24 — Non-destructive text node highlighting using native TreeWalker.
- * §11.3 — Autocomplete API: /api/search/suggestions?q=... with 60s caching.
- */
-
+/** Search autocomplete suggestions and DOM text highlighting. */
 'use strict';
 
-// ─── Autocomplete ────────────────────────────────────────────────────────────
 const SearchAutocomplete = {
   input: null,
   dropdown: null,
@@ -17,7 +11,7 @@ const SearchAutocomplete = {
   currentQuery: '',
 
   init() {
-    this.input    = document.querySelector('#search-input, [data-search-input]');
+    this.input = document.querySelector('#search-input, [data-search-input]');
     this.dropdown = document.querySelector('#autocomplete-dropdown, [data-search-dropdown]');
     if (!this.input || !this.dropdown) return;
 
@@ -85,7 +79,7 @@ const SearchAutocomplete = {
 
   _render(q, data) {
     const articles = data.articles || [];
-    const videos   = data.videos   || [];
+    const videos = data.videos || [];
 
     if (!articles.length && !videos.length) { this._close(); return; }
 
@@ -119,18 +113,12 @@ const SearchAutocomplete = {
     this._open();
   },
 
-  _open()  { this.dropdown.classList.add('open'); },
+  _open() { this.dropdown.classList.add('open'); },
   _close() { this.dropdown.classList.remove('open'); },
-  _esc(s)  { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); },
+  _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); },
 };
 
-// ─── TreeWalker Search Highlighting (§24) ───────────────────────────────────
 const SearchHighlighter = {
-  /**
-   * Highlights all occurrences of `query` within `rootEl`
-   * using a native TreeWalker that traverses text nodes only.
-   * Never touches innerHTML on nodes that contain event listeners.
-   */
   highlight(rootEl, query) {
     if (!rootEl || !query || query.length < 2) return;
 
@@ -158,7 +146,6 @@ const SearchHighlighter = {
     const textNodes = [];
     while (walker.nextNode()) {
       textNodes.push(walker.currentNode);
-      // Reset lastIndex since test() advances it
       pattern.lastIndex = 0;
     }
 
@@ -193,7 +180,6 @@ const SearchHighlighter = {
   },
 };
 
-// ─── Search Results Page Highlighting ───────────────────────────────────────
 function initSearchHighlighting() {
   const q = new URLSearchParams(window.location.search).get('q');
   if (!q) return;
@@ -204,11 +190,9 @@ function initSearchHighlighting() {
   }
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   SearchAutocomplete.init();
   initSearchHighlighting();
 });
 
-// Export for use in other modules if needed
 window.SearchHighlighter = SearchHighlighter;

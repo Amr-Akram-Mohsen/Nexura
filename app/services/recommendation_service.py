@@ -1,12 +1,5 @@
-"""
-Nexura Phase 7 — Recommendation Service (§16)
-Implements:
-1. Multi-signal content relevance formula:
-   RelevanceScore = 3.0*N_topics + 2.0*I_brand + 1.5*I_category + 0.5*I_section + 0.8*D(t) + 0.4*ln(1+V)
-   where D(t) = exp(-ln(2)*delta_t / 30_days)
-2. Personalized Discovery Feed (50% Category + 50% Brand/Topic affinity interleaving).
-3. User interest graph weight updates.
-"""
+"""Recommendation service for content relevance scoring and discovery feeds."""
+
 from __future__ import annotations
 import logging
 import math
@@ -29,31 +22,15 @@ HALF_LIFE_DAYS = 30.0
 LN_2 = math.log(2)
 
 
-def calculate_relevance_score(
-    candidate: Content,
-    reference: Content,
-    now: datetime | None = None,
-) -> float:
-    """
-    Computes deterministic multi-factor relevance between candidate and reference content (Phase 7 §16.1).
-    Score = 3.0*N_shared_topics + 2.0*I_shared_brand + 1.5*I_same_category + 0.5*I_same_section + 0.8*D(t) + 0.4*ln(1+V)
-    """
+def calculate_relevance_score(candidate: Content, reference: Content, now: datetime | None = None) -> float:
+    """Compute multi-factor relevance between candidate and reference content."""
     if candidate.id == reference.id:
         return 0.0
 
     now_utc = now or datetime.now(timezone.utc)
 
-    # 1. Shared Topics & Brands
-    ref_entities = {
-        ce.entity_id: ce.entity.entity_type
-        for ce in (reference.content_entities or [])
-        if ce.entity
-    }
-    cand_entities = {
-        ce.entity_id: ce.entity.entity_type
-        for ce in (candidate.content_entities or [])
-        if ce.entity
-    }
+    ref_entities = {ce.entity_id: ce.entity.entity_type for ce in (reference.content_entities or []) if ce.entity}
+    cand_entities = {ce.entity_id: ce.entity.entity_type for ce in (candidate.content_entities or []) if ce.entity}
 
     shared_ids = set(ref_entities.keys()) & set(cand_entities.keys())
     shared_topics_count = 0
@@ -68,12 +45,9 @@ def calculate_relevance_score(
 
     score_topics = 3.0 * shared_topics_count
     score_brand = 2.0 if shared_brand else 0.0
-
-    # 2. Taxonomy Hierarchy Alignment
     score_category = 1.5 if candidate.category_id and candidate.category_id == reference.category_id else 0.0
     score_section = 0.5 if candidate.section_id and candidate.section_id == reference.section_id else 0.0
 
-    # 3. Recency Exponential Decay: D(t) = exp(-ln(2) * delta_t / 30)
     delta_days = 0.0
     if candidate.published_at:
         cand_pub = candidate.published_at
@@ -84,7 +58,6 @@ def calculate_relevance_score(
     decay = math.exp(-1.0 * LN_2 * delta_days / HALF_LIFE_DAYS)
     score_recency = 0.8 * decay
 
-    # 4. Popularity Scaling: 0.4 * ln(1 + V)
     views = max(0, candidate.view_count or 0)
     score_popularity = 0.4 * math.log(1.0 + views)
 
@@ -96,18 +69,12 @@ class RecommendationService:
     """Service layer for computing recommendations and managing user interest vectors."""
 
     @staticmethod
-    def get_related_recommendations(
-        content_id: int,
-        limit: int = 6,
-    ) -> list[Content]:
-        """
-        Rank candidate related items using the multi-signal relevance formula (Phase 7 §16.1).
-        """
+    def get_related_recommendations(content_id: int, limit: int = 6) -> list[Content]:
+        """Rank candidate related items using the multi-signal relevance formula."""
         reference = ContentRepository.get_by_id(content_id, published_only=True)
         if not reference:
             return []
 
-        # Candidate pool: published items in same category or sharing any entity
         entity_ids = [ce.entity_id for ce in reference.content_entities if ce.entity_id]
 
         query = (
@@ -118,11 +85,7 @@ class RecommendationService:
                 joinedload(Content.source),
                 selectinload(Content.content_entities).joinedload(ContentEntity.entity),
             )
-            .filter(
-                Content.id != content_id,
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(Content.id != content_id, Content.is_active.is_(True), Content.is_published.is_(True))
         )
 
         conditions = []
@@ -131,13 +94,7 @@ class RecommendationService:
         if reference.section_id:
             conditions.append(Content.section_id == reference.section_id)
         if entity_ids:
-            conditions.append(
-                Content.id.in_(
-                    db.session.query(ContentEntity.content_id)
-                    .filter(ContentEntity.entity_id.in_(entity_ids))
-                    .scalar_subquery()
-                )
-            )
+            conditions.append(Content.id.in_(db.session.query(ContentEntity.content_id).filter(ContentEntity.entity_id.in_(entity_ids)).scalar_subquery()))
 
         if conditions:
             query = query.filter(or_(*conditions))
@@ -145,49 +102,21 @@ class RecommendationService:
         candidates = query.limit(50).all()
         ContentRepository.resolve_polymorphic_payloads(candidates)
 
-        scored = [
-            (candidate, calculate_relevance_score(candidate, reference))
-            for candidate in candidates
-        ]
+        scored = [(candidate, calculate_relevance_score(candidate, reference)) for candidate in candidates]
         scored.sort(key=lambda x: x[1], reverse=True)
 
         return [item[0] for item in scored[:limit]]
 
     @staticmethod
-    def get_personalized_discovery_feed(
-        user_id: int,
-        limit: int = 24,
-    ) -> list[Content]:
-        """
-        Generate a personalized feed for an authenticated user (Phase 7 §16.2):
-        - Extracts top category & entity affinities from read (last 20) and saved items.
-        - Interleaves 50% category-based and 50% entity/brand-based recommendations.
-        - Excludes seen content items.
-        """
-        # 1. Collect user's seen content IDs
-        seen_views = [
-            r[0]
-            for r in db.session.query(View.content_id)
-            .filter(View.user_id == user_id)
-            .order_by(desc(View.created_at))
-            .limit(100)
-            .all()
-        ]
-        seen_saves = [
-            r[0]
-            for r in db.session.query(Save.content_id)
-            .filter(Save.user_id == user_id)
-            .all()
-        ]
+    def get_personalized_discovery_feed(user_id: int, limit: int = 24) -> list[Content]:
+        """Generate a personalized discovery feed for an authenticated user."""
+        seen_views = [r[0] for r in db.session.query(View.content_id).filter(View.user_id == user_id).order_by(desc(View.created_at)).limit(100).all()]
+        seen_saves = [r[0] for r in db.session.query(Save.content_id).filter(Save.user_id == user_id).all()]
         seen_ids = set(seen_views + seen_saves)
 
-        # 2. Extract user's affinity category & entity IDs
         history_contents = (
             db.session.query(Content)
-            .options(
-                joinedload(Content.category),
-                selectinload(Content.content_entities).joinedload(ContentEntity.entity),
-            )
+            .options(joinedload(Content.category), selectinload(Content.content_entities).joinedload(ContentEntity.entity))
             .filter(Content.id.in_(seen_ids or [-1]))
             .all()
         )
@@ -205,7 +134,6 @@ class RecommendationService:
         top_category_ids = sorted(category_counts, key=category_counts.get, reverse=True)[:5]
         top_entity_ids = sorted(entity_counts, key=entity_counts.get, reverse=True)[:10]
 
-        # 3. Fetch Category Recommendations (50% target)
         cat_items: list[Content] = []
         if top_category_ids:
             cat_query = (
@@ -216,22 +144,13 @@ class RecommendationService:
                     joinedload(Content.source),
                     selectinload(Content.content_entities).joinedload(ContentEntity.entity),
                 )
-                .filter(
-                    Content.category_id.in_(top_category_ids),
-                    Content.is_active.is_(True),
-                    Content.is_published.is_(True),
-                )
+                .filter(Content.category_id.in_(top_category_ids), Content.is_active.is_(True), Content.is_published.is_(True))
             )
             if seen_ids:
                 cat_query = cat_query.filter(~Content.id.in_(seen_ids))
 
-            cat_items = (
-                cat_query.order_by(desc(Content.score), desc(Content.published_at))
-                .limit(limit)
-                .all()
-            )
+            cat_items = cat_query.order_by(desc(Content.score), desc(Content.published_at)).limit(limit).all()
 
-        # 4. Fetch Brand / Topic Recommendations (50% target)
         entity_items: list[Content] = []
         if top_entity_ids:
             ent_query = (
@@ -243,22 +162,13 @@ class RecommendationService:
                     selectinload(Content.content_entities).joinedload(ContentEntity.entity),
                 )
                 .join(Content.content_entities)
-                .filter(
-                    ContentEntity.entity_id.in_(top_entity_ids),
-                    Content.is_active.is_(True),
-                    Content.is_published.is_(True),
-                )
+                .filter(ContentEntity.entity_id.in_(top_entity_ids), Content.is_active.is_(True), Content.is_published.is_(True))
             )
             if seen_ids:
                 ent_query = ent_query.filter(~Content.id.in_(seen_ids))
 
-            entity_items = (
-                ent_query.order_by(desc(Content.score), desc(Content.published_at))
-                .limit(limit)
-                .all()
-            )
+            entity_items = ent_query.order_by(desc(Content.score), desc(Content.published_at)).limit(limit).all()
 
-        # 5. Interleave 50/50
         interleaved: list[Content] = []
         seen_in_feed: set[int] = set()
 
@@ -273,7 +183,6 @@ class RecommendationService:
             if len(interleaved) >= limit:
                 break
 
-        # Fallback to popular trending if user has no/little history
         if len(interleaved) < limit:
             remaining = limit - len(interleaved)
             fallback = (
@@ -285,9 +194,7 @@ class RecommendationService:
                     selectinload(Content.content_entities).joinedload(ContentEntity.entity),
                 )
                 .filter(
-                    Content.is_active.is_(True),
-                    Content.is_published.is_(True),
-                    ~Content.id.in_(seen_in_feed | seen_ids if (seen_in_feed | seen_ids) else [-1]),
+                    Content.is_active.is_(True), Content.is_published.is_(True), ~Content.id.in_(seen_in_feed | seen_ids if (seen_in_feed | seen_ids) else [-1])
                 )
                 .order_by(desc(Content.score), desc(Content.view_count), desc(Content.published_at))
                 .limit(remaining)
@@ -298,60 +205,32 @@ class RecommendationService:
         return ContentRepository.resolve_polymorphic_payloads(interleaved[:limit])
 
     @staticmethod
-    def update_user_interest_graph(
-        user_id: int,
-        content_id: int,
-        interaction_weight: float = 1.0,
-    ) -> None:
-        """
-        Record and update user affinity in UserInterest and UserEntityInterest tables (Phase 7 §16).
-        Weights: view=1.0, like=2.0, save=3.0, comment=2.5, share=3.5.
-        """
+    def update_user_interest_graph(user_id: int, content_id: int, interaction_weight: float = 1.0) -> None:
+        """Record and update user affinity in UserInterest and UserEntityInterest tables."""
         content = db.session.get(Content, content_id)
         if not content:
             return
 
         now = datetime.now(timezone.utc)
 
-        # Upsert UserInterest
-        user_interest = (
-            db.session.query(UserInterest)
-            .filter(
-                UserInterest.user_id == user_id,
-                UserInterest.content_id == content_id,
-            )
-            .first()
-        )
+        user_interest = db.session.query(UserInterest).filter(UserInterest.user_id == user_id, UserInterest.content_id == content_id).first()
 
         if not user_interest:
-            user_interest = UserInterest(
-                user_id=user_id,
-                content_id=content_id,
-                interaction_count=1,
-                last_interaction_at=now,
-            )
+            user_interest = UserInterest(user_id=user_id, content_id=content_id, interaction_count=1, last_interaction_at=now)
             db.session.add(user_interest)
             db.session.flush()
         else:
             user_interest.interaction_count += 1
             user_interest.last_interaction_at = now
 
-        # Propagate to UserEntityInterest for content entities and category
         if content.category_id:
             cat_interest = (
                 db.session.query(UserEntityInterest)
-                .filter(
-                    UserEntityInterest.user_interest_id == user_interest.id,
-                    UserEntityInterest.category_id == content.category_id,
-                )
+                .filter(UserEntityInterest.user_interest_id == user_interest.id, UserEntityInterest.category_id == content.category_id)
                 .first()
             )
             if not cat_interest:
-                cat_interest = UserEntityInterest(
-                    user_interest_id=user_interest.id,
-                    category_id=content.category_id,
-                    score=interaction_weight,
-                )
+                cat_interest = UserEntityInterest(user_interest_id=user_interest.id, category_id=content.category_id, score=interaction_weight)
                 db.session.add(cat_interest)
             else:
                 cat_interest.score += interaction_weight
@@ -360,17 +239,12 @@ class RecommendationService:
             if ce.entity_id:
                 ent_interest = (
                     db.session.query(UserEntityInterest)
-                    .filter(
-                        UserEntityInterest.user_interest_id == user_interest.id,
-                        UserEntityInterest.entity_id == ce.entity_id,
-                    )
+                    .filter(UserEntityInterest.user_interest_id == user_interest.id, UserEntityInterest.entity_id == ce.entity_id)
                     .first()
                 )
                 if not ent_interest:
                     ent_interest = UserEntityInterest(
-                        user_interest_id=user_interest.id,
-                        entity_id=ce.entity_id,
-                        score=interaction_weight * (ce.relevance_score or 1.0),
+                        user_interest_id=user_interest.id, entity_id=ce.entity_id, score=interaction_weight * (ce.relevance_score or 1.0)
                     )
                     db.session.add(ent_interest)
                 else:

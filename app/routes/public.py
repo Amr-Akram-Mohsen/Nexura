@@ -1,136 +1,139 @@
-"""
-Nexura Phase 7 — Public Routes Blueprint (§12)
-Handles home, section, category, topic, article, video, search, autocomplete API.
-"""
+"""Public routes blueprint for feeds, taxonomies, details, and search."""
+
 from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from flask import (
-    Blueprint, abort, jsonify, redirect, render_template,
-    request, url_for, current_app,
-)
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from app.extensions import cache, db
-from app.caching import (
-    CACHE_TTL_HOME, CACHE_TTL_CONTENT_PAGE,
-    CACHE_TTL_SEARCH_RESULTS, CACHE_TTL_SEARCH_SUGGESTIONS,
-    CACHE_TTL_LAYOUT,
-)
-from app.models.taxonomy import Section, Category, Entity
-from app.models.content import Content, Article
-from app.models.video import Video, VideoComment
+from app.caching import CACHE_TTL_HOME, CACHE_TTL_CONTENT_PAGE, CACHE_TTL_SEARCH_RESULTS, CACHE_TTL_SEARCH_SUGGESTIONS, CACHE_TTL_LAYOUT
+from app.models.taxonomy import Category, Entity
+from app.models.article import Article
+from app.models.video import Video
 from app.models.source import Source
-from app.models.interaction import View
 from app.repositories.content_repo import ContentRepository
 from app.repositories.article_repo import ArticleRepository
 from app.repositories.video_repo import VideoRepository
 from app.repositories.taxonomy_repo import TaxonomyRepository
 from app.repositories.search_repo import SearchRepository
-from app.repositories.user_repo import UserRepository
 from app.repositories.analytics_repo import AnalyticsRepository
+from app.serializers.content_serializers import serialize_content_card, _format_duration
 from config import SOCIAL_LINKS
-from app.serializers.content_serializers import serialize_content_card, serialize_content_detail
 
 log = logging.getLogger(__name__)
 
 public_bp = Blueprint("public", __name__)
 
 
-# ─── Context processor — inject nav_sections into all templates ───────────────
+@public_bp.route("/health")
+def health_check():
+    """Liveness and infrastructure readiness probe."""
+    try:
+        db.session.execute(db.text("SELECT 1"))
+        db_status = "healthy"
+    except Exception as exc:
+        db_status = f"unhealthy: {exc}"
+
+    cache_status = "operational" if cache else "unconfigured"
+    status_code = 200 if db_status == "healthy" else 503
+
+    return jsonify({
+        "status": "ok" if status_code == 200 else "degraded",
+        "database": db_status,
+        "cache": cache_status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }), status_code
+
+
 @public_bp.app_context_processor
 def inject_nav_context() -> dict[str, Any]:
-    """Provides nav_sections, active_section, and social_links to every template."""
+    """Inject active navigation sections and global links into templates."""
     cached = cache.get("layout_context")
     if cached is None:
         sections = TaxonomyRepository.get_active_sections()
         cached = {"sections": [{"name": s.name, "slug": s.slug} for s in sections]}
         cache.set("layout_context", cached, timeout=CACHE_TTL_LAYOUT)
 
-    return {
-        "nav_sections": cached["sections"],
-        "active_section": None,
-        "current_year": datetime.now(timezone.utc).year,
-        "social_links": SOCIAL_LINKS,
-    }
+    return {"nav_sections": cached["sections"], "active_section": None, "current_year": datetime.now(timezone.utc).year, "social_links": SOCIAL_LINKS}
 
 
-# ─── Helper: record view ────────────────────────────────────────────────────
 def _record_view(content_id: int) -> None:
-    """Idempotently record a page view for authenticated or anonymous users."""
+    """Record a page view for authenticated or anonymous visitors."""
     try:
-        ip = request.remote_addr
         if current_user.is_authenticated:
-            AnalyticsRepository.record_view(
-                content_id=content_id, user_id=current_user.id
-            )
+            AnalyticsRepository.record_view(content_id=content_id, user_id=current_user.id)
         else:
-            AnalyticsRepository.record_view(
-                content_id=content_id, ip_address=ip
-            )
+            AnalyticsRepository.record_view(content_id=content_id, ip_address=request.remote_addr)
     except Exception as exc:
         log.debug("View tracking error: %s", exc)
 
 
-# ─── Helper: build user state (liked / disliked / saved) ────────────────────
-def _user_state(content_id: int) -> dict:
+def _user_state(content_id: int) -> dict[str, bool]:
+    """Fetch like, dislike, and save state for the active user."""
     if not current_user.is_authenticated:
         return {"liked": False, "disliked": False, "saved": False}
     return AnalyticsRepository.get_user_state(current_user.id, content_id)
 
 
-# ─── Home ────────────────────────────────────────────────────────────────────
+def _extract_content_id(slug_or_id: str | int | None) -> int | None:
+    """Extract integer content ID from slug or numeric identifier."""
+    if slug_or_id is None:
+        return None
+    if isinstance(slug_or_id, int):
+        return slug_or_id
+    s = str(slug_or_id).strip()
+    if s.isdigit():
+        return int(s)
+    prefix = s.split("-", 1)[0]
+    return int(prefix) if prefix.isdigit() else None
+
+
+def _prepare_detail_view(content_id: int, slug_or_id: str | int | None, endpoint: str):
+    """Validate content, enforce canonical slug redirect, and record view."""
+    content_live = ContentRepository.get_published_content(content_id)
+    if not content_live:
+        abort(404)
+
+    if content_live.slug:
+        expected_slug = content_live.slug_id
+        if slug_or_id != expected_slug:
+            return None, redirect(url_for(endpoint, slug_or_id=expected_slug), code=301)
+
+    _record_view(content_id)
+    return content_live, None
+
+
 @public_bp.route("/")
 def home():
+    """Render home feed with hero banner, section rows, and trending entities."""
     page_data = cache.get("home_page_data")
 
     if page_data is None:
         sections = TaxonomyRepository.get_active_sections()
+        hero_items = [serialize_content_card(c) for c in ContentRepository.get_hero_items(limit=5)]
 
-        # Hero: top 5 most viewed recent published contents
-        hero_items = [
-            serialize_content_card(c)
-            for c in ContentRepository.get_hero_items(limit=5)
-        ]
-
-        # Section rows: up to 3 active sections, each with 12 items
         section_rows = []
-        for section in sections[:3]:
-            items = ContentRepository.list_published(
-                section_id=section.id, page=1, per_page=12
-            ).items
-            section_rows.append({
-                "name": section.name,
-                "slug": section.slug,
-                "content_items": [serialize_content_card(c) for c in items],
-                "items": [serialize_content_card(c) for c in items],
-            })
+        for section_obj in sections[:3]:
+            items = ContentRepository.list_published(section_id=section_obj.id, page=1, per_page=12).items
+            serialized = [serialize_content_card(c) for c in items]
+            section_rows.append({"name": section_obj.name, "slug": section_obj.slug, "content_items": serialized, "items": serialized})
 
-        # Trending entities
         trending_entities = TaxonomyRepository.get_trending_entities(limit=20)
 
-        page_data = {
-            "hero_items": hero_items,
-            "section_rows": section_rows,
-            "trending_entities": [
-                {"name": e.name, "slug": e.slug} for e in trending_entities
-            ],
-        }
+        page_data = {"hero_items": hero_items, "section_rows": section_rows, "trending_entities": [{"name": e.name, "slug": e.slug} for e in trending_entities]}
         cache.set("home_page_data", page_data, timeout=CACHE_TTL_HOME)
 
     return render_template(
-        "public/home.html",
-        hero_items=page_data["hero_items"],
-        section_rows=page_data["section_rows"],
-        trending_entities=page_data["trending_entities"],
+        "public/home.html", hero_items=page_data["hero_items"], section_rows=page_data["section_rows"], trending_entities=page_data["trending_entities"]
     )
 
 
-# ─── Section ─────────────────────────────────────────────────────────────────
 @public_bp.route("/<section_slug>")
 def section(section_slug: str):
+    """Render section landing page with categories and paginated items."""
     section_obj = TaxonomyRepository.get_section_by_slug(section_slug)
     if not section_obj:
         abort(404)
@@ -145,17 +148,11 @@ def section(section_slug: str):
         category_id = cat.id if cat else None
 
     pagination_obj = ContentRepository.list_published(
-        section_id=section_obj.id,
-        category_id=category_id,
-        object_type=content_type or None,
-        page=page,
-        per_page=24,
+        section_id=section_obj.id, category_id=category_id, object_type=content_type or None, page=page, per_page=24
     )
 
     items = [serialize_content_card(c) for c in pagination_obj.items]
-    filter_options = {
-        "categories": TaxonomyRepository.get_categories_for_section(section_obj.id)
-    }
+    filter_options = {"categories": TaxonomyRepository.get_categories_for_section(section_obj.id)}
 
     return render_template(
         "public/section.html",
@@ -169,9 +166,9 @@ def section(section_slug: str):
     )
 
 
-# ─── Category ─────────────────────────────────────────────────────────────────
 @public_bp.route("/<section_slug>/<category_slug>")
 def category(section_slug: str, category_slug: str):
+    """Render category landing page with subcategories and items."""
     section_obj = TaxonomyRepository.get_section_by_slug(section_slug)
     if not section_obj:
         abort(404)
@@ -184,11 +181,7 @@ def category(section_slug: str, category_slug: str):
     content_type = request.args.get("type")
 
     pagination_obj = ContentRepository.list_published(
-        section_id=section_obj.id,
-        category_id=cat_obj.id,
-        object_type=content_type or None,
-        page=page,
-        per_page=24,
+        section_id=section_obj.id, category_id=cat_obj.id, object_type=content_type or None, page=page, per_page=24
     )
 
     items = [serialize_content_card(c) for c in pagination_obj.items]
@@ -207,9 +200,9 @@ def category(section_slug: str, category_slug: str):
     )
 
 
-# ─── Topic / Entity ───────────────────────────────────────────────────────────
 @public_bp.route("/topic/<entity_slug>")
 def topic(entity_slug: str):
+    """Render topic landing page for a specific named entity."""
     entity = db.session.query(Entity).filter(Entity.slug == entity_slug).first()
     if not entity:
         abort(404)
@@ -217,12 +210,7 @@ def topic(entity_slug: str):
     page = request.args.get("page", 1, type=int)
     content_type = request.args.get("type")
 
-    pagination_obj = ContentRepository.list_by_entity(
-        entity_id=entity.id,
-        object_type=content_type or None,
-        page=page,
-        per_page=24,
-    )
+    pagination_obj = ContentRepository.list_by_entity(entity_id=entity.id, object_type=content_type or None, page=page, per_page=24)
 
     items = [serialize_content_card(c) for c in pagination_obj.items]
     related_entities = TaxonomyRepository.get_related_entities(entity.id, limit=10)
@@ -238,35 +226,19 @@ def topic(entity_slug: str):
     )
 
 
-# ─── Helper: extract content ID from slug or ID ─────────────────────────────
-def _extract_content_id(slug_or_id: str | int | None) -> int | None:
-    if slug_or_id is None:
-        return None
-    if isinstance(slug_or_id, int):
-        return slug_or_id
-    s = str(slug_or_id).strip()
-    if s.isdigit():
-        return int(s)
-    prefix = s.split("-", 1)[0]
-    if prefix.isdigit():
-        return int(prefix)
-    return None
-
-
-# ─── Article Detail ───────────────────────────────────────────────────────────
 @public_bp.route("/article/<slug_or_id>")
 @public_bp.route("/article/<int:content_id>")
 def article(slug_or_id: str | None = None, content_id: int | None = None):
+    """Render article detail view with authors, sources, entities, and comments."""
     cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
     if not cid:
         abort(404)
-    content_id = cid
 
-    cache_key = f"content_page_{content_id}"
+    cache_key = f"content_page_{cid}"
     page_data = cache.get(cache_key)
 
     if page_data is None:
-        content = ContentRepository.get_published_content(content_id)
+        content = ContentRepository.get_published_content(cid)
         if not content or content.object_type != "article":
             abort(404)
 
@@ -274,20 +246,13 @@ def article(slug_or_id: str | None = None, content_id: int | None = None):
         if not article_obj:
             abort(404)
 
-        authors = ArticleRepository.get_authors(article_obj.id)
-        source = db.session.get(Source, content.source_id) if content.source_id else None
-        entities = ContentRepository.get_entities_for_content(content_id)
-        related_items = ContentRepository.get_related_content(
-            content_id, limit=6
-        )
-
         page_data = {
             "content": content,
             "article": article_obj,
-            "authors": authors,
-            "source": source,
-            "entities": entities,
-            "related": [serialize_content_card(r) for r in related_items],
+            "authors": ArticleRepository.get_authors(article_obj.id),
+            "source": db.session.get(Source, content.source_id) if content.source_id else None,
+            "entities": ContentRepository.get_entities_for_content(cid),
+            "related": [serialize_content_card(r) for r in ContentRepository.get_related_content(cid, limit=6)],
             "section_slug": content.section.slug if content.section else None,
             "section_name": content.section.name if content.section else None,
             "category_slug": content.category.slug if content.category else None,
@@ -295,52 +260,42 @@ def article(slug_or_id: str | None = None, content_id: int | None = None):
         }
         cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
 
-    # Fetch live content to ensure fresh like/dislike/view counts
-    content_live = ContentRepository.get_published_content(content_id)
-    if not content_live:
-        abort(404)
+    content_live, redirect_resp = _prepare_detail_view(cid, slug_or_id, "public.article")
+    if redirect_resp:
+        return redirect_resp
 
-    # Canonical redirect if accessed via bare ID or outdated slug and a slug exists
-    if content_live.slug:
-        expected_slug = content_live.slug_id
-        if slug_or_id != expected_slug:
-            return redirect(url_for("public.article", slug_or_id=expected_slug), code=301)
+    content_live.section_slug = page_data.get("section_slug")
+    content_live.section_name = page_data.get("section_name")
+    content_live.category_slug = page_data.get("category_slug")
+    content_live.category_name = page_data.get("category_name")
 
-    _record_view(content_id)
-    user_state = _user_state(content_id)
-
-    content = content_live
-    content.section_slug = page_data.get("section_slug")
-    content.section_name = page_data.get("section_name")
-    content.category_slug = page_data.get("category_slug")
-    content.category_name = page_data.get("category_name")
-
+    uid = current_user.id if current_user.is_authenticated else None
     return render_template(
         "public/article.html",
-        content=content,
+        content=content_live,
         article=page_data["article"],
         authors=page_data["authors"],
         source=page_data["source"],
         entities=page_data["entities"],
         related_items=page_data["related"],
-        user_state=user_state,
+        user_state=_user_state(cid),
+        comments_tree=AnalyticsRepository.get_comments_tree(cid, current_user_id=uid),
     )
 
 
-# ─── Video Detail ─────────────────────────────────────────────────────────────
 @public_bp.route("/video/<slug_or_id>")
 @public_bp.route("/video/<int:content_id>")
 def video(slug_or_id: str | None = None, content_id: int | None = None):
+    """Render video detail view with player, comments, and related items."""
     cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
     if not cid:
         abort(404)
-    content_id = cid
 
-    cache_key = f"content_page_{content_id}"
+    cache_key = f"content_page_{cid}"
     page_data = cache.get(cache_key)
 
     if page_data is None:
-        content = ContentRepository.get_published_content(content_id)
+        content = ContentRepository.get_published_content(cid)
         if not content or content.object_type != "video":
             abort(404)
 
@@ -348,28 +303,12 @@ def video(slug_or_id: str | None = None, content_id: int | None = None):
         if not video_obj:
             abort(404)
 
-        yt_comments = VideoRepository.get_top_comments(video_obj.id, limit=15)
-        related_items = ContentRepository.get_related_content(content_id, limit=6)
-
-        # Format duration
-        dur = video_obj.duration_seconds or 0
-        if dur:
-            hours = dur // 3600
-            minutes = (dur % 3600) // 60
-            seconds = dur % 60
-            if hours:
-                duration_formatted = f"{hours}:{minutes:02d}:{seconds:02d}"
-            else:
-                duration_formatted = f"{minutes}:{seconds:02d}"
-        else:
-            duration_formatted = None
-
         page_data = {
             "content": content,
             "video": video_obj,
-            "yt_comments": yt_comments,
-            "related": [serialize_content_card(r) for r in related_items],
-            "duration_formatted": duration_formatted,
+            "yt_comments": VideoRepository.get_top_comments(video_obj.id, limit=15),
+            "related": [serialize_content_card(r) for r in ContentRepository.get_related_content(cid, limit=6)],
+            "duration_formatted": _format_duration(video_obj.duration_seconds),
             "section_slug": content.section.slug if content.section else None,
             "section_name": content.section.name if content.section else None,
             "category_slug": content.category.slug if content.category else None,
@@ -377,41 +316,31 @@ def video(slug_or_id: str | None = None, content_id: int | None = None):
         }
         cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
 
-    # Fetch live content to ensure fresh like/dislike/view counts
-    content_live = ContentRepository.get_published_content(content_id)
-    if not content_live:
-        abort(404)
+    content_live, redirect_resp = _prepare_detail_view(cid, slug_or_id, "public.video")
+    if redirect_resp:
+        return redirect_resp
 
-    # Canonical redirect if accessed via bare ID or outdated slug and a slug exists
-    if content_live.slug:
-        expected_slug = content_live.slug_id
-        if slug_or_id != expected_slug:
-            return redirect(url_for("public.video", slug_or_id=expected_slug), code=301)
+    content_live.section_slug = page_data.get("section_slug")
+    content_live.section_name = page_data.get("section_name")
+    content_live.category_slug = page_data.get("category_slug")
+    content_live.category_name = page_data.get("category_name")
 
-    _record_view(content_id)
-    user_state = _user_state(content_id)
-
-    content = content_live
-    content.section_slug = page_data.get("section_slug")
-    content.section_name = page_data.get("section_name")
-    content.category_slug = page_data.get("category_slug")
-    content.category_name = page_data.get("category_name")
-
-
+    uid = current_user.id if current_user.is_authenticated else None
     return render_template(
         "public/video.html",
-        content=content,
+        content=content_live,
         video=page_data["video"],
         yt_comments=page_data["yt_comments"],
+        comments_tree=AnalyticsRepository.get_comments_tree(cid, current_user_id=uid),
         related_items=page_data["related"],
         duration_formatted=page_data["duration_formatted"],
-        user_state=user_state,
+        user_state=_user_state(cid),
     )
 
 
-# ─── Search Results Page (§11.2) ─────────────────────────────────────────────
 @public_bp.route("/search")
 def search():
+    """Render search results page with keyword, type, and section filters."""
     q = request.args.get("q", "").strip()
     if not q:
         return redirect(url_for("public.home"))
@@ -430,23 +359,9 @@ def search():
     cached = cache.get(cache_key)
 
     if cached is None:
-        pagination_obj = ContentRepository.search_published(
-            query=q,
-            object_type=object_type or None,
-            section_id=section_id,
-            page=page,
-            per_page=24,
-        )
+        pagination_obj = ContentRepository.search_published(query=q, object_type=object_type or None, section_id=section_id, page=page, per_page=24)
         items = [serialize_content_card(c) for c in pagination_obj.items]
-        cache.set(
-            cache_key,
-            {
-                "items": items,
-                "total": pagination_obj.total,
-                "pages": pagination_obj.pages,
-            },
-            timeout=CACHE_TTL_SEARCH_RESULTS,
-        )
+        cache.set(cache_key, {"items": items, "total": pagination_obj.total, "pages": pagination_obj.pages}, timeout=CACHE_TTL_SEARCH_RESULTS)
         total = pagination_obj.total
         total_pages = pagination_obj.pages
     else:
@@ -454,19 +369,12 @@ def search():
         total = cached["total"]
         total_pages = cached["pages"]
 
-    return render_template(
-        "public/search.html",
-        items=items,
-        query=q,
-        total=total,
-        page=page,
-        total_pages=total_pages,
-    )
+    return render_template("public/search.html", items=items, query=q, total=total, page=page, total_pages=total_pages)
 
 
-# ─── Autocomplete API (§11.3) ─────────────────────────────────────────────────
 @public_bp.route("/api/search/suggestions")
 def search_suggestions():
+    """Return autocomplete search suggestions for articles and videos."""
     q = request.args.get("q", "").strip()
     if len(q) < 2:
         return jsonify({"error": "Query too short"}), 400
@@ -502,31 +410,25 @@ def search_suggestions():
     return jsonify(payload)
 
 
-# ─── Company & Legal Pages ──────────────────────────────────────────────────
 @public_bp.route("/about")
 def about():
-    """Nexura editorial mission, architecture, and technology overview."""
+    """Render about page."""
     return render_template("public/about.html")
 
 
 @public_bp.route("/contact", methods=["GET", "POST"])
 def contact():
-    """Contact & editorial tip submission page."""
-    submitted = False
-    if request.method == "POST":
-        # Form processed gracefully; in production could dispatch to an admin inbox / task queue
-        submitted = True
-    return render_template("public/contact.html", submitted=submitted)
+    """Render contact and editorial tip submission page."""
+    return render_template("public/contact.html", submitted=(request.method == "POST"))
 
 
 @public_bp.route("/terms")
 def terms():
-    """Terms of Service and Content Usage Agreement."""
+    """Render terms of service page."""
     return render_template("public/terms.html")
 
 
 @public_bp.route("/privacy")
 def privacy():
-    """Privacy Policy and Data Protection Disclosure."""
+    """Render privacy policy page."""
     return render_template("public/privacy.html")
-

@@ -9,12 +9,10 @@ from app.ingestion import (
     check_article_quality, TaskTracker
 )
 
-
 @pytest.fixture(scope="module")
 def app():
     app = create_app()
     yield app
-
 
 def test_task_tracker():
     test_dir = "instance/test_tasks"
@@ -45,7 +43,6 @@ def test_task_tracker():
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
 
-
 def test_deduplication_and_normalizer():
     title_a = "Apple Announces iPhone 16 Pro and Max!"
     title_b = "Apple announces iPhone 16 Pro and Max"
@@ -66,7 +63,6 @@ def test_deduplication_and_normalizer():
     assert detector.is_duplicate(title_a, [title_b]) is True
     assert detector.is_duplicate(title_c, [title_a, title_b]) is False
 
-
 def test_quality_gate():
     # Pass: > 250 words and image present
     res_pass = check_article_quality(word_count=350, image_url="https://example.com/photo.jpg")
@@ -83,7 +79,6 @@ def test_quality_gate():
     assert res_no_img.passed is False
     assert "image_url" in res_no_img.reason
 
-
 def test_huggingface_sentiment_client():
     client = HuggingFaceClient()
     
@@ -94,7 +89,6 @@ def test_huggingface_sentiment_client():
     # Negative text
     score_neg, conf_neg, label_neg = client.analyze_sentiment("This terrible device broke immediately and is the worst purchase.")
     assert score_neg < 0.0
-
 
 def test_youtube_duration_parser():
     from app.ingestion.youtube_client import parse_iso_duration

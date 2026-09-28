@@ -1,7 +1,5 @@
-"""
-Nexura Phase 7 — SEO Sitemap Blueprint (§27.4)
-Generates paginated XML sitemaps for all published content.
-"""
+"""SEO blueprint for XML sitemaps and robots.txt."""
+
 from __future__ import annotations
 import logging
 import math
@@ -18,14 +16,12 @@ log = logging.getLogger(__name__)
 seo_bp = Blueprint("seo", __name__)
 
 SITEMAP_BATCH_SIZE = 1000
-SITEMAP_TTL = 3600  # 1 hour cache
+SITEMAP_TTL = 3600
 
 
 def _xml_response(body: str) -> Response:
-    return Response(
-        f'<?xml version="1.0" encoding="UTF-8"?>\n{body}',
-        content_type="application/xml; charset=utf-8",
-    )
+    """Wrap XML content in a UTF-8 XML response."""
+    return Response(f'<?xml version="1.0" encoding="UTF-8"?>\n{body}', content_type="application/xml; charset=utf-8")
 
 
 @seo_bp.route("/sitemap_index.xml")
@@ -35,11 +31,7 @@ def sitemap_index():
     if cached:
         return _xml_response(cached)
 
-    count = db.session.scalar(
-        select(func.count(Content.id)).where(
-            Content.is_published.is_(True), Content.is_active.is_(True)
-        )
-    ) or 0
+    count = db.session.scalar(select(func.count(Content.id)).where(Content.is_published.is_(True), Content.is_active.is_(True))) or 0
     num_sitemaps = max(1, math.ceil(count / SITEMAP_BATCH_SIZE))
 
     urls = []
@@ -47,11 +39,7 @@ def sitemap_index():
         loc = url_for("seo.sitemap_page", page=i, _external=True)
         urls.append(f"  <sitemap><loc>{loc}</loc></sitemap>")
 
-    body = (
-        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "\n".join(urls)
-        + "\n</sitemapindex>"
-    )
+    body = '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "\n".join(urls) + "\n</sitemapindex>"
     cache.set("sitemap_index", body, timeout=SITEMAP_TTL)
     return _xml_response(body)
 
@@ -67,10 +55,7 @@ def sitemap_page(page: int):
     offset = (page - 1) * SITEMAP_BATCH_SIZE
     rows = (
         db.session.query(Content.id, Content.title, Content.object_type, Content.published_at)
-        .filter(
-            Content.is_published.is_(True),
-            Content.is_active.is_(True),
-        )
+        .filter(Content.is_published.is_(True), Content.is_active.is_(True))
         .order_by(Content.published_at.desc())
         .offset(offset)
         .limit(SITEMAP_BATCH_SIZE)
@@ -78,10 +63,7 @@ def sitemap_page(page: int):
     )
 
     if not rows:
-        # Redirect to last valid page instead of 404
-        return _xml_response(
-            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
-        )
+        return _xml_response('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>')
 
     from app.utils.slugify import make_slug
 
@@ -101,15 +83,9 @@ def sitemap_page(page: int):
                 lastmod_dt = lastmod_dt.replace(tzinfo=timezone.utc)
             lastmod = f"<lastmod>{lastmod_dt.strftime('%Y-%m-%d')}</lastmod>"
 
-        entries.append(
-            f"  <url><loc>{loc}</loc>{lastmod}<changefreq>weekly</changefreq><priority>0.7</priority></url>"
-        )
+        entries.append(f"  <url><loc>{loc}</loc>{lastmod}<changefreq>weekly</changefreq><priority>0.7</priority></url>")
 
-    body = (
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "\n".join(entries)
-        + "\n</urlset>"
-    )
+    body = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "\n".join(entries) + "\n</urlset>"
     cache.set(cache_key, body, timeout=SITEMAP_TTL)
     return _xml_response(body)
 
@@ -118,6 +94,7 @@ def sitemap_page(page: int):
 def robots_txt():
     """Return robots.txt with sitemap pointer."""
     from flask import request as flask_request
+
     host = flask_request.host_url.rstrip("/")
     body = (
         "User-agent: *\n"

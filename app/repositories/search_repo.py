@@ -1,7 +1,5 @@
-"""
-Nexura Phase 7 — Search Repository
-Multi-component content search ranking (Phase 7 §11) and instant autocomplete suggestions.
-"""
+"""Search repository for full-text search queries and autocomplete suggestions."""
+
 from __future__ import annotations
 from typing import Any
 import re
@@ -29,10 +27,7 @@ class SearchRepository:
         page: int = 1,
         per_page: int = 24,
     ) -> tuple[list[Content], int]:
-        """
-        Execute unified search using PostgreSQL full-text search (tsvector/tsquery),
-        title matching, and score ranking.
-        """
+        """Execute unified search using title and preview matching with scoring and filters."""
         if not query_text or not query_text.strip():
             return ContentRepository.list_contents(
                 section_slug=section_slug,
@@ -47,7 +42,6 @@ class SearchRepository:
         if not clean_query:
             return [], 0
 
-        # Base query
         query = (
             db.session.query(Content)
             .options(
@@ -68,18 +62,16 @@ class SearchRepository:
         if category_slug:
             query = query.join(Content.category).filter(Category.slug == category_slug)
 
-        # Matching condition
         title_match = Content.title.ilike(f"%{clean_query}%")
         query = query.filter(title_match)
 
-        # Total count
         total = query.with_entities(func.count(func.distinct(Content.id))).scalar() or 0
 
         if sort == "popular":
             query = query.order_by(desc(Content.view_count), desc(Content.published_at))
         elif sort == "score":
             query = query.order_by(desc(Content.score), desc(Content.published_at))
-        else:  # "latest" or "relevance"
+        else:
             query = query.order_by(desc(Content.published_at))
 
         offset = max(0, (page - 1) * per_page)
@@ -92,6 +84,8 @@ class SearchRepository:
     def full_text_search(
         query: str,
         *,
+        section_slug: str | None = None,
+        category_slug: str | None = None,
         object_type: str | None = None,
         sort: str = "relevance",
         page: int = 1,
@@ -99,11 +93,7 @@ class SearchRepository:
     ) -> PaginationResult:
         """Alias for search returning PaginationResult."""
         contents, total = SearchRepository.search(
-            query,
-            object_type=object_type,
-            sort=sort,
-            page=page,
-            per_page=per_page,
+            query, section_slug=section_slug, category_slug=category_slug, object_type=object_type, sort=sort, page=page, per_page=per_page
         )
         return PaginationResult(items=contents, total=total, page=page, per_page=per_page)
 
@@ -114,12 +104,7 @@ class SearchRepository:
         articles = (
             db.session.query(Content)
             .options(joinedload(Content.category))
-            .filter(
-                Content.object_type == "article",
-                Content.title.ilike(pattern),
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(Content.object_type == "article", Content.title.ilike(pattern), Content.is_active.is_(True), Content.is_published.is_(True))
             .order_by(desc(Content.published_at))
             .limit(limit)
             .all()
@@ -127,12 +112,7 @@ class SearchRepository:
         videos = (
             db.session.query(Content)
             .options(joinedload(Content.category))
-            .filter(
-                Content.object_type == "video",
-                Content.title.ilike(pattern),
-                Content.is_active.is_(True),
-                Content.is_published.is_(True),
-            )
+            .filter(Content.object_type == "video", Content.title.ilike(pattern), Content.is_active.is_(True), Content.is_published.is_(True))
             .order_by(desc(Content.published_at))
             .limit(limit)
             .all()
@@ -143,10 +123,7 @@ class SearchRepository:
 
     @staticmethod
     def autocomplete_suggestions(query_text: str, limit: int = 8) -> list[dict[str, Any]]:
-        """
-        Fast instant autocomplete suggestions (Phase 7 §11).
-        Aggregates matched Entities (brands/topics), Categories, and top Content titles.
-        """
+        """Instant autocomplete suggestions aggregating entities, categories, and titles."""
         if not query_text or len(query_text.strip()) < 2:
             return []
 
@@ -154,65 +131,37 @@ class SearchRepository:
         pattern = f"%{clean}%"
         suggestions: list[dict[str, Any]] = []
 
-        # 1. Matching Entities
-        entities = (
-            db.session.query(Entity)
-            .filter(Entity.name.ilike(pattern))
-            .order_by(Entity.name.asc())
-            .limit(4)
-            .all()
-        )
+        entities = db.session.query(Entity).filter(Entity.name.ilike(pattern)).order_by(Entity.name.asc()).limit(4).all()
         for e in entities:
-            suggestions.append({
-                "type": "entity",
-                "label": e.name,
-                "sublabel": e.entity_type.capitalize() if e.entity_type else "Topic",
-                "url": f"/topic/{e.slug}",
-                "slug": e.slug,
-            })
+            suggestions.append(
+                {
+                    "type": "entity",
+                    "label": e.name,
+                    "sublabel": e.entity_type.capitalize() if e.entity_type else "Topic",
+                    "url": f"/topic/{e.slug}",
+                    "slug": e.slug,
+                }
+            )
 
-        # 2. Matching Categories
-        categories = (
-            db.session.query(Category)
-            .filter(Category.name.ilike(pattern), Category.is_active.is_(True))
-            .order_by(Category.name.asc())
-            .limit(3)
-            .all()
-        )
+        categories = db.session.query(Category).filter(Category.name.ilike(pattern), Category.is_active.is_(True)).order_by(Category.name.asc()).limit(3).all()
         for cat in categories:
-            suggestions.append({
-                "type": "category",
-                "label": cat.name,
-                "sublabel": "Category",
-                "url": f"/category/{cat.slug}",
-                "slug": cat.slug,
-            })
+            suggestions.append({"type": "category", "label": cat.name, "sublabel": "Category", "url": f"/category/{cat.slug}", "slug": cat.slug})
 
-        # 3. Matching Content Titles
         remaining_slots = limit - len(suggestions)
         if remaining_slots > 0:
             contents = (
                 db.session.query(Content.id, Content.title, Content.object_type)
-                .filter(
-                    Content.title.ilike(pattern),
-                    Content.is_active.is_(True),
-                    Content.is_published.is_(True),
-                )
+                .filter(Content.title.ilike(pattern), Content.is_active.is_(True), Content.is_published.is_(True))
                 .order_by(desc(Content.published_at))
                 .limit(remaining_slots)
                 .all()
             )
             from app.utils.slugify import make_slug
+
             for c in contents:
                 slug = make_slug(c.title or "", max_length=100) or ""
                 slug_id = f"{c.id}-{slug}" if slug else str(c.id)
                 url = f"/{c.object_type}/{slug_id}"
-                suggestions.append({
-                    "type": "content",
-                    "label": c.title,
-                    "sublabel": c.object_type.capitalize(),
-                    "url": url,
-                    "id": c.id,
-                })
+                suggestions.append({"type": "content", "label": c.title, "sublabel": c.object_type.capitalize(), "url": url, "id": c.id})
 
         return suggestions[:limit]

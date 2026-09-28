@@ -1,0 +1,155 @@
+{# templates/macros/comments.html #}
+
+{% macro comment_card(c, content_id, current_user, is_reply=False) %}
+{% set is_own = c.is_own if c.is_own is defined else (current_user.is_authenticated and current_user.id == c.user_id) %}
+<div class="comment-card {% if is_reply %}comment-card--reply{% endif %}" id="comment-{{ c.id }}" data-comment-id="{{ c.id }}" data-user-id="{{ c.user_id }}">
+  <div class="comment-card__avatar" aria-hidden="true">
+    {{ c.user_name[0] | upper if c.user_name else 'C' }}
+  </div>
+  <div class="comment-card__body">
+    <div class="comment-card__header">
+      <span class="comment-card__author">{{ c.user_name or 'Community Member' }}</span>
+      {% if is_own %}
+      <span class="comment-card__badge-you">You</span>
+      {% endif %}
+      {% if c.formatted_date or c.created_at %}
+      <time class="comment-card__date">
+        {{ c.formatted_date if c.formatted_date is defined and c.formatted_date else (c.created_at[:10] if c.created_at is string else c.created_at.strftime('%b %d, %Y') if c.created_at else '') }}
+      </time>
+      {% endif %}
+    </div>
+
+    <p class="comment-card__text">{{ c.content }}</p>
+
+    <div class="comment-card__actions">
+      {# Like reaction button #}
+      <button class="comment-action-btn {% if c.user_liked %}active{% endif %}"
+        data-interaction="like"
+        data-target-type="comment"
+        data-target-id="{{ c.id }}"
+        {% if is_own %}disabled title="You cannot react to your own comment" aria-disabled="true"{% else %}aria-label="Like comment" aria-pressed="{{ 'true' if c.user_liked else 'false' }}"{% endif %}
+        type="button">
+        <svg viewBox="0 0 24 24" fill="{% if c.user_liked %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
+          <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+        </svg>
+        <span data-count>{{ c.like_count or 0 }}</span>
+      </button>
+
+      {# Dislike reaction button #}
+      <button class="comment-action-btn {% if c.user_disliked %}active dislike{% endif %}"
+        data-interaction="dislike"
+        data-target-type="comment"
+        data-target-id="{{ c.id }}"
+        {% if is_own %}disabled title="You cannot react to your own comment" aria-disabled="true"{% else %}aria-label="Dislike comment" aria-pressed="{{ 'true' if c.user_disliked else 'false' }}"{% endif %}
+        type="button">
+        <svg viewBox="0 0 24 24" fill="{% if c.user_disliked %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
+          <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+        </svg>
+        <span data-count>{{ c.dislike_count or 0 }}</span>
+      </button>
+
+      {# Reply button: only shown if NOT user's own comment #}
+      {% if not is_own %}
+        {% if current_user.is_authenticated %}
+        <button class="comment-card__reply-btn" type="button" data-action="toggle-reply" data-parent-id="{{ c.id }}" data-content-id="{{ content_id }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="9 17 4 12 9 7" />
+            <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+          </svg>
+          Reply
+        </button>
+        {% else %}
+        <a class="comment-card__reply-btn" href="{{ url_for('auth.login', next=request.path ~ '#comment-' ~ c.id) }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="9 17 4 12 9 7" />
+            <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+          </svg>
+          Reply
+        </a>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    {# Inline reply form slot #}
+    <div class="comment-reply-slot" id="reply-slot-{{ c.id }}"></div>
+
+    {# Nested replies container #}
+    <div class="comment-card__replies" id="replies-{{ c.id }}" {% if not c.replies %}style="display:none;"{% endif %}>
+      {% if c.replies %}
+        {% for reply in c.replies %}
+          {{ comment_card(reply, content_id, current_user, is_reply=True) }}
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro comments_section(content, comments_tree, current_user, title='Discussion') %}
+<section class="comments-section" id="comments" aria-labelledby="comments-heading">
+  <div class="comments-header">
+    <h2 class="comments-header__title" id="comments-heading">
+      {{ title }}
+      <span class="comments-header__count" data-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
+    </h2>
+  </div>
+
+  {# Comment Submission Form #}
+  {% if current_user.is_authenticated %}
+  <form class="comment-form" data-comment-form data-content-id="{{ content.id }}">
+    <div class="comment-form__avatar" aria-hidden="true">
+      {{ current_user.name[0] | upper if current_user.name else (current_user.email[0] | upper if current_user.email else 'U') }}
+    </div>
+    <div class="comment-form__main">
+      <textarea class="comment-form__input" name="text" placeholder="Share your perspective or ask a question..." rows="3" maxlength="2000" required aria-label="Write a comment"></textarea>
+      <div class="comment-form__footer">
+        <span class="comment-form__counter"><span data-char-count>0</span> / 2000</span>
+        <button class="btn btn--gradient btn--sm" type="submit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" fill="currentColor" />
+          </svg>
+          Post Comment
+        </button>
+      </div>
+    </div>
+  </form>
+  {% else %}
+  <div class="comments-auth-banner">
+    <div class="comments-auth-banner__content">
+      <div class="comments-auth-banner__icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      </div>
+      <div>
+        <h3 class="comments-auth-banner__title">Join the Discussion</h3>
+        <p class="comments-auth-banner__desc">Sign in or create an account to share your thoughts and join the community discussion.</p>
+      </div>
+    </div>
+    <div class="comments-auth-banner__actions">
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('auth.login', next=request.path ~ '#comments') }}">Log In</a>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('auth.register', next=request.path ~ '#comments') }}">Sign Up</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Comments List #}
+  <div class="comment-list" id="comment-list">
+    {% if comments_tree %}
+      {% for comment in comments_tree %}
+        {{ comment_card(comment, content.id, current_user) }}
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <div class="comments-empty" id="comments-empty" {% if comments_tree %}style="display:none;"{% endif %}>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4; margin-bottom:var(--space-2);" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+    <p>No comments yet. Be the first to share your perspective!</p>
+  </div>
+</section>
+{% endmacro %}

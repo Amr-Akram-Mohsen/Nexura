@@ -1,0 +1,58 @@
+{% extends "auth/base_auth.html" %}
+
+{% block title %}Resend Verification Email{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card">
+  <a class="auth-card__brand" href="/">
+    <svg width="26" height="26" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+      <rect width="30" height="30" rx="6" fill="url(#rvg)"/>
+      <path d="M8 22V8l14 14V8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <defs><linearGradient id="rvg" x1="0" y1="0" x2="30" y2="30"><stop stop-color="hsl(217,90%,62%)"/><stop offset="1" stop-color="hsl(199,85%,58%)"/></linearGradient></defs>
+    </svg>
+    Nexura
+  </a>
+
+  {% if sent %}
+  <div class="auth-success-box">
+    <div class="auth-success-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1 class="auth-card__title">Check your email</h1>
+    <p style="font-size:var(--text-sm); color:var(--text-secondary); text-align:center;">
+      If an unverified account with that email exists, we've sent a new verification link. Please check your inbox.
+    </p>
+    <a class="btn btn--secondary" href="{{ url_for('auth.login') }}">Back to login</a>
+  </div>
+
+  {% else %}
+  <h1 class="auth-card__title">Resend Verification</h1>
+  <p class="auth-card__subtitle">Enter your email and we'll send a fresh confirmation link.</p>
+
+  <form method="post" action="{{ url_for('auth.resend_verification') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="auth-field">
+      <label class="auth-field__label" for="email">Email Address</label>
+      <input class="auth-field__input"
+             type="email"
+             id="email"
+             name="email"
+             value="{{ email_value | default('') }}"
+             placeholder="you@example.com"
+             autocomplete="email"
+             autofocus
+             required>
+    </div>
+
+    <button class="btn btn--gradient btn--full btn--lg" type="submit" id="resend-submit">
+      Send Verification Email
+    </button>
+  </form>
+
+  <div class="auth-footer">
+    <a class="auth-link" href="{{ url_for('auth.login') }}">← Back to login</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

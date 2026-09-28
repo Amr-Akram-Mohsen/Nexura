@@ -1,10 +1,8 @@
-/* =============================================================================
-   Nexura — Global Layout (layout.css)
-   Phase 7 §24 — Reset, base elements, navbar, containers, grid, footer
-   ============================================================================= */
+/* Nexura — Global Layout (layout.css)
+   Phase 7 §24 — Reset, base elements, navbar, containers, grid, footer */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ─── Reset ──────────────────────────────────────────────────────────────── */
+/* Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
@@ -38,7 +36,7 @@ input, textarea, select {
 }
 svg { fill: currentColor; }
 
-/* ─── Skip-to-Content (Accessibility) ───────────────────────────────────── */
+/* Skip-to-Content (Accessibility) */
 .skip-link {
   position: absolute;
   top: -9999px;
@@ -53,7 +51,7 @@ svg { fill: currentColor; }
 }
 .skip-link:focus { top: 1rem; }
 
-/* ─── Container ──────────────────────────────────────────────────────────── */
+/* Container */
 .container {
   width: min(100%, var(--container-max));
   margin-inline: auto;
@@ -65,7 +63,7 @@ svg { fill: currentColor; }
   padding-inline: clamp(var(--space-4), 4vw, var(--space-8));
 }
 
-/* ─── Site Header & Navbar ─────────────────────────────────────────────────── */
+/* Site Header & Navbar */
 .site-header {
   position: sticky;
   top: 0;
@@ -201,7 +199,7 @@ svg { fill: currentColor; }
 }
 .navbar__burger:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 
-/* ─── Responsive Navbar ──────────────────────────────────────────────────── */
+/* Responsive Navbar */
 @media (max-width: 900px) {
   .navbar__nav {
     display: none;
@@ -278,10 +276,10 @@ svg { fill: currentColor; }
   }
 }
 
-/* ─── Main Content Area ───────────────────────────────────────────────────── */
+/* Main Content Area */
 main { flex: 1; }
 
-/* ─── Section Breadcrumb Header ─────────────────────────────────────────── */
+/* Section Breadcrumb Header */
 .page-header {
   padding-block: var(--space-12) var(--space-8);
   border-bottom: 1px solid var(--border-subtle);
@@ -313,7 +311,7 @@ main { flex: 1; }
   max-width: 60ch;
 }
 
-/* ─── Content Grid Layouts ───────────────────────────────────────────────── */
+/* Content Grid Layouts */
 .grid-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
@@ -345,7 +343,7 @@ main { flex: 1; }
   .sidebar { display: none; }
 }
 
-/* ─── Progressive Reveal (§24) ───────────────────────────────────────────── */
+/* Progressive Reveal (§24) */
 .reveal-item {
   display: flex;
   flex-direction: column;
@@ -390,7 +388,7 @@ main { flex: 1; }
 }
 .reveal-trigger.hidden { display: none; }
 
-/* ─── Footer ─────────────────────────────────────────────────────────────── */
+/* Footer */
 .footer {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-subtle);
@@ -548,7 +546,7 @@ main { flex: 1; }
   .footer__grid { grid-template-columns: 1fr; }
 }
 
-/* ─── Toast Notifications ────────────────────────────────────────────────── */
+/* Toast Notifications */
 .toast-container {
   position: fixed;
   bottom: var(--space-6);
@@ -594,7 +592,7 @@ main { flex: 1; }
   to { transform: translateX(120%); opacity: 0; }
 }
 
-/* ─── Utility Classes ────────────────────────────────────────────────────── */
+/* Utility Classes */
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;

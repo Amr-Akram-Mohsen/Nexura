@@ -1,14 +1,7 @@
-"""
-Nexura Phase 7 â€” Taxonomy & Reference Models
-Covers: Section, Category, Entity, Location, IntentFacet, GenderFacet, PriceTierFacet, Event
-Schema authority: PHASE_7_MASTER_TRUTH.md Â§5 (taxonomy tables)
-"""
-from __future__ import annotations
+"""Taxonomy models: Section, Category, Entity, Location, Facets, and Event."""
 
-from sqlalchemy import (
-    Boolean, Column, Float, ForeignKey, Index, Integer, JSON,
-    String, Text, UniqueConstraint,
-)
+from __future__ import annotations
+from sqlalchemy import Boolean, Column, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 
@@ -17,6 +10,7 @@ from app.extensions import db
 
 class Section(db.Model):
     """High-level domain partition (e.g. Technology, Lifestyle)."""
+
     __tablename__ = "sections"
 
     id = Column(Integer, primary_key=True)
@@ -27,7 +21,6 @@ class Section(db.Model):
     is_active = Column(Boolean, default=True, nullable=False)
     sort_order = Column(Integer, default=0, nullable=False)
 
-    # Relationships
     contents = relationship("Content", back_populates="section", lazy="dynamic")
 
     def __repr__(self) -> str:
@@ -36,6 +29,7 @@ class Section(db.Model):
 
 class Category(db.Model):
     """Hierarchical topic cluster."""
+
     __tablename__ = "categories"
     __table_args__ = (
         Index("ix_categories_slug", "slug"),
@@ -54,7 +48,6 @@ class Category(db.Model):
     sort_order = Column(Integer, default=0, nullable=False)
     is_leaf = Column(Boolean, default=True, nullable=False)
 
-    # Self-referential hierarchy
     parent = relationship("Category", remote_side="Category.id", back_populates="children")
     children = relationship("Category", back_populates="parent")
     contents = relationship("Content", back_populates="category", lazy="dynamic")
@@ -64,7 +57,8 @@ class Category(db.Model):
 
 
 class Entity(db.Model):
-    """Universal named entity: Brand, Topic, Concept, Organization, Person, Tag."""
+    """Universal named entity: Brand, Topic, Organization, Person, Tag."""
+
     __tablename__ = "entities"
     __table_args__ = (
         Index("ix_entities_slug", "slug"),
@@ -77,7 +71,6 @@ class Entity(db.Model):
     name = Column(String(255), nullable=False)
     slug = Column(String(255), nullable=False, unique=True)
     external_uri = Column(String(255), unique=True)
-    # 'brand', 'topic', 'concept', 'organization', 'person', 'tag', 'wiki', 'org', 'loc'
     entity_type = Column(String(50))
     image_url = Column(Text)
     provider = Column(String(30))
@@ -86,7 +79,6 @@ class Entity(db.Model):
     wikidata_id = Column(String(50))
     wikipedia_url = Column(Text)
 
-    # Relationships
     content_entities = relationship("ContentEntity", back_populates="entity")
 
     def __repr__(self) -> str:
@@ -94,12 +86,10 @@ class Entity(db.Model):
 
 
 class Location(db.Model):
-    """Geographic country/region."""
+    """Geographic country or region."""
+
     __tablename__ = "locations"
-    __table_args__ = (
-        Index("ix_locations_slug", "slug"),
-        Index("ix_locations_country_code", "country_code"),
-    )
+    __table_args__ = (Index("ix_locations_slug", "slug"), Index("ix_locations_country_code", "country_code"))
 
     id = Column(Integer, primary_key=True)
     name = Column(String(150), nullable=False)
@@ -115,11 +105,9 @@ class Location(db.Model):
 
 class IntentFacet(db.Model):
     """Editorial intent dimension (e.g. review, news, buying-guide)."""
+
     __tablename__ = "intent_facets"
-    __table_args__ = (
-        UniqueConstraint("name"),
-        UniqueConstraint("slug"),
-    )
+    __table_args__ = (UniqueConstraint("name"), UniqueConstraint("slug"))
 
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False, unique=True)
@@ -133,11 +121,9 @@ class IntentFacet(db.Model):
 
 class GenderFacet(db.Model):
     """Gender audience dimension."""
+
     __tablename__ = "gender_facets"
-    __table_args__ = (
-        UniqueConstraint("name"),
-        UniqueConstraint("slug"),
-    )
+    __table_args__ = (UniqueConstraint("name"), UniqueConstraint("slug"))
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=True)
@@ -150,12 +136,10 @@ class GenderFacet(db.Model):
 
 
 class PriceTierFacet(db.Model):
-    """Price tier dimension."""
+    """Price tier classification facet."""
+
     __tablename__ = "price_tier_facets"
-    __table_args__ = (
-        UniqueConstraint("name"),
-        UniqueConstraint("slug"),
-    )
+    __table_args__ = (UniqueConstraint("name"), UniqueConstraint("slug"))
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=True)
@@ -168,7 +152,8 @@ class PriceTierFacet(db.Model):
 
 
 class Event(db.Model):
-    """Scheduled launch or industry news event linked to articles."""
+    """Scheduled launch or industry event linked to articles."""
+
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True)

@@ -1,7 +1,4 @@
-/**
- * Nexura Phase 7 — Admin Control Plane Client Logic (admin.js)
- * Zero frameworks, vanilla JS event delegation, async task polling.
- */
+/** Admin control plane client interactions and batch operations. */
 (function () {
   'use strict';
 
@@ -23,7 +20,6 @@
   }
   window.showAdminToast = showAdminToast;
 
-  // ─── 0. Mobile Sidebar Toggle ──────────────────────────────────────────────
   const sidebar = document.querySelector('.admin-sidebar');
   const hamburgerBtn = document.querySelector('.admin-hamburger');
 
@@ -40,7 +36,6 @@
     });
   }
 
-  // ─── 1. Table Row Checkboxes & Batch Actions ────────────────────────────────
   const selectAllCheckbox = document.getElementById('select-all-rows');
   const rowCheckboxes = document.querySelectorAll('.row-select-checkbox');
   const batchBar = document.getElementById('batch-action-bar');
@@ -73,7 +68,6 @@
     cb.addEventListener('change', updateBatchBar);
   });
 
-  // Batch action buttons
   document.querySelectorAll('[data-batch-action]').forEach((btn) => {
     btn.addEventListener('click', async function () {
       const action = this.dataset.batchAction;
@@ -115,7 +109,6 @@
     });
   });
 
-  // ─── 2. Async Ingestion Runner & Task Polling ───────────────────────────────
   const runIngestionForm = document.getElementById('run-ingestion-form');
   const taskProgressPanel = document.getElementById('task-progress-panel');
   const taskProgressBar = document.getElementById('task-progress-bar');
@@ -152,6 +145,49 @@
   }
 
   function pollTaskStatus(taskId) {
+    if (typeof EventSource !== 'undefined') {
+      const source = new EventSource(`/admin/ingestions/api/task/${taskId}/stream`);
+
+      source.onmessage = function (event) {
+        try {
+          const task = JSON.parse(event.data);
+          if (task.error) {
+            source.close();
+            showAdminToast(`Task error: ${task.error}`, 'error');
+            return;
+          }
+
+          if (taskProgressBar) {
+            taskProgressBar.style.width = `${task.progress || 10}%`;
+          }
+          if (taskStatusLabel) {
+            taskStatusLabel.textContent = `${(task.status || '').toUpperCase()} (${task.progress}%): ${task.message || ''}`;
+          }
+
+          if (task.status === 'completed' || task.status === 'complete') {
+            source.close();
+            showAdminToast('Ingestion completed successfully!', 'success');
+            setTimeout(() => window.location.reload(), 1200);
+          } else if (task.status === 'failed') {
+            source.close();
+            showAdminToast(`Task failed: ${task.error || 'Unknown error'}`, 'error');
+          }
+        } catch (e) {
+          // Keep stream listening
+        }
+      };
+
+      source.onerror = function () {
+        source.close();
+        pollTaskStatusFallback(taskId);
+      };
+      return;
+    }
+
+    pollTaskStatusFallback(taskId);
+  }
+
+  function pollTaskStatusFallback(taskId) {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/admin/ingestions/api/task/${taskId}`);
@@ -182,7 +218,6 @@
     }, 1500);
   }
 
-  // ─── 3. Entity Merge Action ────────────────────────────────────────────────
   document.querySelectorAll('[data-merge-entity-btn]').forEach((btn) => {
     btn.addEventListener('click', async function () {
       const sourceId = this.dataset.sourceId;
@@ -219,7 +254,6 @@
     });
   });
 
-  // ─── 4. Comment Moderation Actions ──────────────────────────────────────────
   document.querySelectorAll('[data-moderate-comment]').forEach((btn) => {
     btn.addEventListener('click', async function () {
       const commentId = this.dataset.commentId;
@@ -253,7 +287,6 @@
     });
   });
 
-  // ─── 5. Clipboard Copy Helper with Visual Feedback ──────────────────────────
   window.copyToClipboard = function (text, btnElement) {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {
@@ -272,5 +305,4 @@
       });
     }
   };
-
 })();

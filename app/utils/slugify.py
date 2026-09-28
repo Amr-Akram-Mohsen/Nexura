@@ -1,4 +1,5 @@
-"""Nexura Phase 7 â€” Slug utilities."""
+"""URL slug generation utility."""
+
 from __future__ import annotations
 from slugify import slugify as _slugify
 

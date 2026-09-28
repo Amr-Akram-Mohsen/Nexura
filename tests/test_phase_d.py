@@ -13,12 +13,10 @@ from app.utils.sanitizer import sanitize_html, sanitize_text, canonicalize_url
 from app.utils.readiness import compute_readiness
 from app.utils.slugify import make_slug
 
-
 @pytest.fixture(scope="module")
 def app():
     app = create_app()
     yield app
-
 
 def test_content_repository_listing_and_filtering(app):
     with app.app_context():
@@ -44,7 +42,6 @@ def test_content_repository_listing_and_filtering(app):
             res, _ = ContentRepository.list_contents(sort=sort_key, page=1, per_page=3)
             assert len(res) <= 3
 
-
 def test_content_hero_and_trending(app):
     with app.app_context():
         hero = ContentRepository.get_featured_hero()
@@ -54,7 +51,6 @@ def test_content_hero_and_trending(app):
 
         trending = ContentRepository.get_trending(limit=5)
         assert len(trending) <= 5
-
 
 def test_article_and_video_repositories(app):
     with app.app_context():
@@ -69,7 +65,6 @@ def test_article_and_video_repositories(app):
             video = VideoRepository.get_by_id(v_contents[0].object_id)
             assert video is not None
             assert video.id == v_contents[0].object_id
-
 
 def test_taxonomy_repository(app):
     with app.app_context():
@@ -93,7 +88,6 @@ def test_taxonomy_repository(app):
         assert len(facets["genders"]) == 3
         assert len(facets["price_tiers"]) == 4
 
-
 def test_search_and_autocomplete(app):
     with app.app_context():
         results, total = SearchRepository.search("apple", page=1, per_page=5)
@@ -104,7 +98,6 @@ def test_search_and_autocomplete(app):
         for s in suggestions:
             assert "label" in s
             assert "url" in s
-
 
 def test_analytics_and_interactions(app):
     with app.app_context():
@@ -158,9 +151,6 @@ def test_analytics_and_interactions(app):
             assert res_unsave["success"] is True
             assert res_unsave["saved"] is False
 
-
-
-
 def test_serializers_and_compaction(app):
     with app.app_context():
         contents, _ = ContentRepository.list_contents(page=1, per_page=2)
@@ -178,7 +168,6 @@ def test_serializers_and_compaction(app):
         assert "c" not in compacted
         assert "d" not in compacted
         assert compacted["e"] == {"val": 2}
-
 
 def test_sanitizer_and_readiness():
     raw_html = '<p>Hello <script>alert("xss")</script><style>body{color:red}</style><a href="https://example.com?utm_source=test&ref=123">World</a></p>'

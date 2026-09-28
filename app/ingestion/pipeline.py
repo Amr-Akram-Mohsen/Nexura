@@ -1,31 +1,23 @@
-﻿"""
-Nexura Phase 7 — 12-Stage Ingestion Pipeline Orchestrator (§7, §8, §9, §10, §21)
-Coordinates discovery, deduplication, full-body extraction, binary quality gates,
-entity recognition, sentiment enrichment, taxonomy mapping, master Content creation,
-and cascaded cache invalidation.
-"""
+"""Ingestion pipeline orchestrating news and YouTube discovery and enrichment."""
+
 from __future__ import annotations
 import logging
-from typing import Any
 from datetime import datetime, timezone
+from typing import Any
 
-from sqlalchemy import func
 from app.extensions import db
-from app.models.content import Content, Article, ArticleSource, Author, ContentEntity, article_authors
+from app.models.content import Content, ContentEntity
+from app.models.article import Article, ArticleSource
 from app.models.video import Video
 from app.models.taxonomy import Section, Category, Entity
 from app.models.source import Source
 from app.repositories.article_repo import ArticleRepository
 from app.repositories.video_repo import VideoRepository
-from app.repositories.content_repo import ContentRepository
-from app.repositories.taxonomy_repo import TaxonomyRepository
 from app.ingestion.newsapi_client import NewsAPIClient
 from app.ingestion.youtube_client import YouTubeClient
 from app.ingestion.diffbot_client import DiffbotClient
 from app.ingestion.huggingface_client import HuggingFaceClient
-from app.ingestion.deduplication import DuplicateDetector
-from app.ingestion.normalizer import canonicalize_url
-from app.ingestion.quality_gate import check_article_quality
+from app.ingestion.validation import DuplicateDetector, check_article_quality, canonicalize_url
 from app.ingestion.task_tracker import TaskTracker
 from app.utils.sanitizer import sanitize_html, sanitize_text
 from app.utils.slugify import make_slug
@@ -35,7 +27,7 @@ log = logging.getLogger(__name__)
 
 
 class IngestionPipeline:
-    """Master multi-source ingestion and enrichment pipeline."""
+    """Multi-source ingestion and enrichment pipeline."""
 
     def __init__(self, task_tracker: TaskTracker | None = None) -> None:
         self.tracker = task_tracker or TaskTracker()
@@ -45,31 +37,14 @@ class IngestionPipeline:
         self.hf_client = HuggingFaceClient()
         self.dedup_detector = DuplicateDetector()
 
-    # -------------------------------------------------------------------------
-    # 1. News Articles Ingestion Pipeline
-    # -------------------------------------------------------------------------
-
     def run_news_ingestion(
-        self,
-        *,
-        keywords: str | None = None,
-        category_uri: str | None = None,
-        articles_count: int = 25,
-        task_id: str | None = None,
+        self, *, keywords: str | None = None, category_uri: str | None = None, articles_count: int = 25, task_id: str | None = None
     ) -> dict[str, Any]:
-        """
-        Execute full news ingestion lifecycle.
-        Updates task tracker throughout stages.
-        """
+        """Fetch and process news articles with deduplication, quality check, and enrichment."""
         if task_id:
             self.tracker.update_status(task_id, status="running", progress=5, message="Fetching raw news items...")
 
-        # Stage 1: Fetch raw feeds
-        raw_items = self.news_client.fetch_articles(
-            keywords=keywords,
-            category_uri=category_uri,
-            articles_count=articles_count,
-        )
+        raw_items = self.news_client.fetch_articles(keywords=keywords, category_uri=category_uri, articles_count=articles_count)
 
         if not raw_items:
             msg = "No articles returned from upstream API"
@@ -77,65 +52,40 @@ class IngestionPipeline:
                 self.tracker.update_status(task_id, status="complete", progress=100, message=msg, result={"imported": 0})
             return {"imported": 0, "skipped_duplicates": 0, "failed_quality": 0}
 
-        # Pre-load existing titles and canonical URLs for fast batch dedup
-        existing_titles = [
-            r[0] for r in db.session.query(Content.title)
-            .filter(Content.title.isnot(None))
-            .order_by(Content.id.desc())
-            .limit(2000)
-            .all()
-        ]
+        existing_titles = [r[0] for r in db.session.query(Content.title).filter(Content.title.isnot(None)).order_by(Content.id.desc()).limit(2000).all()]
 
         imported_count = 0
         skipped_dup_count = 0
         failed_quality_count = 0
-
         total_items = len(raw_items)
+
         for idx, item in enumerate(raw_items):
             step_progress = 10 + int((idx / total_items) * 85)
             if task_id and idx % 3 == 0:
                 self.tracker.update_status(
-                    task_id,
-                    status="running",
-                    progress=step_progress,
-                    message=f"Processing article {idx + 1}/{total_items}: {item['title'][:40]}...",
+                    task_id, status="running", progress=step_progress, message=f"Processing article {idx + 1}/{total_items}: {item['title'][:40]}..."
                 )
 
-            # Stage 2: URL Canonicalization
             clean_url = canonicalize_url(item["url"])
             if not clean_url:
                 continue
 
-            # Check if canonical URL already exists
             if ArticleRepository.get_by_canonical_url(clean_url) or ArticleRepository.get_by_source_url(clean_url):
                 skipped_dup_count += 1
                 continue
 
-            # Stage 3: Jaccard Deduplication
             if self.dedup_detector.is_duplicate(item["title"], existing_titles):
                 skipped_dup_count += 1
                 continue
 
-            # Stage 4: Publisher / Source Resolution
             source_domain = item.get("source_domain") or "news.com"
-            source = (
-                db.session.query(Source)
-                .filter(Source.domain == source_domain)
-                .first()
-            )
+            source = db.session.query(Source).filter(Source.domain == source_domain).first()
             if not source:
                 source_slug = make_slug(item.get("source_name") or source_domain)
-                source = Source(
-                    name=item.get("source_name") or source_domain,
-                    slug=source_slug,
-                    domain=source_domain,
-                    is_active=True,
-                    authority_score=50,
-                )
+                source = Source(name=item.get("source_name") or source_domain, slug=source_slug, domain=source_domain, is_active=True, authority_score=50)
                 db.session.add(source)
                 db.session.flush()
 
-            # Stage 5: Preliminary Article creation (status='discovered')
             article = Article(
                 title=sanitize_text(item["title"]),
                 description=sanitize_text(item.get("description")),
@@ -150,18 +100,11 @@ class IngestionPipeline:
             db.session.add(article)
             db.session.flush()
 
-            # Create syndicated article_source
-            art_source = ArticleSource(
-                article_id=article.id,
-                source_id=source.id,
-                url=clean_url,
-                published_at=item.get("published_at"),
-            )
+            art_source = ArticleSource(article_id=article.id, source_id=source.id, url=clean_url, published_at=item.get("published_at"))
             db.session.add(art_source)
             db.session.flush()
             article.primary_source_id = art_source.id
 
-            # Stage 6 & 7: Body & Entity Extraction via Diffbot (if configured) or raw body
             extracted = None
             if self.diffbot_client.token:
                 extracted = self.diffbot_client.extract_article(clean_url)
@@ -178,7 +121,6 @@ class IngestionPipeline:
                 article.content_html = f"<p>{sanitize_text(raw_body)}</p>" if raw_body else ""
                 article.word_count = len(raw_body.split())
 
-            # Stage 8: Binary Quality Gate (Phase 7 §8.2)
             gate = check_article_quality(article.word_count, article.image_url)
             if not gate.passed:
                 article.status = "failed"
@@ -186,12 +128,10 @@ class IngestionPipeline:
                 db.session.commit()
                 continue
 
-            # Stage 9: Sentiment Analysis
             sample_text = article.content_text[:1000] if article.content_text else article.title
             sentiment_score, _, _ = self.hf_client.analyze_sentiment(sample_text)
             article.sentiment_score = sentiment_score
 
-            # Stage 10: Taxonomy Resolution (Section & Category)
             section = db.session.query(Section).filter(Section.is_active.is_(True)).order_by(Section.sort_order.asc()).first()
             section_id = section.id if section else 1
 
@@ -201,7 +141,6 @@ class IngestionPipeline:
                 cat_slug = make_slug(cat_name)
                 category = db.session.query(Category).filter(Category.slug == cat_slug).first()
 
-            # Stage 11: Master Content Aggregator creation
             published_at = item.get("published_at") or datetime.now(timezone.utc)
             content = Content(
                 object_type="article",
@@ -222,7 +161,6 @@ class IngestionPipeline:
             db.session.add(content)
             db.session.flush()
 
-            # Associate extracted entities
             raw_entities = (extracted.get("entities") if extracted else None) or item.get("raw_concepts", [])
             for ent in raw_entities[:8]:
                 ent_name = ent.get("name")
@@ -249,7 +187,6 @@ class IngestionPipeline:
                 )
                 db.session.add(ce)
 
-            # Stage 12: Mark Published & Invalidate Cache
             article.status = "published"
             db.session.commit()
 
@@ -270,22 +207,8 @@ class IngestionPipeline:
 
         return result_summary
 
-    # -------------------------------------------------------------------------
-    # 2. YouTube Videos Ingestion Pipeline
-    # -------------------------------------------------------------------------
-
-    def run_youtube_ingestion(
-        self,
-        *,
-        query: str,
-        max_results: int = 20,
-        task_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Execute YouTube video ingestion:
-        Searches videos, dedups by external_id, saves Video record, fetches top comments,
-        creates master Content record, and invalidates cache.
-        """
+    def run_youtube_ingestion(self, *, query: str, max_results: int = 20, task_id: str | None = None) -> dict[str, Any]:
+        """Fetch and process YouTube videos, sync top comments, and create content records."""
         if task_id:
             self.tracker.update_status(task_id, status="running", progress=10, message=f"Searching YouTube for '{query}'...")
 
@@ -307,18 +230,13 @@ class IngestionPipeline:
             step_progress = 15 + int((idx / total_items) * 80)
             if task_id and idx % 2 == 0:
                 self.tracker.update_status(
-                    task_id,
-                    status="running",
-                    progress=step_progress,
-                    message=f"Saving video {idx + 1}/{total_items}: {item['title'][:40]}...",
+                    task_id, status="running", progress=step_progress, message=f"Saving video {idx + 1}/{total_items}: {item['title'][:40]}..."
                 )
 
-            # Deduplication by YouTube external_id
             if VideoRepository.get_by_external_id(item["external_id"]):
                 skipped_dup_count += 1
                 continue
 
-            # Create Video record
             video = Video(
                 external_id=item["external_id"],
                 platform="youtube",
@@ -339,7 +257,6 @@ class IngestionPipeline:
             db.session.add(video)
             db.session.flush()
 
-            # Fetch top YouTube comments
             comments = self.youtube_client.fetch_top_comments(video.external_id, max_results=10)
             for c in comments:
                 VideoRepository.upsert_comment(
@@ -353,7 +270,6 @@ class IngestionPipeline:
                     published_at=c.get("published_at"),
                 )
 
-            # Master Content record
             content = Content(
                 object_type="video",
                 object_id=video.id,
@@ -374,14 +290,13 @@ class IngestionPipeline:
             imported_count += 1
             invalidate_content_after_write(content.id)
 
-        result_summary = {
-            "imported": imported_count,
-            "skipped_duplicates": skipped_dup_count,
-            "total_evaluated": total_items,
-        }
+        result_summary = {"imported": imported_count, "skipped_duplicates": skipped_dup_count, "total_evaluated": total_items}
 
         if task_id:
             msg = f"YouTube Ingestion complete: {imported_count} videos imported, {skipped_dup_count} duplicates skipped."
             self.tracker.update_status(task_id, status="complete", progress=100, message=msg, result=result_summary)
 
         return result_summary
+
+
+__all__ = ["IngestionPipeline"]

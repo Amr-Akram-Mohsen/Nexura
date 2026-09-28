@@ -37,7 +37,6 @@ BRAND_TYPE_CORRECTIONS = [
     ("tom-ford",  5165, "person", "brand"),
 ]
 
-
 def upgrade() -> None:
     conn = op.get_bind()
 
@@ -92,7 +91,6 @@ def upgrade() -> None:
             "Brand entity_type migration: %d brand slugs still not typed 'brand': %s",
             len(remaining), remaining
         )
-
 
 def downgrade() -> None:
     conn = op.get_bind()
