@@ -14,6 +14,7 @@ from app.models.user import User
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
 from app.utils.security import score_password
+from app.utils.audit import log_event
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +78,8 @@ def register():
             log.info("Verification token for %s: %s", email, token)
             db.session.commit()
 
+            log_event("user_registered", user_id=user.id, ip_address=request.remote_addr, details={"email": user.email})
+
             flash("Account created! Check your inbox to verify your email before logging in.", "success")
             return redirect(url_for("auth.login"))
 
@@ -105,16 +108,20 @@ def login():
         if not user or not UserRepository.verify_password(user, password):
             error = "Invalid email or password."
             log.warning("Failed login attempt for email: %s", email)
+            log_event("login_failed", ip_address=request.remote_addr, details={"email": email, "reason": "invalid_credentials"})
         elif not user.is_active:
             error = "This account has been deactivated. Contact support."
+            log_event("login_failed", user_id=user.id, ip_address=request.remote_addr, details={"email": email, "reason": "account_deactivated"})
         elif not user.is_verified:
             error = "Please verify your email address before logging in. Check your inbox for the confirmation link."
             needs_verification = True
+            log_event("login_failed", user_id=user.id, ip_address=request.remote_addr, details={"email": email, "reason": "unverified"})
         else:
             login_user(user, remember=remember)
             user.last_login_at = datetime.now(timezone.utc)
             db.session.commit()
             log.info("User %s logged in.", user.email)
+            log_event("login_success", user_id=user.id, ip_address=request.remote_addr)
             next_url = request.args.get("next") or url_for("public.home")
             if not next_url.startswith("/"):
                 next_url = url_for("public.home")
@@ -150,6 +157,8 @@ def verify_email(token: str):
     user.email_verification_token = None
     db.session.commit()
 
+    log_event("email_verified", user_id=user.id, ip_address=request.remote_addr)
+
     flash("Email verified! You can now log in.", "success")
     return redirect(url_for("auth.login"))
 
@@ -178,6 +187,7 @@ def resend_verification():
             db.session.commit()
             EmailService.send_verification_email(user, token)
             log.info("Resent verification token for %s: %s", email, token)
+            log_event("verification_resend_requested", user_id=user.id, ip_address=request.remote_addr, details={"email": email})
 
     return render_template("auth/resend_verification.html", sent=sent, email_value=email_value)
 
@@ -202,6 +212,9 @@ def forgot_password():
             db.session.commit()
             EmailService.send_password_reset_email(user, token)
             log.info("Password reset token for %s: %s", email, token)
+            log_event("password_reset_requested", user_id=user.id, ip_address=request.remote_addr, details={"email": email})
+        else:
+            log_event("password_reset_requested", ip_address=request.remote_addr, details={"email": email, "found": False})
 
     return render_template("auth/forgot_password.html", sent=sent)
 
@@ -236,6 +249,7 @@ def reset_password(token: str):
             error = "Passwords do not match."
         else:
             UserRepository.update_password(user, password)
+            log_event("password_reset_completed", user_id=user.id, ip_address=request.remote_addr)
             flash("Password updated! Please log in with your new password.", "success")
             return redirect(url_for("auth.login"))
 

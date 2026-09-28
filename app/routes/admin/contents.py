@@ -6,6 +6,8 @@ import math
 from typing import Any
 
 from flask import Blueprint, abort, jsonify, render_template, request
+from flask_login import current_user
+from pydantic import ValidationError
 from sqlalchemy import func, desc
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -18,6 +20,8 @@ from app.models.source import Source
 from app.repositories.content_repo import ContentRepository
 from app.services.content_service import evaluate_editorial_readiness
 from app.routes.admin import admin_required
+from app.schemas import BatchContentPayload
+from app.utils.audit import log_event
 
 log = logging.getLogger(__name__)
 
@@ -104,19 +108,17 @@ def inspect(content_id: int):
 @contents_bp.route("/batch", methods=["POST"])
 @admin_required
 def batch_action():
-    """Execute batch operations (publish, unpublish, activate, deactivate, delete) on selected items."""
-    action = request.form.get("action", "").strip().lower()
-    content_ids_raw = request.form.getlist("content_ids") or (request.json.get("content_ids", []) if request.is_json else [])
+    """Execute batch operations (publish, unpublish, activate, deactivate, delete) on selected items with Pydantic validation and audit logging."""
+    raw_action = request.form.get("action") or (request.json.get("action") if request.is_json else "")
+    raw_ids = request.form.getlist("content_ids") or (request.json.get("content_ids", []) if request.is_json else [])
 
-    content_ids = []
-    for cid in content_ids_raw:
-        try:
-            content_ids.append(int(cid))
-        except (TypeError, ValueError):
-            pass
+    try:
+        payload = BatchContentPayload.model_validate({"action": raw_action, "content_ids": raw_ids})
+    except ValidationError as err:
+        return jsonify({"success": False, "message": "Invalid batch request parameters.", "errors": err.errors()}), 400
 
-    if not content_ids:
-        return jsonify({"success": False, "message": "No items selected."}), 400
+    action = payload.action
+    content_ids = payload.content_ids
 
     count = 0
     if action == "publish":
@@ -137,12 +139,17 @@ def batch_action():
     elif action == "delete":
         count = db.session.query(Content).filter(Content.id.in_(content_ids)).delete(synchronize_session=False)
 
-    else:
-        return jsonify({"success": False, "message": f"Unknown action '{action}'."}), 400
-
     db.session.commit()
 
     for cid in content_ids:
         invalidate_content_after_write(cid)
+
+    user_id = current_user.id if current_user and current_user.is_authenticated else None
+    log_event(
+        "content_batch_action",
+        user_id=user_id,
+        ip_address=request.remote_addr,
+        details={"action": action, "count": count, "content_ids": content_ids},
+    )
 
     return jsonify({"success": True, "action": action, "count": count, "message": f"Successfully performed '{action}' on {count} item(s)."})

@@ -10,3 +10,4 @@ from app.models import user  # noqa: F401
 from app.models import interaction  # noqa: F401
 from app.models import recommendation  # noqa: F401
 from app.models import distribution  # noqa: F401
+from app.models import audit  # noqa: F401
