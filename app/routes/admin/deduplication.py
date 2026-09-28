@@ -92,6 +92,8 @@ def resolve_cluster():
             pass
 
     resolved_count = 0
+    canonical_content = db.session.query(Content).filter(Content.object_type == "article", Content.object_id == canonical_id).first()
+
     for dup_id in duplicate_ids:
         dup_article = db.session.get(Article, dup_id)
         if not dup_article or dup_article.id == canonical_id:
@@ -104,17 +106,22 @@ def resolve_cluster():
             if not existing_src:
                 dup_source = db.session.query(Content.source_id).filter(Content.object_type == "article", Content.object_id == dup_article.id).scalar()
                 if dup_source:
-                    new_link = ArticleSource(article_id=canonical_id, source_id=dup_source, url=dup_article.canonical_url, is_primary=False)
+                    new_link = ArticleSource(article_id=canonical_id, source_id=dup_source, url=dup_article.canonical_url)
                     db.session.add(new_link)
 
-        db.session.query(Content).filter(Content.object_type == "article", Content.object_id == dup_article.id).update(
-            {"is_published": False, "is_active": False}
-        )
+        dup_content = db.session.query(Content).filter(Content.object_type == "article", Content.object_id == dup_article.id).first()
+        if dup_content:
+            dup_content.is_published = False
+            dup_content.is_active = False
+            invalidate_content_after_write(dup_content.id)
 
         dup_article.status = "archived"
         resolved_count += 1
 
     db.session.commit()
-    invalidate_content_after_write()
+    if canonical_content:
+        invalidate_content_after_write(canonical_content.id)
+    else:
+        invalidate_content_after_write()
 
     return jsonify({"success": True, "resolved_count": resolved_count, "message": f"Successfully merged and canonicalized {resolved_count} duplicate stories."})
