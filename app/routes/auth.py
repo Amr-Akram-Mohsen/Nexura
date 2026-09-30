@@ -75,7 +75,7 @@ def register():
             db.session.flush()
 
             EmailService.send_verification_email(user, token)
-            log.info("Verification token for %s: %s", email, token)
+            log.info("Verification email dispatched for %s", email)
             db.session.commit()
 
             log_event("user_registered", user_id=user.id, ip_address=request.remote_addr, details={"email": user.email})
@@ -186,7 +186,7 @@ def resend_verification():
             user.verification_sent_at = now_utc
             db.session.commit()
             EmailService.send_verification_email(user, token)
-            log.info("Resent verification token for %s: %s", email, token)
+            log.info("Verification email re-dispatched for %s", email)
             log_event("verification_resend_requested", user_id=user.id, ip_address=request.remote_addr, details={"email": email})
 
     return render_template("auth/resend_verification.html", sent=sent, email_value=email_value)
@@ -211,7 +211,7 @@ def forgot_password():
             user.password_reset_sent_at = datetime.now(timezone.utc)
             db.session.commit()
             EmailService.send_password_reset_email(user, token)
-            log.info("Password reset token for %s: %s", email, token)
+            log.info("Password reset email dispatched for %s", email)
             log_event("password_reset_requested", user_id=user.id, ip_address=request.remote_addr, details={"email": email})
         else:
             log_event("password_reset_requested", ip_address=request.remote_addr, details={"email": email, "found": False})

@@ -142,7 +142,7 @@
     --bg-modal:      #fff;
     --text-primary:   hsl(220, 25%, 12%);
     --text-secondary: hsl(220, 15%, 40%);
-    --text-muted:     hsl(220, 10%, 60%);
+    --text-muted:     hsl(220, 10%, 55%);
     --border-subtle:  hsla(215, 20%, 20%, 0.08);
     --border-default: hsla(215, 20%, 20%, 0.14);
     --border-strong:  hsla(215, 20%, 20%, 0.25);
@@ -151,6 +151,27 @@
     --card-elevation-2: 0 4px 12px hsla(0,0%,0%,0.10);
     --card-elevation-3: 0 8px 28px hsla(0,0%,0%,0.13);
   }
+}
+
+/* Explicit light theme toggle */
+[data-theme="light"] {
+  --bg-base:       hsl(210, 20%, 98%);
+  --bg-primary:    hsl(210, 20%, 98%);
+  --bg-secondary:  hsl(210, 18%, 94%);
+  --bg-tertiary:   hsl(210, 15%, 90%);
+  --bg-card:       #fff;
+  --bg-card-hover: hsl(210, 20%, 97%);
+  --bg-modal:      #fff;
+  --text-primary:   hsl(220, 25%, 12%);
+  --text-secondary: hsl(220, 15%, 40%);
+  --text-muted:     hsl(220, 10%, 55%);
+  --border-subtle:  hsla(215, 20%, 20%, 0.08);
+  --border-default: hsla(215, 20%, 20%, 0.14);
+  --border-strong:  hsla(215, 20%, 20%, 0.25);
+  --glass-bg:       hsla(210, 20%, 98%, 0.78);
+  --card-elevation-1: 0 1px 3px hsla(0,0%,0%,0.08);
+  --card-elevation-2: 0 4px 12px hsla(0,0%,0%,0.10);
+  --card-elevation-3: 0 8px 28px hsla(0,0%,0%,0.13);
 }
 
 /* Explicit dark theme toggle */

@@ -136,17 +136,33 @@
     </nav>
   </header>
 
-  {# Flash messages #}
+  {# Flash messages — gracefully spawned into the floating toast notification system #}
   {% with messages = get_flashed_messages(with_categories=True) %}
   {% if messages %}
-  <div class="container" style="padding-top: var(--space-4);" aria-live="polite">
-    {% for category, message in messages %}
-    <div class="toast toast--{{ category if category != 'message' else 'info' }}"
-      style="position:static; transform:none; max-width:100%; margin-bottom:var(--space-3);" role="alert">
-      {{ message }}
+  <div id="flashed-messages-data" style="display:none;" data-messages='{{ messages | tojson }}'></div>
+  <noscript>
+    <div class="container" style="padding-top: var(--space-4);" aria-live="polite">
+      {% for category, message in messages %}
+      {% set alert_type = 'error' if category in ['error', 'danger'] else ('success' if category == 'success' else ('warning' if category == 'warning' else 'info')) %}
+      <div class="alert alert--{{ alert_type }}" role="alert">
+        <div class="alert__icon">
+          {% if alert_type == 'success' %}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          {% elif alert_type == 'error' %}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {% elif alert_type == 'warning' %}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          {% else %}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {% endif %}
+        </div>
+        <div class="alert__content">
+          <span class="alert__message">{{ message }}</span>
+        </div>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
+  </noscript>
   {% endif %}
   {% endwith %}
 

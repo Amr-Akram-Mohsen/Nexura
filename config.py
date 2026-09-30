@@ -39,6 +39,7 @@ class Config:
     MAIL_PASSWORD: str | None = os.environ.get("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER: str | None = os.environ.get("MAIL_DEFAULT_SENDER")
     MAIL_ENABLED: bool = os.environ.get("MAIL_ENABLED", "False").lower() == "true"
+    MAIL_DEBUG: bool = os.environ.get("MAIL_DEBUG", "False").lower() == "true"
 
     RATELIMIT_STORAGE_URI: str = os.environ.get("REDIS_URL", "memory://")
     RATELIMIT_DEFAULT: str = "200 per minute"

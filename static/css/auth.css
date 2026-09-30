@@ -1,6 +1,7 @@
 /* =============================================================================
    Nexura — Auth Pages (auth.css)
-   Centered card layout for login/register/forgot/reset
+   Centered card layout for login/register/forgot/reset/resend
+   Polished for both Light & Dark themes with micro-interactions
    ============================================================================= */
 
 .auth-page {
@@ -11,19 +12,34 @@
   justify-content: center;
   padding: var(--space-12) var(--space-4);
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, hsla(217,90%,62%,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 50% at 50% 0%, hsla(217, 90%, 62%, 0.08) 0%, transparent 70%),
     var(--bg-base);
+}
+
+@media (max-width: 600px) {
+  .auth-page {
+    padding: var(--space-6) var(--space-3);
+  }
 }
 
 .auth-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 450px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-2xl);
   padding: var(--space-8) var(--space-8);
-  box-shadow: var(--card-elevation-3);
+  box-shadow: 0 4px 6px -1px hsla(0, 0%, 0%, 0.08), 0 20px 30px -4px hsla(0, 0%, 0%, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   animation: authCardIn 0.35s var(--ease-out) both;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: var(--space-6) var(--space-4);
+    border-radius: var(--radius-xl);
+  }
 }
 
 @keyframes authCardIn {
@@ -32,7 +48,7 @@
 }
 
 .auth-card__brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-8);
@@ -45,6 +61,12 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-out), filter var(--duration-fast);
+}
+
+.auth-card__brand:hover {
+  transform: translateY(-1px) scale(1.02);
+  filter: drop-shadow(0 4px 12px hsla(217, 90%, 62%, 0.25));
 }
 
 .auth-card__title {
@@ -59,10 +81,13 @@
 .auth-card__subtitle {
   font-size: var(--text-sm);
   color: var(--text-secondary);
+  line-height: var(--leading-snug);
   margin-bottom: var(--space-6);
 }
 
-/* Google Social Button */
+/* =============================================================================
+   Google Social Button
+   ============================================================================= */
 .btn-social-google {
   display: flex;
   align-items: center;
@@ -77,8 +102,16 @@
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
   text-decoration: none;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: background-color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .btn-social-google {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .btn-social-google:hover {
@@ -86,7 +119,17 @@
   border-color: var(--border-accent);
   color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.btn-social-google:active {
+  transform: translateY(0) scale(0.99);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-social-google:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 /* Auth Divider */
@@ -113,7 +156,9 @@
   font-weight: var(--weight-medium);
 }
 
-/* Form Fields */
+/* =============================================================================
+   Form Fields
+   ============================================================================= */
 .auth-field {
   display: flex;
   flex-direction: column;
@@ -140,18 +185,101 @@
   border-radius: var(--radius-lg);
   font-size: var(--text-base);
   color: var(--text-primary);
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+  transition: border-color var(--duration-fast),
+              box-shadow var(--duration-fast),
+              background-color var(--duration-fast);
+}
+
+[data-theme="light"] .auth-field__input {
+  background: hsl(210, 25%, 99%);
+}
+
+.auth-field__input:hover:not(:focus):not(.error) {
+  border-color: var(--border-strong);
 }
 
 .auth-field__input:focus {
   outline: none;
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px hsla(217, 90%, 62%, 0.15);
+  box-shadow: 0 0 0 3px hsla(217, 90%, 62%, 0.18);
+  background: var(--bg-card);
 }
 
 .auth-field__input.error {
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px hsla(355, 72%, 58%, 0.12);
+  box-shadow: 0 0 0 3px hsla(355, 72%, 58%, 0.15);
+}
+
+/* Input with embedded action button (Password visibility toggle) */
+.auth-field__input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.auth-field__input-wrapper .auth-field__input {
+  padding-right: 48px;
+}
+
+.auth-field__toggle-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--duration-fast),
+              background-color var(--duration-fast),
+              transform var(--duration-fast);
+  z-index: 2;
+  user-select: none;
+}
+
+.auth-field__toggle-btn:hover {
+  color: var(--accent-blue);
+  background-color: hsla(217, 90%, 62%, 0.10);
+}
+
+.auth-field__toggle-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.auth-field__toggle-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -1px;
+}
+
+/* Declarative Icon State Switching (No JS inline styles needed) */
+.auth-field__toggle-btn .icon-eye {
+  display: block;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.auth-field__toggle-btn .icon-eye-off {
+  display: none;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.auth-field__toggle-btn[aria-pressed="true"] .icon-eye {
+  display: none;
+}
+
+.auth-field__toggle-btn[aria-pressed="true"] .icon-eye-off {
+  display: block;
 }
 
 .auth-field__error {
@@ -160,6 +288,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  margin-top: var(--space-1);
 }
 
 .auth-field__hint {
@@ -169,7 +298,7 @@
 
 /* Password strength bar */
 .password-strength {
-  height: 4px;
+  height: 5px;
   border-radius: var(--radius-full);
   background: var(--bg-tertiary);
   margin-top: var(--space-2);
@@ -190,7 +319,9 @@
 .password-strength__bar[data-score="4"] { width: 100%; background: var(--accent-green); }
 
 .password-strength__label {
+  display: inline-block;
   font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   margin-top: var(--space-1);
   color: var(--text-muted);
 }
@@ -212,11 +343,12 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
   cursor: pointer;
+  user-select: none;
 }
 
 .auth-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   accent-color: var(--accent-blue);
@@ -230,23 +362,10 @@
   font-weight: var(--weight-medium);
   transition: opacity var(--duration-fast);
 }
-.auth-link:hover { opacity: 0.80; text-decoration: underline; }
 
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-block: var(--space-6);
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border-subtle);
+.auth-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
 }
 
 .auth-footer {
@@ -256,7 +375,167 @@
   color: var(--text-secondary);
 }
 
-/* Success state */
+/* Button micro-interactions */
+.btn--gradient:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px hsla(217, 90%, 62%, 0.25);
+}
+
+.btn--gradient:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   Reusable Alert Banners (.alert)
+   Contextual notifications for auth pages, forms, and flash messages
+   ============================================================================= */
+.alert {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 12px 14px;
+  border-radius: var(--radius-xl);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-6);
+  box-shadow: 0 4px 12px -2px hsla(0, 0%, 0%, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: opacity var(--duration-normal) var(--ease-out),
+              max-height var(--duration-normal) var(--ease-out),
+              margin var(--duration-normal) var(--ease-out),
+              padding var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+.alert--collapsing {
+  opacity: 0;
+  max-height: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+
+.alert__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert__message {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+.alert__action {
+  margin-top: var(--space-1);
+}
+
+.alert__action a {
+  color: inherit;
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: opacity var(--duration-fast);
+}
+
+.alert__action a:hover {
+  opacity: 0.80;
+}
+
+.alert__close {
+  background: transparent;
+  border: none;
+  color: currentColor;
+  opacity: 0.65;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity var(--duration-fast), transform var(--duration-fast), background-color var(--duration-fast);
+}
+
+.alert__close:hover {
+  opacity: 1;
+  background: hsla(0, 0%, 50%, 0.12);
+  transform: scale(1.1);
+}
+
+.alert__close:active {
+  transform: scale(0.92);
+}
+
+.alert__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Alert Variants */
+.alert--error {
+  background: hsla(355, 72%, 58%, 0.10);
+  border: 1px solid hsla(355, 72%, 58%, 0.28);
+  color: var(--accent-red);
+}
+.alert--error .alert__icon {
+  background: hsla(355, 72%, 58%, 0.16);
+  border: 1px solid hsla(355, 72%, 58%, 0.25);
+}
+
+.alert--success {
+  background: hsla(152, 60%, 52%, 0.10);
+  border: 1px solid hsla(152, 60%, 52%, 0.28);
+  color: var(--accent-green);
+}
+.alert--success .alert__icon {
+  background: hsla(152, 60%, 52%, 0.16);
+  border: 1px solid hsla(152, 60%, 52%, 0.25);
+}
+
+.alert--warning {
+  background: hsla(37, 90%, 58%, 0.10);
+  border: 1px solid hsla(37, 90%, 58%, 0.28);
+  color: var(--accent-amber);
+}
+.alert--warning .alert__icon {
+  background: hsla(37, 90%, 58%, 0.16);
+  border: 1px solid hsla(37, 90%, 58%, 0.25);
+}
+
+.alert--info {
+  background: hsla(217, 90%, 62%, 0.10);
+  border: 1px solid hsla(217, 90%, 62%, 0.28);
+  color: var(--accent-blue);
+}
+.alert--info .alert__icon {
+  background: hsla(217, 90%, 62%, 0.16);
+  border: 1px solid hsla(217, 90%, 62%, 0.25);
+}
+
+/* =============================================================================
+   Success State Box
+   ============================================================================= */
 .auth-success-box {
   display: flex;
   flex-direction: column;
@@ -264,12 +543,15 @@
   gap: var(--space-4);
   padding: var(--space-8) var(--space-4);
   text-align: center;
+  animation: authCardIn 0.3s var(--ease-out) both;
 }
 
 .auth-success-icon {
-  width: 52px; height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: hsla(152, 60%, 52%, 0.15);
+  box-shadow: 0 0 0 8px hsla(152, 60%, 52%, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
