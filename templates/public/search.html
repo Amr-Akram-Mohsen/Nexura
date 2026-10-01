@@ -2,19 +2,17 @@
 {% from "macros/content_card.html" import content_card %}
 {% from "macros/pagination.html" import pagination %}
 
-{% set query = request.args.get('q', '') %}
-
-{% block title %}{% if query %}Search: {{ query }}{% else %}Search{% endif %}{% endblock %}
+{% block title %}{% if query %}Search: {{ query }}{% else %}Search{% endif %} — Nexura{% endblock %}
 {% block description %}Search Nexura for technology articles, video reviews, and analysis. Find the best content organized by topic and brand.{% endblock %}
 {% block robots %}{{ 'noindex, follow' if query else 'index, follow' }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: var(--space-8);">
+<div class="container search-page">
 
-  {# Large Search Bar #}
-  <div style="max-width: 680px; margin: 0 auto var(--space-10);">
-    <h1 style="font-family:var(--font-display); font-size:var(--text-3xl); font-weight:var(--weight-bold); letter-spacing:-0.02em; text-align:center; margin-bottom:var(--space-6);">
-      What are you looking for?
+  {# ── Hero Zone ── #}
+  <div class="search-hero">
+    <h1 class="search-hero__title">
+      {% if query %}Results for "{{ query }}"{% else %}What are you looking for?{% endif %}
     </h1>
 
     <div class="search-container">
@@ -45,59 +43,176 @@
              role="listbox"></div>
       </form>
     </div>
-  </div>
+  </div>{# /search-hero #}
 
-  {# Results area #}
+  {# ══════════════════════════════════════════════════════
+     BRANCH A: Active query
+     ══════════════════════════════════════════════════════ #}
   {% if query %}
 
-  {# Filter bar #}
-  <div class="filter-bar" style="margin-bottom: var(--space-6);" aria-label="Search filters">
-    <span class="filter-bar__label">Filter:</span>
-    <a class="filter-chip {% if not request.args.get('type') %}active{% endif %}"
-       href="/search?q={{ query | urlencode }}">All</a>
-    <a class="filter-chip {% if request.args.get('type') == 'article' %}active{% endif %}"
-       href="/search?q={{ query | urlencode }}&type=article">Articles</a>
-    <a class="filter-chip {% if request.args.get('type') == 'video' %}active{% endif %}"
-       href="/search?q={{ query | urlencode }}&type=video">Videos</a>
+    {# ── Filter bar ── #}
+    <div class="filter-bar" role="toolbar" aria-label="Search filters">
+      <span class="filter-bar__label">Type</span>
+      <a class="filter-chip {% if not object_type %}active{% endif %}"
+         href="/search?q={{ query | urlencode }}{% if sort and sort != 'relevance' %}&sort={{ sort }}{% endif %}">All</a>
+      <a class="filter-chip {% if object_type == 'article' %}active{% endif %}"
+         href="/search?q={{ query | urlencode }}&type=article{% if sort and sort != 'relevance' %}&sort={{ sort }}{% endif %}">Articles</a>
+      <a class="filter-chip {% if object_type == 'video' %}active{% endif %}"
+         href="/search?q={{ query | urlencode }}&type=video{% if sort and sort != 'relevance' %}&sort={{ sort }}{% endif %}">Videos</a>
 
-    {# Sort #}
-    <span class="filter-bar__label" style="margin-left: auto;">Sort:</span>
-    <a class="filter-chip {% if not request.args.get('sort') or request.args.get('sort') == 'relevance' %}active{% endif %}"
-       href="/search?q={{ query | urlencode }}&sort=relevance">Relevance</a>
-    <a class="filter-chip {% if request.args.get('sort') == 'recent' %}active{% endif %}"
-       href="/search?q={{ query | urlencode }}&sort=recent">Recent</a>
-  </div>
+      <span class="filter-bar__label">Sort</span>
+      <a class="filter-chip {% if not sort or sort == 'relevance' %}active{% endif %}"
+         href="/search?q={{ query | urlencode }}{% if object_type %}&type={{ object_type }}{% endif %}&sort=relevance">Relevance</a>
+      <a class="filter-chip {% if sort == 'recent' %}active{% endif %}"
+         href="/search?q={{ query | urlencode }}{% if object_type %}&type={{ object_type }}{% endif %}&sort=recent">Recent</a>
+      <a class="filter-chip {% if sort == 'popular' %}active{% endif %}"
+         href="/search?q={{ query | urlencode }}{% if object_type %}&type={{ object_type }}{% endif %}&sort=popular">Popular</a>
+    </div>
 
-  {% if items %}
-  <p class="search-results-count" aria-live="polite">
-    {{ total or items|length }} results for <strong>"{{ query }}"</strong>
-  </p>
+    {% if items %}
 
-  <div class="grid-cards" data-search-results>
-    {% for item in items %}
-      {{ content_card(item) }}
-    {% endfor %}
-  </div>
+      {# ── Result count ── #}
+      <p class="search-results-count" aria-live="polite">
+        {{ total or items|length }} result{{ 's' if (total or items|length) != 1 }} for <strong>"{{ query }}"</strong>
+      </p>
 
-  {{ pagination(page, total_pages, endpoint='public.search', q=query) }}
+      {# ── Horizontal result rows ── #}
+      <div class="search-results-list" data-search-results>
+        {% for item in items %}
+        <article class="search-result-row">
 
+          {# Thumbnail #}
+          <a class="search-result-row__thumb-wrap"
+             href="{{ item.url }}"
+             aria-hidden="true"
+             tabindex="-1">
+            {% if item.thumbnail %}
+            <img class="search-result-row__thumb"
+                 src="{{ item.thumbnail }}"
+                 alt=""
+                 loading="lazy"
+                 onerror="this.parentElement.classList.add('no-thumb')">
+            {% else %}
+            <div class="search-result-row__thumb-fallback" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                {% if item.object_type == 'video' %}
+                <polygon points="5 3 19 12 5 21 5 3"/>
+                {% else %}
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                {% endif %}
+              </svg>
+            </div>
+            {% endif %}
+            {# Type badge overlaid on thumb #}
+            <span class="card__type-badge card__type-badge--{{ item.object_type }}">
+              {% if item.object_type == 'video' %}
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              VIDEO
+              {% else %}
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              ARTICLE
+              {% endif %}
+            </span>
+            {% if item.object_type == 'video' and item.duration %}
+            <span class="card__duration">{{ item.duration }}</span>
+            {% endif %}
+          </a>
+
+          {# Body #}
+          <div class="search-result-row__body">
+            <div class="search-result-row__meta">
+              {% if item.category_name %}
+              <span class="search-result-row__category">{{ item.category_name }}</span>
+              <span class="search-result-row__dot">·</span>
+              {% endif %}
+              {% if item.formatted_date or item.age %}
+              <time class="search-result-row__date">{{ item.formatted_date or item.age }}</time>
+              {% endif %}
+            </div>
+
+            <h2 class="search-result-row__title">
+              <a href="{{ item.url }}">{{ item.title }}</a>
+            </h2>
+
+            {% if item.preview or item.preview_text %}
+            <p class="search-result-row__excerpt">{{ item.preview or item.preview_text }}</p>
+            {% endif %}
+
+            <div class="search-result-row__footer">
+              <span class="search-result-row__source">{{ item.source_name or item.channel_name or 'Nexura' }}</span>
+              {% if item.reading_time %}
+              <span class="search-result-row__dot">·</span>
+              <span>{{ item.reading_time }} min read</span>
+              {% endif %}
+              {% if item.object_type == 'video' and item.view_count %}
+              <span class="search-result-row__dot">·</span>
+              <span>{{ '{:,}'.format(item.view_count) }} views</span>
+              {% endif %}
+            </div>
+          </div>
+
+        </article>
+        {% endfor %}
+      </div>
+
+      {% if object_type and sort and sort != 'relevance' %}
+        {{ pagination(page, total_pages, endpoint='public.search', q=query, type=object_type, sort=sort) }}
+      {% elif object_type %}
+        {{ pagination(page, total_pages, endpoint='public.search', q=query, type=object_type) }}
+      {% elif sort and sort != 'relevance' %}
+        {{ pagination(page, total_pages, endpoint='public.search', q=query, sort=sort) }}
+      {% else %}
+        {{ pagination(page, total_pages, endpoint='public.search', q=query) }}
+      {% endif %}
+
+    {% else %}
+      {# ── No results ── #}
+      <div class="empty-state">
+        <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <h2 class="empty-state__title">No results for "{{ query }}"</h2>
+        <p class="empty-state__desc">Try different keywords, check your spelling, or explore a trending topic below.</p>
+
+        {# Trending chips as fallback suggestions #}
+        {% if trending_entities %}
+        <div class="search-discovery__chips" style="justify-content: center; margin-top: var(--space-6);">
+          {% for entity in trending_entities[:10] %}
+          <a class="search-discovery__chip" href="/search?q={{ entity.name | urlencode }}">{{ entity.name }}</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  {# ══════════════════════════════════════════════════════
+     BRANCH B: No query — Discovery state
+     ══════════════════════════════════════════════════════ #}
   {% else %}
-  <div class="empty-state">
-    <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-    </svg>
-    <h2 class="empty-state__title">No results for "{{ query }}"</h2>
-    <p class="empty-state__desc">Try different keywords, check your spelling, or browse topics below.</p>
-    <a class="btn btn--secondary" href="/">Back to home</a>
+  <div class="search-discovery">
+
+    {# Trending topic chips #}
+    {% if trending_entities %}
+    <p class="search-discovery__heading">Trending Topics</p>
+    <div class="search-discovery__chips">
+      {% for entity in trending_entities %}
+      <a class="search-discovery__chip" href="/search?q={{ entity.name | urlencode }}">{{ entity.name }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Trending content grid #}
+    {% if trending %}
+    <h2 class="search-discovery__grid-title">Trending Now</h2>
+    <div class="grid-cards">
+      {% for item in trending %}
+        {{ content_card(item) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
   </div>
   {% endif %}
 
-  {% else %}
-  {# No query — show suggestions #}
-  <div style="text-align: center; color: var(--text-muted); font-size:var(--text-sm);">
-    Type a query above to search articles and videos.
-  </div>
-  {% endif %}
-
-</div>
+</div>{# /container #}
 {% endblock %}

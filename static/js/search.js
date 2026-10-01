@@ -66,15 +66,30 @@ const SearchAutocomplete = {
       return;
     }
 
+    this._showSkeleton();
+
     try {
       const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`);
-      if (!res.ok) return;
+      if (!res.ok) { this._close(); return; }
       const data = await res.json();
       this.localCache.set(q, data);
       if (this.currentQuery === q) this._render(q, data);
     } catch {
-      // Silently fail — search still works via form submit
+      this._close();
     }
+  },
+
+  _showSkeleton() {
+    const row = () => `
+      <div class="autocomplete-skeleton" aria-hidden="true">
+        <div class="autocomplete-skeleton__thumb"></div>
+        <div class="autocomplete-skeleton__lines">
+          <div class="autocomplete-skeleton__line"></div>
+          <div class="autocomplete-skeleton__line autocomplete-skeleton__line--short"></div>
+        </div>
+      </div>`;
+    this.dropdown.innerHTML = row() + row() + row();
+    this._open();
   },
 
   _render(q, data) {
@@ -94,6 +109,7 @@ const SearchAutocomplete = {
             <div class="autocomplete-item__title">${this._esc(item.title)}</div>
             ${item.category ? `<div class="autocomplete-item__category">${this._esc(item.category)}</div>` : ''}
           </div>
+          <span class="autocomplete-item__badge autocomplete-item__badge--article">Article</span>
         </a>`).join('');
     }
 
@@ -106,8 +122,15 @@ const SearchAutocomplete = {
             <div class="autocomplete-item__title">${this._esc(item.title)}</div>
             ${item.channel ? `<div class="autocomplete-item__category">${this._esc(item.channel)}</div>` : ''}
           </div>
+          <span class="autocomplete-item__badge autocomplete-item__badge--video">Video</span>
         </a>`).join('');
     }
+
+    // "View all results" footer
+    html += `<a class="autocomplete-footer" href="/search?q=${encodeURIComponent(q)}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      View all results for <strong>&ldquo;${this._esc(q)}&rdquo;</strong>
+    </a>`;
 
     this.dropdown.innerHTML = html;
     this._open();

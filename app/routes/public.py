@@ -340,14 +340,17 @@ def video(slug_or_id: str | None = None, content_id: int | None = None):
 
 @public_bp.route("/search")
 def search():
-    """Render search results page with keyword, type, and section filters."""
+    """Render search results page with keyword, type, section, and sort filters.
+    When no query is provided, renders a discovery state with trending content.
+    """
     q = request.args.get("q", "").strip()
-    if not q:
-        return redirect(url_for("public.home"))
-
     page = request.args.get("page", 1, type=int)
     object_type = request.args.get("type")
     section_slug = request.args.get("section")
+    sort = request.args.get("sort", "relevance")
+
+    if sort not in ("relevance", "recent", "popular"):
+        sort = "relevance"
 
     section_id = None
     if section_slug:
@@ -355,21 +358,57 @@ def search():
         if sec:
             section_id = sec.id
 
-    cache_key = f"search:v1:{q.lower()}:{page}:{object_type}:{section_slug}"
-    cached = cache.get(cache_key)
+    # Always load trending entities for suggestion chips
+    trending_entities_cache_key = "trending_entities:search_page"
+    trending_entities = cache.get(trending_entities_cache_key)
+    if trending_entities is None:
+        trending_entities = TaxonomyRepository.get_trending_entities(limit=14)
+        cache.set(trending_entities_cache_key, trending_entities, timeout=CACHE_TTL_HOME)
 
-    if cached is None:
-        pagination_obj = ContentRepository.search_published(query=q, object_type=object_type or None, section_id=section_id, page=page, per_page=24)
-        items = [serialize_content_card(c) for c in pagination_obj.items]
-        cache.set(cache_key, {"items": items, "total": pagination_obj.total, "pages": pagination_obj.pages}, timeout=CACHE_TTL_SEARCH_RESULTS)
-        total = pagination_obj.total
-        total_pages = pagination_obj.pages
+    items = []
+    total = 0
+    total_pages = 1
+    trending = []
+
+    if not q:
+        # Zero-query: discovery state — show trending content
+        trending_cache_key = "trending_content:search_page"
+        trending = cache.get(trending_cache_key)
+        if trending is None:
+            trending_raw = ContentRepository.get_trending(limit=6)
+            trending = [serialize_content_card(c) for c in trending_raw]
+            cache.set(trending_cache_key, trending, timeout=CACHE_TTL_HOME)
     else:
-        items = cached["items"]
-        total = cached["total"]
-        total_pages = cached["pages"]
+        cache_key = f"search:v2:{q.lower()}:{page}:{object_type}:{section_slug}:{sort}"
+        cached = cache.get(cache_key)
 
-    return render_template("public/search.html", items=items, query=q, total=total, page=page, total_pages=total_pages)
+        if cached is None:
+            pagination_obj = ContentRepository.search_published(
+                query=q, object_type=object_type or None,
+                section_id=section_id, sort=sort, page=page, per_page=24,
+            )
+            items = [serialize_content_card(c) for c in pagination_obj.items]
+            cache.set(cache_key, {"items": items, "total": pagination_obj.total, "pages": pagination_obj.pages}, timeout=CACHE_TTL_SEARCH_RESULTS)
+            total = pagination_obj.total
+            total_pages = pagination_obj.pages
+        else:
+            items = cached["items"]
+            total = cached["total"]
+            total_pages = cached["pages"]
+
+    return render_template(
+        "public/search.html",
+        items=items,
+        query=q,
+        total=total,
+        page=page,
+        total_pages=total_pages,
+        sort=sort,
+        object_type=object_type,
+        section_slug=section_slug,
+        trending=trending,
+        trending_entities=trending_entities,
+    )
 
 
 @public_bp.route("/api/search/suggestions")
