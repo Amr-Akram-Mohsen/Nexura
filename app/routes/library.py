@@ -46,6 +46,8 @@ def index():
 def clear_history():
     """Clear all reading history for the current user."""
     UserRepository.clear_user_history(current_user.id)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+        return jsonify({"success": True, "message": "Reading history cleared."})
     flash("Reading history cleared.", "info")
     return redirect(url_for("library.index", tab="history"))
 

@@ -123,20 +123,31 @@ class UserRepository:
 
     @staticmethod
     def get_user_history(user_id: int, *, page: int = 1, per_page: int = 24) -> tuple[list[Content], int]:
-        """Fetch user's reading history with polymorphic payloads resolved."""
-        query = (
+        """Fetch user's reading history with polymorphic payloads resolved, deduplicated by latest view."""
+        subquery = (
+            db.session.query(
+                View.content_id.label("content_id"),
+                func.max(View.created_at).label("last_viewed_at"),
+            )
+            .filter(View.user_id == user_id)
+            .group_by(View.content_id)
+            .subquery()
+        )
+        total = db.session.query(func.count(subquery.c.content_id)).scalar() or 0
+        contents = (
             db.session.query(Content)
-            .join(View, View.content_id == Content.id)
+            .join(subquery, subquery.c.content_id == Content.id)
             .options(
                 joinedload(Content.section),
                 joinedload(Content.category),
                 joinedload(Content.source),
                 selectinload(Content.content_entities).joinedload(ContentEntity.entity),
             )
-            .filter(View.user_id == user_id)
+            .order_by(desc(subquery.c.last_viewed_at))
+            .offset(max(0, (page - 1) * per_page))
+            .limit(per_page)
+            .all()
         )
-        total = query.with_entities(func.count(func.distinct(Content.id))).scalar() or 0
-        contents = query.order_by(desc(View.created_at)).offset(max(0, (page - 1) * per_page)).limit(per_page).all()
         resolved = ContentRepository.resolve_polymorphic_payloads(contents)
         return resolved, total
 

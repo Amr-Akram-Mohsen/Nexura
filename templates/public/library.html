@@ -6,31 +6,35 @@
 {% block robots %}noindex, follow{% endblock %}
 
 {% block content %}
-<div class="container library-page" style="padding-top: var(--space-8); padding-bottom: var(--space-16);">
+<div class="container library-page">
 
   {# Page Header #}
-  <header class="page-header" style="margin-bottom: var(--space-8);">
+  <header class="page-header library-header">
     <p class="page-header__eyebrow">Account</p>
-    <div style="display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4);">
+    <div class="library-header__row">
       <div>
-        <h1 class="page-header__title" style="margin-bottom: var(--space-2);">My Library</h1>
-        <p class="page-header__desc">
-          Your personal library · <strong>{{ history_count }}</strong> in history · <strong>{{ saved_count }}</strong> saved
+        <h1 class="page-header__title library-header__title">My Library</h1>
+        <p class="page-header__desc library-header__desc">
+          Your personal library · <strong data-library-count="history">{{ history_count }}</strong> in history · <strong data-library-count="saved">{{ saved_count }}</strong> saved
         </p>
       </div>
 
-      {# Clear history button if in history tab with items #}
+      {# Clear history trigger button if in history tab with items #}
       {% if tab == 'history' and items %}
-      <form method="post" action="{{ url_for('library.clear_history') }}" onsubmit="return confirm('Are you sure you want to clear your entire reading history?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn--secondary btn--sm" type="submit" style="color: var(--accent-red); border-color: hsla(355, 72%, 58%, 0.3);">
+      <div id="clear-history-actions">
+        <button class="btn btn--danger-outline btn--sm"
+                type="button"
+                id="open-clear-modal-btn"
+                data-action="open-clear-modal"
+                aria-haspopup="dialog"
+                aria-controls="clear-history-modal">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
           Clear History
         </button>
-      </form>
+      </div>
       {% endif %}
     </div>
   </header>
@@ -45,7 +49,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       <span>Reading History</span>
-      <span class="library-tab__count">{{ history_count }}</span>
+      <span class="library-tab__count" data-tab-count="history">{{ history_count }}</span>
     </a>
 
     <a class="library-tab {% if tab == 'saved' %}active{% endif %}"
@@ -55,7 +59,7 @@
         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
       </svg>
       <span>Saved Items</span>
-      <span class="library-tab__count">{{ saved_count }}</span>
+      <span class="library-tab__count" data-tab-count="saved">{{ saved_count }}</span>
     </a>
   </div>
 
@@ -64,9 +68,9 @@
 
     {# TAB 1: READING HISTORY (Compact, streamlined list) #}
     {% if tab == 'history' %}
-    <div class="library-history-list" role="feed" aria-label="Reading history">
+    <div class="library-history-list" id="library-history-list" role="feed" aria-label="Reading history">
       {% for item in items %}
-      <article class="history-row" id="history-row-{{ item.id }}">
+      <article class="history-row" id="history-row-{{ item.id }}" data-item-id="{{ item.id }}">
         {# Thumbnail #}
         <a class="history-row__thumb" href="{{ item.url }}" aria-hidden="true" tabindex="-1">
           {% if item.thumbnail_url %}
@@ -107,15 +111,17 @@
 
         {# Remove action #}
         <div class="history-row__actions">
-          <form method="post" action="{{ url_for('library.remove_history_item', content_id=item.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="history-row__remove-btn" type="submit" aria-label="Remove from history" title="Remove from history">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </form>
+          <button class="history-row__remove-btn"
+                  type="button"
+                  data-action="remove-history"
+                  data-content-id="{{ item.id }}"
+                  aria-label="Remove from history"
+                  title="Remove from history">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
       </article>
       {% endfor %}
@@ -123,9 +129,9 @@
 
     {# TAB 2: SAVED ITEMS (Medium tailored horizontal cards) #}
     {% else %}
-    <div class="library-saved-grid">
+    <div class="library-saved-grid" id="library-saved-grid">
       {% for item in items %}
-      <article class="saved-card" id="saved-card-{{ item.id }}">
+      <article class="saved-card" id="saved-card-{{ item.id }}" data-item-id="{{ item.id }}">
         {# Media #}
         <a class="saved-card__thumb-wrap" href="{{ item.url }}" aria-label="{{ item.title }}">
           {% if item.thumbnail_url %}
@@ -171,7 +177,7 @@
             </div>
 
             <button class="saved-card__unsave-btn"
-                    data-interaction="save"
+                    data-action="unsave"
                     data-content-id="{{ item.id }}"
                     aria-label="Remove bookmark"
                     title="Remove from saved"
@@ -189,28 +195,51 @@
     {% endif %}
 
     {# Pagination #}
-    <div style="margin-top: var(--space-8);">
+    <div class="library-pagination" id="library-pagination">
       {{ pagination(page, total_pages, endpoint='library.index', tab=tab) }}
     </div>
 
-  {% else %}
-    {# Empty States #}
-    <div class="empty-state" style="padding: var(--space-16) var(--space-4); text-align: center;">
+    {# Hidden Empty State container for dynamic client transitions #}
+    <div class="empty-state" id="library-empty-state" style="display: none;">
       {% if tab == 'saved' %}
-      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="width: 48px; height: 48px; margin: 0 auto var(--space-4); color: var(--text-muted);">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
       </svg>
-      <h2 class="empty-state__title" style="font-size: var(--text-xl); font-weight: var(--weight-bold); margin-bottom: var(--space-2);">No saved items yet</h2>
-      <p class="empty-state__desc" style="max-width: 440px; margin: 0 auto var(--space-6); color: var(--text-secondary); font-size: var(--text-sm);">
+      <h2 class="empty-state__title">No saved items yet</h2>
+      <p class="empty-state__desc">
         Click the bookmark icon on any article or video to save it here for quick access later.
       </p>
       {% else %}
-      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="width: 48px; height: 48px; margin: 0 auto var(--space-4); color: var(--text-muted);">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
         <circle cx="12" cy="12" r="10"></circle>
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
-      <h2 class="empty-state__title" style="font-size: var(--text-xl); font-weight: var(--weight-bold); margin-bottom: var(--space-2);">No reading history yet</h2>
-      <p class="empty-state__desc" style="max-width: 440px; margin: 0 auto var(--space-6); color: var(--text-secondary); font-size: var(--text-sm);">
+      <h2 class="empty-state__title">No reading history yet</h2>
+      <p class="empty-state__desc">
+        Articles and video reviews you explore will automatically be tracked here so you can easily pick up where you left off.
+      </p>
+      {% endif %}
+      <a class="btn btn--primary" href="/">Explore Articles & Videos</a>
+    </div>
+
+  {% else %}
+    {# Initial Empty States #}
+    <div class="empty-state" id="library-empty-state">
+      {% if tab == 'saved' %}
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <h2 class="empty-state__title">No saved items yet</h2>
+      <p class="empty-state__desc">
+        Click the bookmark icon on any article or video to save it here for quick access later.
+      </p>
+      {% else %}
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <h2 class="empty-state__title">No reading history yet</h2>
+      <p class="empty-state__desc">
         Articles and video reviews you explore will automatically be tracked here so you can easily pick up where you left off.
       </p>
       {% endif %}
@@ -219,4 +248,45 @@
   {% endif %}
 
 </div>
+
+{# Confirmation Modal for Clear History #}
+<div class="confirm-modal-backdrop" id="clear-history-modal" role="dialog" aria-modal="true" aria-labelledby="clear-modal-title" aria-describedby="clear-modal-desc">
+  <div class="confirm-modal-card">
+    <div class="confirm-modal__header">
+      <div class="confirm-modal__icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </div>
+      <button class="confirm-modal__close" type="button" data-action="close-clear-modal" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <h2 class="confirm-modal__title" id="clear-modal-title">Clear Reading History?</h2>
+    <p class="confirm-modal__desc" id="clear-modal-desc">
+      This will permanently clear all articles and videos from your reading history. This action cannot be undone.
+    </p>
+
+    <div class="confirm-modal__actions">
+      <button class="btn btn--secondary btn--sm" type="button" data-action="close-clear-modal">Cancel</button>
+      <form id="clear-history-form" method="post" action="{{ url_for('library.clear_history') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn--danger btn--sm" type="submit" id="confirm-clear-btn">
+          Clear History
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/library.js') }}" defer></script>
 {% endblock %}
