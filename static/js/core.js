@@ -27,37 +27,23 @@ const Toast = {
     toast.setAttribute('role', 'alert');
 
     const icons = {
-      success: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-      error: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-      warning: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-      info: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+      success: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+      error: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+      warning: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      info: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
     };
 
-    const defaultTitles = {
-      success: 'Success',
-      error: 'Error',
-      warning: 'Warning',
-      info: 'Notification',
-    };
-
-    const effectiveTitle = title !== null ? title : defaultTitles[type] || 'Notification';
-    const effectiveDuration = duration || (type === 'error' || type === 'warning' ? 7000 : 4500);
+    const effectiveDuration = duration || (type === 'error' || type === 'warning' ? 4000 : 2500);
 
     toast.innerHTML = `
-      <div class="toast__badge">
-        ${icons[type] || icons.info}
-      </div>
-      <div class="toast__content">
-        ${effectiveTitle ? `<div class="toast__title">${effectiveTitle}</div>` : ''}
-        <div class="toast__message">${message}</div>
-      </div>
+      ${icons[type] || icons.info}
+      <span class="toast__message">${message}</span>
       <button type="button" class="toast__close" aria-label="Dismiss notification">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
-      <div class="toast__progress" style="animation-duration: ${effectiveDuration}ms;"></div>
     `;
     c.appendChild(toast);
 
@@ -349,6 +335,45 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  const repliesToggle = target.closest('[data-action="toggle-replies"]');
+  if (repliesToggle) {
+    e.preventDefault();
+    const targetId = repliesToggle.dataset.target;
+    const container = document.getElementById(targetId);
+    if (!container) return;
+    const isOpen = repliesToggle.getAttribute('aria-expanded') === 'true';
+    if (isOpen) {
+      container.style.display = 'none';
+      container.setAttribute('aria-hidden', 'true');
+      repliesToggle.setAttribute('aria-expanded', 'false');
+    } else {
+      container.style.display = 'flex';
+      container.setAttribute('aria-hidden', 'false');
+      repliesToggle.setAttribute('aria-expanded', 'true');
+    }
+    return;
+  }
+
+  const loadMoreBtn = target.closest('[data-action="load-more-comments"]');
+  if (loadMoreBtn) {
+    e.preventDefault();
+    const BATCH = 10;
+    const hidden = [...document.querySelectorAll('.comment-list__item--hidden')];
+    const toShow = hidden.slice(0, BATCH);
+    toShow.forEach(item => item.classList.remove('comment-list__item--hidden'));
+    const remaining = hidden.length - toShow.length;
+    if (remaining <= 0) {
+      const loadMoreEl = document.getElementById('comments-load-more');
+      if (loadMoreEl) loadMoreEl.style.display = 'none';
+    } else {
+      loadMoreBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        Show ${remaining} more ${remaining === 1 ? 'comment' : 'comments'}
+      `;
+    }
+    return;
+  }
+
   const cancelReplyBtn = target.closest('[data-action="cancel-reply"]');
   if (cancelReplyBtn) {
     e.preventDefault();
@@ -357,6 +382,112 @@ document.addEventListener('click', (e) => {
     return;
   }
 });
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Auth Popover (Contextual micro-prompt for unauthenticated interactions)
+   ════════════════════════════════════════════════════════════════════════════ */
+let activeAuthPopover = null;
+
+function showAuthPopover(btn, action = 'interact') {
+  if (activeAuthPopover) {
+    activeAuthPopover.dismiss();
+  }
+
+  const popover = document.createElement('div');
+  popover.className = 'auth-popover';
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', 'Sign in required');
+
+  const actionMap = {
+    like: 'like this',
+    dislike: 'react to this',
+    save: 'save to library',
+  };
+  const actionText = actionMap[action] || 'interact';
+  const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+
+  popover.innerHTML = `
+    <div class="auth-popover__header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <span>Sign in to ${actionText}</span>
+    </div>
+    <div class="auth-popover__actions">
+      <a href="/auth/login?next=${returnUrl}" class="auth-popover__btn auth-popover__btn--login">Log In</a>
+      <a href="/auth/register?next=${returnUrl}" class="auth-popover__btn auth-popover__btn--signup">Sign Up</a>
+    </div>
+  `;
+
+  document.body.appendChild(popover);
+
+  // Position relative to btn
+  const btnRect = btn.getBoundingClientRect();
+  const popoverRect = popover.getBoundingClientRect();
+
+  let top = btnRect.top - 8;
+
+  // If clipping the top viewport edge
+  if (btnRect.top - popoverRect.height - 12 < 0) {
+    top = btnRect.bottom + 8;
+    popover.classList.add('auth-popover--bottom');
+  }
+
+  // Center horizontally over the trigger button, clamped to viewport margins
+  let left = btnRect.left + (btnRect.width / 2);
+  const halfWidth = popoverRect.width / 2;
+  const margin = 12;
+  if (left - halfWidth < margin) {
+    left = margin + halfWidth;
+  } else if (left + halfWidth > window.innerWidth - margin) {
+    left = window.innerWidth - margin - halfWidth;
+  }
+
+  popover.style.top = `${Math.round(top)}px`;
+  popover.style.left = `${Math.round(left)}px`;
+
+  let dismissTimer = null;
+
+  const dismiss = () => {
+    if (dismissTimer) clearTimeout(dismissTimer);
+    window.removeEventListener('scroll', dismiss, true);
+    document.removeEventListener('click', outsideClick, true);
+    document.removeEventListener('keydown', onKeyDown);
+
+    if (popover && popover.parentNode) {
+      popover.classList.add('auth-popover--exit');
+      setTimeout(() => {
+        if (popover.parentNode) popover.remove();
+        if (activeAuthPopover && activeAuthPopover.el === popover) {
+          activeAuthPopover = null;
+        }
+      }, 160);
+    }
+  };
+
+  const outsideClick = (e) => {
+    if (!popover.contains(e.target) && !btn.contains(e.target)) {
+      dismiss();
+    }
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      dismiss();
+    }
+  };
+
+  dismissTimer = setTimeout(dismiss, 3500);
+
+  setTimeout(() => {
+    document.addEventListener('click', outsideClick, true);
+    window.addEventListener('scroll', dismiss, { capture: true, passive: true, once: true });
+    document.addEventListener('keydown', onKeyDown);
+  }, 20);
+
+  activeAuthPopover = { el: popover, dismiss };
+}
 
 async function handleInteraction(action, targetId, btn, targetType = 'content') {
   btn.disabled = true;
@@ -376,7 +507,7 @@ async function handleInteraction(action, targetId, btn, targetType = 'content') 
     });
 
     if (res.status === 401) {
-      Toast.show('Please log in to interact.', 'info');
+      showAuthPopover(btn, action);
       return;
     }
 
@@ -464,7 +595,6 @@ async function handleInteraction(action, targetId, btn, targetType = 'content') 
               textNode.textContent = isSaved ? ' Saved' : ' Save';
             }
           }
-          Toast.show(isSaved ? 'Saved to your library!' : 'Removed from library.', 'success');
         }
       }
     } else {
@@ -651,17 +781,43 @@ async function handleCommentSubmit(form) {
           repliesContainer = document.createElement('div');
           repliesContainer.className = 'comment-card__replies';
           repliesContainer.id = `replies-${parentId}`;
+          repliesContainer.setAttribute('aria-hidden', 'false');
           parentCard.querySelector('.comment-card__body').appendChild(repliesContainer);
         }
         if (repliesContainer) {
           repliesContainer.style.display = 'flex';
+          repliesContainer.setAttribute('aria-hidden', 'false');
           repliesContainer.insertAdjacentHTML('beforeend', cardHtml);
+        }
+        // Update or create the replies toggle button
+        const existingToggle = parentCard ? parentCard.querySelector('.comment-replies-toggle[data-target="replies-' + parentId + '"]') : null;
+        if (existingToggle) {
+          existingToggle.setAttribute('aria-expanded', 'true');
+          const countEl = existingToggle.querySelector('span');
+          if (countEl) {
+            const currentCount = parseInt(countEl.textContent) || 0;
+            const newCount = currentCount + 1;
+            countEl.textContent = `${newCount} ${newCount === 1 ? 'reply' : 'replies'}`;
+          }
+        } else if (parentCard) {
+          // First reply — create the toggle button before the replies container
+          const toggleBtn = document.createElement('button');
+          toggleBtn.className = 'comment-replies-toggle';
+          toggleBtn.type = 'button';
+          toggleBtn.dataset.action = 'toggle-replies';
+          toggleBtn.dataset.target = `replies-${parentId}`;
+          toggleBtn.setAttribute('aria-expanded', 'true');
+          toggleBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span>1 reply</span>`;
+          repliesContainer.parentNode.insertBefore(toggleBtn, repliesContainer);
         }
         form.remove();
       } else {
         const list = document.getElementById('comment-list');
         if (list) {
-          list.insertAdjacentHTML('afterbegin', cardHtml);
+          const wrapper = document.createElement('div');
+          wrapper.className = 'comment-list__item';
+          wrapper.innerHTML = cardHtml;
+          list.insertAdjacentElement('afterbegin', wrapper);
         }
         const emptyState = document.getElementById('comments-empty');
         if (emptyState) emptyState.style.display = 'none';
@@ -676,8 +832,6 @@ async function handleCommentSubmit(form) {
           el.textContent = data.comment_count;
         });
       }
-
-      Toast.show('Comment posted successfully!', 'success');
     } else {
       Toast.show(data.message || 'Could not post comment.', 'error');
     }
@@ -707,6 +861,16 @@ document.addEventListener('input', (e) => {
     if (counter) {
       counter.textContent = textarea.value.length;
     }
+  }
+
+  // Auto-grow any comment textarea
+  const growable = e.target.closest('.comment-form__input');
+  if (growable) {
+    const MAX_H = 105; // ~5 lines
+    growable.style.height = 'auto';
+    const next = Math.min(growable.scrollHeight, MAX_H);
+    growable.style.height = next + 'px';
+    growable.style.overflowY = growable.scrollHeight > MAX_H ? 'auto' : 'hidden';
   }
 });
 
@@ -782,4 +946,258 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordToggles();
   initAlertDismissals();
   initFlashedMessages();
+  ReadingProgress.init();
+  StickyActionPill.init();
+  ShareModal.init();
+  initCommentExpands();
 });
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Reading Progress Pill Badge
+   ════════════════════════════════════════════════════════════════════════════ */
+const ReadingProgress = {
+  articleBody: null,
+  badge: null,
+  rafId: null,
+
+  init() {
+    this.articleBody = document.querySelector('.article-body, .article-html');
+    this.badge = document.querySelector('.pill-progress-badge');
+    if (!this.articleBody || !this.badge) return;
+
+    const onScroll = () => {
+      if (this.rafId) return;
+      this.rafId = requestAnimationFrame(() => {
+        this._update();
+        this.rafId = null;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    this._update();
+  },
+
+  _update() {
+    if (!this.articleBody || !this.badge) return;
+    const rect = this.articleBody.getBoundingClientRect();
+    const docEl = document.documentElement;
+    const winH = window.innerHeight || docEl.clientHeight;
+
+    // Progress is 0→1 over the article body scroll range
+    const total = rect.height;
+    const scrolled = Math.max(0, -rect.top + winH * 0.15);
+    const ratio = Math.min(1, Math.max(0, scrolled / total));
+
+    const pct = Math.round(ratio * 100);
+    this.badge.textContent = `${pct}% read`;
+  },
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Comment Text Expand Toggles
+   ════════════════════════════════════════════════════════════════════════════ */
+function initCommentExpands() {
+  document.querySelectorAll('.comment-card__expand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.previousElementSibling;
+      if (!text) return;
+      const isClamped = text.classList.toggle('comment-card__text--clamped');
+      btn.textContent = isClamped ? 'Show more' : 'Show less';
+      btn.setAttribute('aria-expanded', isClamped ? 'false' : 'true');
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Share Modal
+   ════════════════════════════════════════════════════════════════════════════ */
+const ShareModal = {
+  backdrop: null,
+  focusableEls: [],
+  _prevFocus: null,
+
+  init() {
+    this.backdrop = document.getElementById('share-modal');
+    if (!this.backdrop) return;
+
+    const card = this.backdrop.querySelector('.share-modal-card');
+    if (!card) return;
+
+    // Close triggers
+    this.backdrop.addEventListener('click', (e) => {
+      if (e.target === this.backdrop) this.close();
+    });
+    const closeBtn = this.backdrop.querySelector('.share-modal-card__close');
+    if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+
+    // Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.backdrop.classList.contains('is-open')) this.close();
+    });
+
+    // Copy link button
+    const copyBtn = this.backdrop.querySelector('.share-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+          Toast.show('Link copied to clipboard!', 'success', 3000, 'Copied');
+          this.close();
+        }).catch(() => {
+          // Fallback
+          const ta = document.createElement('textarea');
+          ta.value = url;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          Toast.show('Link copied!', 'success', 3000, 'Copied');
+          this.close();
+        });
+      });
+    }
+
+    // Open triggers anywhere on the page
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-action="open-share"]');
+      if (trigger) { e.preventDefault(); this.open(); }
+    });
+  },
+
+  open() {
+    if (!this.backdrop) return;
+    this._prevFocus = document.activeElement;
+
+    // Update the URL displayed in copy row
+    const urlEl = this.backdrop.querySelector('.share-copy-url');
+    if (urlEl) urlEl.textContent = window.location.href;
+
+    // Update social links
+    const title = encodeURIComponent(document.title);
+    const url = encodeURIComponent(window.location.href);
+    const links = {
+      twitter:  `https://twitter.com/intent/tweet?text=${title}&url=${url}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+      whatsapp: `https://api.whatsapp.com/send?text=${title}%20${url}`,
+      reddit:   `https://reddit.com/submit?url=${url}&title=${title}`,
+    };
+    Object.entries(links).forEach(([platform, href]) => {
+      const el = this.backdrop.querySelector(`[data-platform="${platform}"]`);
+      if (el) el.href = href;
+    });
+
+    this.backdrop.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+
+    // Trap focus
+    this.focusableEls = Array.from(
+      this.backdrop.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])')
+    ).filter(el => !el.disabled);
+    if (this.focusableEls.length) this.focusableEls[0].focus();
+  },
+
+  close() {
+    if (!this.backdrop) return;
+    this.backdrop.classList.remove('is-open');
+    document.body.style.overflow = '';
+    if (this._prevFocus) this._prevFocus.focus();
+  },
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Sticky Action Pill
+   ════════════════════════════════════════════════════════════════════════════ */
+const StickyActionPill = {
+  pill: null,
+  triggerEl: null,   // The static interaction-bar
+  observer: null,
+
+  init() {
+    this.pill = document.getElementById('sticky-action-pill');
+    if (!this.pill) return;
+    this.triggerEl = document.querySelector('.interaction-bar');
+    if (!this.triggerEl) return;
+
+    // Show pill ONLY once the static bar has scrolled out of view ABOVE the viewport
+    const updateVisibility = () => {
+      if (!this.pill || !this.triggerEl) return;
+      const rect = this.triggerEl.getBoundingClientRect();
+      // rect.bottom < 50 means the bottom of the interaction bar is at or above the top navbar
+      const isPast = rect.bottom < 50;
+      this.pill.classList.toggle('is-visible', isPast);
+    };
+
+    // IntersectionObserver triggers when the interaction bar crosses the viewport threshold
+    this.observer = new IntersectionObserver(() => {
+      updateVisibility();
+    }, { threshold: [0, 1], rootMargin: '-50px 0px 0px 0px' });
+    this.observer.observe(this.triggerEl);
+
+    // Scroll listener ensures immediate sync during rapid scrolls
+    window.addEventListener('scroll', () => {
+      requestAnimationFrame(updateVisibility);
+    }, { passive: true });
+
+    // Initial check (starts hidden if interaction bar is below or in viewport)
+    updateVisibility();
+
+    // Wire pill buttons → sync with static bar
+    this.pill.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-pill-action]');
+      if (!btn) return;
+      const action = btn.dataset.pillAction;
+
+      if (action === 'share') {
+        ShareModal.open();
+        return;
+      }
+      if (action === 'comments') {
+        const target = document.getElementById('comments');
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      // Mirror click to the static interaction bar button
+      const mirror = document.querySelector(
+        `.interaction-bar [data-interaction="${action}"]`
+      );
+      if (mirror) {
+        mirror.click();
+        // Sync active state back to pill button
+        const isActive = mirror.classList.contains('active');
+        btn.classList.toggle('active', isActive);
+        const countEl = mirror.querySelector('[data-count]');
+        const pillCount = btn.querySelector('[data-pill-count]');
+        if (countEl && pillCount) pillCount.textContent = countEl.textContent;
+      }
+    });
+
+    // Sync active states from static bar → pill on load & after interactions
+    this._syncFromStaticBar();
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.interaction-bar')) {
+        setTimeout(() => this._syncFromStaticBar(), 100);
+      }
+    });
+  },
+
+  _syncFromStaticBar() {
+    if (!this.pill) return;
+    ['like', 'save', 'dislike'].forEach(action => {
+      const staticBtn = document.querySelector(`.interaction-bar [data-interaction="${action}"]`);
+      const pillBtn   = this.pill.querySelector(`[data-pill-action="${action}"]`);
+      if (staticBtn && pillBtn) {
+        pillBtn.classList.toggle('active', staticBtn.classList.contains('active'));
+        const countEl   = staticBtn.querySelector('[data-count]');
+        const pillCount = pillBtn.querySelector('[data-pill-count]');
+        if (countEl && pillCount) pillCount.textContent = countEl.textContent;
+      }
+    });
+    // Comments count
+    const staticCommentCount = document.querySelector('.interaction-bar [data-comment-count]');
+    const pillCommentCount   = this.pill.querySelector('[data-pill-comment-count]');
+    if (staticCommentCount && pillCommentCount) {
+      pillCommentCount.textContent = staticCommentCount.textContent;
+    }
+  },
+};
+

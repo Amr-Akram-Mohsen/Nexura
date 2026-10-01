@@ -20,7 +20,7 @@ class VideoRepository:
         return db.session.query(Video).options(selectinload(Video.video_comments)).filter(Video.id == video_id).first()
 
     @staticmethod
-    def get_top_comments(video_id: int, limit: int = 15) -> list[VideoComment]:
+    def get_top_comments(video_id: int, limit: int = 20) -> list[VideoComment]:
         """Fetch top comments for a video ordered by like count."""
         return db.session.query(VideoComment).filter(VideoComment.video_id == video_id).order_by(desc(VideoComment.like_count)).limit(limit).all()
 

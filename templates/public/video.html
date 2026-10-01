@@ -29,6 +29,8 @@ endblock %}
         data-video-title="{{ video.title | replace('"', ' &quot;') }}" role="button" tabindex="0"
         aria-label="Play video: {{ video.title }}" style="margin-bottom: var(--space-6);"
         onkeydown="if(event.key==='Enter'||event.key===' '){this.click();}">
+        <div class="video-facade__ambient" aria-hidden="true"
+          style="background: url('{{ video.thumbnail_url or '' }}') center/cover;"></div>
         <img class="video-facade__thumb" src="{{ video.thumbnail_url or '' }}" alt="{{ video.title | truncate(80) }}"
           loading="eager" fetchpriority="high" itemprop="thumbnailUrl">
         <div class="video-facade__play" aria-hidden="true">
@@ -42,12 +44,19 @@ endblock %}
         <div class="video-facade__duration" aria-label="Duration: {{ duration_formatted }}">{{ duration_formatted }}
         </div>
         {% endif %}
+        <button class="video-facade__theater-btn" type="button" aria-label="Enter theater mode"
+          onclick="event.stopPropagation(); toggleTheaterMode(this.closest('.video-facade'));">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+            <polyline points="17 2 12 7 7 2"/>
+          </svg>
+          Theater
+        </button>
       </div>
 
       {# Video header #}
-      <header style="margin-bottom: var(--space-6);">
-        <div
-          style="display:flex; gap:var(--space-3); align-items:center; flex-wrap:wrap; margin-bottom:var(--space-4);">
+      <header class="video-page-header">
+        <div class="video-page-header__kicker">
           <span class="badge badge--video">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <polygon points="5 3 19 12 5 21 5 3" />
@@ -70,26 +79,18 @@ endblock %}
           {% endif %}
         </div>
 
-        <h1
-          style="font-family:var(--font-display); font-size:var(--text-3xl); font-weight:var(--weight-bold); letter-spacing:-0.02em; line-height:var(--leading-snug); margin-bottom:var(--space-4);"
-          itemprop="name">
-          {{ video.title }}
-        </h1>
+        <h1 class="video-page-header__title" itemprop="name">{{ video.title }}</h1>
 
         {# Channel info + stats #}
-        <div
-          style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-4);">
-          <div style="display:flex; align-items:center; gap:var(--space-3);">
-            <div
-              style="width:40px; height:40px; border-radius:50%; background:var(--accent-gradient); display:flex; align-items:center; justify-content:center; font-size:var(--text-md); font-weight:var(--weight-bold); color:#fff;"
-              aria-hidden="true">
+        <div class="video-page-header__meta">
+          <div class="video-page-header__channel">
+            <div class="video-page-header__channel-avatar" aria-hidden="true">
               {{ video.channel_name[0] | upper if video.channel_name else 'Y' }}
             </div>
             <div>
-              <p style="font-size:var(--text-sm); font-weight:var(--weight-semibold);">{{ video.channel_name or
-                'YouTube' }}</p>
+              <p class="video-page-header__channel-name">{{ video.channel_name or 'YouTube' }}</p>
               {% if content.published_at %}
-              <time style="font-size:var(--text-xs); color:var(--text-muted);"
+              <time class="video-page-header__date"
                 datetime="{{ content.published_at.isoformat() }}" itemprop="uploadDate">
                 {{ content.published_at.strftime('%B %d, %Y') }}
               </time>
@@ -97,14 +98,14 @@ endblock %}
             </div>
           </div>
 
-          <div style="display:flex; gap:var(--space-4);">
+          <div class="video-page-header__stats">
             {% if video.view_count %}
-            <span style="font-size:var(--text-sm); color:var(--text-secondary);">
+            <span>
               <strong>{{ '{:,}'.format(video.view_count) }}</strong> views
             </span>
             {% endif %}
             {% if video.like_count %}
-            <span style="font-size:var(--text-sm); color:var(--text-secondary);">
+            <span>
               <strong>{{ '{:,}'.format(video.like_count) }}</strong> likes
             </span>
             {% endif %}
@@ -149,7 +150,7 @@ endblock %}
             stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
           </svg>
-          <span>{{ 'Saved' if user_state.saved else 'Save' }}</span>
+          <span class="interaction-btn__label">{{ 'Saved' if user_state.saved else 'Save' }}</span>
         </button>
         <a class="interaction-btn" href="https://www.youtube.com/watch?v={{ video.external_id }}" target="_blank"
           rel="noopener noreferrer" aria-label="Watch on YouTube">
@@ -158,36 +159,30 @@ endblock %}
               d="M22.54 6.42A2.78 2.78 0 0 0 20.6 4.46C18.88 4 12 4 12 4s-6.88 0-8.6.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.54C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
             <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" />
           </svg>
-          Watch on YouTube
+          <span class="interaction-btn__label">Watch on YouTube</span>
         </a>
-        <button class="interaction-btn" data-action="copy-link" aria-label="Copy link" type="button">
+        <button class="interaction-btn" data-action="open-share" aria-label="Share this video" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
-          Copy Link
+          <span class="interaction-btn__label">Share</span>
         </button>
       </div>
 
       {# Video Description (with spam filter §9.3) #}
       {% if video.description and video.description_display_rule != 'hide' %}
-      <div
-        style="margin-top: var(--space-6); padding: var(--space-5); background: var(--bg-secondary); border-radius: var(--radius-lg);">
-        <p
-          style="font-size:var(--text-xs); font-weight:var(--weight-semibold); text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:var(--space-3);">
-          About this video</p>
+      <div class="video-description">
+        <p class="video-description__label">About this video</p>
         {% if video.description_display_rule == 'flag' %}
         <details>
-          <summary style="font-size:var(--text-sm); color:var(--text-secondary); cursor:pointer;">
+          <summary class="video-description__flagged-summary">
             ⚠ Contains promotional content — click to expand
           </summary>
-          <p
-            style="font-size:var(--text-sm); color:var(--text-secondary); line-height:var(--leading-relaxed); margin-top:var(--space-3);">
-            {{ video.description[:800] }}</p>
+          <p class="video-description__text">{{ video.description[:800] }}</p>
         </details>
         {% else %}
-        <p
-          style="font-size:var(--text-sm); color:var(--text-secondary); line-height:var(--leading-relaxed); white-space:pre-line;">
+        <p class="video-description__text">
           {{ video.description[:600] }}{% if video.description|length > 600 %}…{% endif %}</p>
         {% endif %}
       </div>
@@ -198,17 +193,17 @@ endblock %}
 
       {# YouTube Comments #}
       {% if yt_comments %}
-      <section aria-labelledby="yt-comments-heading" style="margin-top: var(--space-8); padding-top: var(--space-6); border-top: 1px solid var(--border-subtle);">
-        <h2
-          style="font-family:var(--font-display); font-size:var(--text-lg); font-weight:var(--weight-bold); letter-spacing:-0.02em; margin-bottom:var(--space-5);"
-          id="yt-comments-heading">
-          YouTube Top Comments <span
-            style="font-size:var(--text-sm); font-weight:var(--weight-regular); color:var(--text-muted);">({{
+      <section class="yt-comments-section" aria-labelledby="yt-comments-heading">
+        <h2 class="yt-comments-section__title" id="yt-comments-heading">
+          YouTube Top Comments <span class="yt-comments-section__count">({{
             video.comments_count or yt_comments|length }})</span>
         </h2>
-        <div class="comment-list">
+        <div class="yt-comment-grid">
           {% for comment in yt_comments %}
           <div class="comment-card">
+            <div class="comment-card__avatar" aria-hidden="true" style="background: linear-gradient(135deg, hsl({{ (loop.index0 * 47) % 360 }}, 60%, 42%), hsl({{ (loop.index0 * 47 + 60) % 360 }}, 70%, 52%)); color: #fff; font-weight: var(--weight-bold); font-size: var(--text-xs); text-shadow: 0 1px 2px rgba(0,0,0,0.35);">
+              {{ (comment.author_name or 'A')[:1] | upper }}
+            </div>
             <div class="comment-card__body">
               <div class="comment-card__header">
                 <span class="comment-card__author">{{ comment.author_name or 'Anonymous' }}</span>
@@ -218,14 +213,19 @@ endblock %}
                 </time>
                 {% endif %}
               </div>
+              {% if comment.text|length > 180 %}
+              <p class="comment-card__text comment-card__text--clamped">{{ comment.text }}</p>
+              <button type="button" class="comment-card__expand-btn" aria-expanded="false">Show more</button>
+              {% else %}
               <p class="comment-card__text">{{ comment.text }}</p>
+              {% endif %}
               {% if comment.like_count %}
-              <div class="comment-card__likes">
+              <div class="comment-card__likes" title="{{ comment.like_count }} likes">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   aria-hidden="true">
                   <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
                 </svg>
-                {{ comment.like_count | default(0) }}
+                <span>{{ comment.like_count | default(0) }}</span>
               </div>
               {% endif %}
             </div>
@@ -243,21 +243,15 @@ endblock %}
       {% if related_items %}
       <div class="sidebar-widget">
         <h2 class="sidebar-widget__title">Related Videos</h2>
-        <div style="display:flex; flex-direction:column; gap:var(--space-4);">
+        <div class="related-videos-list">
           {% for rel in related_items[:6] %}
-          <a href="{{ rel.url or ('/video/' ~ (rel.slug_id or rel.id)) }}"
-            style="display:flex; gap:var(--space-3); align-items:flex-start; color:inherit;">
+          <a href="{{ rel.url or ('/video/' ~ (rel.slug_id or rel.id)) }}" class="related-video-card">
             {% if rel.thumbnail %}
-            <img src="{{ rel.thumbnail }}" alt=""
-              style="width:80px; height:54px; object-fit:cover; border-radius:var(--radius-sm); flex-shrink:0;"
-              loading="lazy">
+            <img src="{{ rel.thumbnail }}" alt="" class="related-video-card__thumb" loading="lazy">
             {% endif %}
-            <div>
-              <p
-                style="font-size:var(--text-sm); font-weight:var(--weight-medium); color:var(--text-primary); line-height:var(--leading-snug); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
-                {{ rel.title }}
-              </p>
-              <span style="font-size:var(--text-xs); color:var(--text-muted);">{{ rel.channel_name or '' }}</span>
+            <div class="related-video-card__info">
+              <p class="related-video-card__title">{{ rel.title }}</p>
+              <span class="related-video-card__channel">{{ rel.channel_name or '' }}</span>
             </div>
           </a>
           {% endfor %}
@@ -278,4 +272,105 @@ endblock %}
     </aside>
   </div>
 </div>
+
+{# Floating Sticky Action Pill #}
+<div class="sticky-pill" id="sticky-action-pill" role="toolbar" aria-label="Video actions">
+
+  <button class="pill-btn {% if user_state.liked %}active{% endif %}" data-pill-action="like"
+    aria-label="Like" aria-pressed="{{ 'true' if user_state.liked else 'false' }}" type="button">
+    <svg viewBox="0 0 24 24" fill="{% if user_state.liked %}currentColor{% else %}none{% endif %}"
+      stroke="currentColor" aria-hidden="true">
+      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+      <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+    </svg>
+    <span data-pill-count>{{ content.like_count or 0 }}</span>
+  </button>
+
+  <button class="pill-btn {% if user_state.saved %}active{% endif %}" data-pill-action="save"
+    aria-label="Save" aria-pressed="{{ 'true' if user_state.saved else 'false' }}" type="button">
+    <svg viewBox="0 0 24 24" fill="{% if user_state.saved %}currentColor{% else %}none{% endif %}"
+      stroke="currentColor" aria-hidden="true">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+    </svg>
+    <span>{{ 'Saved' if user_state.saved else 'Save' }}</span>
+  </button>
+
+  <div class="sticky-pill__divider" aria-hidden="true"></div>
+
+  <a class="pill-btn" href="#comments" data-pill-action="comments" aria-label="Jump to comments">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    <span data-pill-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
+  </a>
+
+  <button class="pill-btn" data-pill-action="share" aria-label="Share" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+    Share
+  </button>
+
+</div>
+
+{# Share Modal #}
+<div class="share-modal-backdrop" id="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+  <div class="share-modal-card">
+    <div class="share-modal-card__header">
+      <h2 class="share-modal-card__title" id="share-modal-title">Share this video</h2>
+      <button class="share-modal-card__close" aria-label="Close share dialog" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="share-copy-row">
+      <span class="share-copy-url">{{ request.url }}</span>
+      <button class="share-copy-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copy Link
+      </button>
+    </div>
+
+    <div class="share-grid" role="list">
+      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
+        data-platform="twitter" role="listitem" aria-label="Share on X (Twitter)">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.76l7.73-8.835L2.132 2.25h6.58l4.258 5.636L18.245 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        X
+      </a>
+      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
+        data-platform="linkedin" role="listitem" aria-label="Share on LinkedIn">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+          <rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+        </svg>
+        LinkedIn
+      </a>
+      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
+        data-platform="whatsapp" role="listitem" aria-label="Share on WhatsApp">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+        </svg>
+        WhatsApp
+      </a>
+      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
+        data-platform="reddit" role="listitem" aria-label="Share on Reddit">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <path fill="white" d="M17.07 12.18A1.6 1.6 0 1 1 15 10.8a3.94 3.94 0 0 1 2.07.38zM8.46 11.2a1.13 1.13 0 1 0 1.13 1.13 1.13 1.13 0 0 0-1.13-1.13zm7.08 0a1.13 1.13 0 1 0 1.13 1.13 1.13 1.13 0 0 0-1.13-1.13zM12 15.9a3.27 3.27 0 0 1-2-.55.27.27 0 0 0-.37.37 3.8 3.8 0 0 0 2.34.72 3.8 3.8 0 0 0 2.34-.72.27.27 0 0 0-.37-.37A3.27 3.27 0 0 1 12 15.9zM6.93 12.18a3.94 3.94 0 0 1 2.07-.38A1.6 1.6 0 1 1 9 10.8z"/>
+          <circle fill="white" cx="12" cy="7" r="1.5"/>
+        </svg>
+        Reddit
+      </a>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

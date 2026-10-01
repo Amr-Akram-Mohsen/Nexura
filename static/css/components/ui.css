@@ -793,3 +793,163 @@ mark {
     height: 140px;
   }
 }
+
+/* ─── Share Modal ─────────────────────────────────────────────────────────── */
+.share-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: hsla(220, 22%, 4%, 0.60);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: var(--z-modal, 800);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 env(safe-area-inset-bottom);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease-out);
+}
+@media (min-width: 540px) {
+  .share-modal-backdrop { align-items: center; padding: var(--space-6); }
+}
+
+.share-modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.share-modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-modal, var(--bg-card));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow:
+    0 -4px 40px hsla(0,0%,0%,0.35),
+    0 0 0 1px hsla(0,0%,100%,0.06) inset;
+  padding: var(--space-6);
+  transform: translateY(24px);
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+}
+@media (min-width: 540px) {
+  .share-modal-card {
+    border-radius: var(--radius-xl);
+    transform: translateY(8px) scale(0.97);
+  }
+}
+.share-modal-backdrop.is-open .share-modal-card {
+  transform: translateY(0) scale(1);
+}
+
+.share-modal-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.share-modal-card__title {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.share-modal-card__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast), transform var(--duration-fast) var(--ease-spring);
+}
+.share-modal-card__close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: rotate(90deg) scale(1.1);
+}
+.share-modal-card__close svg { width: 14px; height: 14px; stroke-width: 2.5; }
+
+/* Copy link row */
+.share-copy-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+}
+
+.share-copy-url {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast), transform var(--duration-fast) var(--ease-spring);
+}
+.share-copy-btn:hover { background: var(--accent-blue-dark); transform: scale(1.04); }
+.share-copy-btn svg { width: 12px; height: 12px; stroke-width: 2.5; }
+
+/* Social grid */
+.share-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.share-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  text-align: center;
+}
+.share-grid-item:hover {
+  transform: translateY(-3px) scale(1.04);
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+.share-grid-item svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+/* Brand colors on hover */
+.share-grid-item[data-platform="twitter"]:hover  { background: hsla(203,89%,53%,0.12); border-color: hsla(203,89%,53%,0.35); color: hsl(203,89%,53%); }
+.share-grid-item[data-platform="linkedin"]:hover { background: hsla(201,100%,35%,0.12); border-color: hsla(201,100%,35%,0.35); color: hsl(201,100%,35%); }
+.share-grid-item[data-platform="whatsapp"]:hover { background: hsla(142,70%,45%,0.12); border-color: hsla(142,70%,45%,0.35); color: hsl(142,70%,45%); }
+.share-grid-item[data-platform="reddit"]:hover   { background: hsla(16,100%,50%,0.12); border-color: hsla(16,100%,50%,0.35); color: hsl(16,100%,50%); }

@@ -75,8 +75,17 @@
     {# Inline reply form slot #}
     <div class="comment-reply-slot" id="reply-slot-{{ c.id }}"></div>
 
-    {# Nested replies container #}
-    <div class="comment-card__replies" id="replies-{{ c.id }}" {% if not c.replies %}style="display:none;"{% endif %}>
+    {# Replies toggle + nested replies container #}
+    {% if c.replies %}
+    <button class="comment-replies-toggle" type="button"
+      data-action="toggle-replies"
+      data-target="replies-{{ c.id }}"
+      aria-expanded="false">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      <span>{{ c.replies | length }} {{ 'reply' if (c.replies | length) == 1 else 'replies' }}</span>
+    </button>
+    {% endif %}
+    <div class="comment-card__replies" id="replies-{{ c.id }}" style="display:none;" aria-hidden="true">
       {% if c.replies %}
         {% for reply in c.replies %}
           {{ comment_card(reply, content_id, current_user, is_reply=True) }}
@@ -103,7 +112,7 @@
       {{ current_user.name[0] | upper if current_user.name else (current_user.email[0] | upper if current_user.email else 'U') }}
     </div>
     <div class="comment-form__main">
-      <textarea class="comment-form__input" name="text" placeholder="Share your perspective or ask a question..." rows="3" maxlength="2000" required aria-label="Write a comment"></textarea>
+      <textarea class="comment-form__input" name="text" placeholder="Share your perspective or ask a question..." rows="1" maxlength="2000" required aria-label="Write a comment"></textarea>
       <div class="comment-form__footer">
         <span class="comment-form__counter"><span data-char-count>0</span> / 2000</span>
         <button class="btn btn--gradient btn--sm" type="submit">
@@ -136,14 +145,26 @@
   </div>
   {% endif %}
 
-  {# Comments List #}
-  <div class="comment-list" id="comment-list">
+  {# Comments List — first 10 visible, rest hidden for client-side load-more #}
+  <div class="comment-list" id="comment-list" data-total-comments="{{ comments_tree | length }}">
     {% if comments_tree %}
       {% for comment in comments_tree %}
-        {{ comment_card(comment, content.id, current_user) }}
+        <div class="comment-list__item{% if loop.index > 10 %} comment-list__item--hidden{% endif %}">
+          {{ comment_card(comment, content.id, current_user) }}
+        </div>
       {% endfor %}
     {% endif %}
   </div>
+
+  {% if comments_tree | length > 10 %}
+  <div class="comments-load-more" id="comments-load-more">
+    <button class="comments-load-more__btn" type="button" data-action="load-more-comments"
+      data-hidden-count="{{ (comments_tree | length) - 10 }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      Show {{ (comments_tree | length) - 10 }} more {{ 'comment' if ((comments_tree | length) - 10) == 1 else 'comments' }}
+    </button>
+  </div>
+  {% endif %}
 
   <div class="comments-empty" id="comments-empty" {% if comments_tree %}style="display:none;"{% endif %}>
     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4; margin-bottom:var(--space-2);" aria-hidden="true">
