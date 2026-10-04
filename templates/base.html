@@ -76,7 +76,7 @@
           {# Search bar #}
           <div class="navbar__search-form">
             <form action="/search" method="get" role="search" aria-label="Site search">
-              <div class="navbar__search-form" style="position:relative;">
+              <div class="navbar__search-form">
                 <input class="navbar__search-input" id="search-input" data-search-input type="search" name="q"
                   value="{{ request.args.get('q', '') }}" placeholder="Search articles, videos…" autocomplete="off"
                   aria-label="Search" aria-autocomplete="list" aria-controls="autocomplete-dropdown">

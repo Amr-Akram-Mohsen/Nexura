@@ -1,0 +1,20 @@
+{# templates/macros/breadcrumb.html #}
+{% macro breadcrumb(items) %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol class="breadcrumb__list" itemscope itemtype="https://schema.org/BreadcrumbList">
+    {% for item in items %}
+    <li class="breadcrumb__item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+      {% if not loop.last and item.url %}
+      <a class="breadcrumb__link" href="{{ item.url }}" itemprop="item">
+        <span itemprop="name">{{ item.name }}</span>
+      </a>
+      <span class="breadcrumb__separator" aria-hidden="true">/</span>
+      {% else %}
+      <span class="breadcrumb__current" aria-current="page" itemprop="name">{{ item.name }}</span>
+      {% endif %}
+      <meta itemprop="position" content="{{ loop.index }}">
+    </li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endmacro %}
