@@ -7,6 +7,7 @@ import math
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required, current_user
 
+from app.caching import invalidate_home_for_you
 from app.repositories.user_repo import UserRepository
 from app.serializers.content_serializers import serialize_content_card
 
@@ -46,6 +47,7 @@ def index():
 def clear_history():
     """Clear all reading history for the current user."""
     UserRepository.clear_user_history(current_user.id)
+    invalidate_home_for_you(current_user.id)
     if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
         return jsonify({"success": True, "message": "Reading history cleared."})
     flash("Reading history cleared.", "info")
@@ -57,6 +59,7 @@ def clear_history():
 def remove_history_item(content_id: int):
     """Remove a single item from user's reading history."""
     UserRepository.remove_from_user_history(current_user.id, content_id)
+    invalidate_home_for_you(current_user.id)
     if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
         return jsonify({"success": True})
     flash("Item removed from history.", "info")

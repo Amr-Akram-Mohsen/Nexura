@@ -9,6 +9,7 @@ from flask_login import current_user, login_required
 from pydantic import ValidationError
 
 from app.extensions import limiter
+from app.caching import invalidate_home_for_you
 from app.services.interaction_service import toggle_reaction, toggle_save, record_share, submit_comment
 from app.services.newsletter_service import subscribe_newsletter
 from app.schemas import InteractionPayload, CommentPayload, NewsletterSubscribePayload
@@ -39,6 +40,8 @@ def handle_interaction():
         result = toggle_reaction(current_user.id, payload.target_id, payload.action, target_type=payload.target_type)
     elif payload.action == "save":
         result = toggle_save(current_user.id, payload.target_id, payload.collection)
+        if result.get("success"):
+            invalidate_home_for_you(current_user.id)
     elif payload.action == "share":
         result = record_share(current_user.id, payload.target_id, payload.channel)
     else:

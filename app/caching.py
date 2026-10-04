@@ -5,6 +5,7 @@ from app.extensions import cache
 
 TTL_LAYOUT = 3600
 TTL_HOMEPAGE = 300
+TTL_HOME_FOR_YOU = 600
 TTL_FILTER_OPTS = 300
 TTL_CONTENT_PAGE = 300
 TTL_SEARCH = 120
@@ -12,6 +13,7 @@ TTL_AUTOCOMPLETE = 60
 
 CACHE_TTL_LAYOUT = TTL_LAYOUT
 CACHE_TTL_HOME = TTL_HOMEPAGE
+CACHE_TTL_HOME_FOR_YOU = TTL_HOME_FOR_YOU
 CACHE_TTL_CONTENT_PAGE = TTL_CONTENT_PAGE
 CACHE_TTL_SEARCH_RESULTS = TTL_SEARCH
 CACHE_TTL_SEARCH_SUGGESTIONS = TTL_AUTOCOMPLETE
@@ -25,6 +27,11 @@ def key_layout_context() -> str:
 def key_home_page_data() -> str:
     """Return cache key for home feed and hero data."""
     return "home_page_data"
+
+
+def key_home_for_you(user_id: int) -> str:
+    """Return cache key for a user's personalized home shelf."""
+    return f"user:{user_id}:home_for_you"
 
 
 def key_filter_opts(section_id: int) -> str:
@@ -63,3 +70,8 @@ def invalidate_content_after_write(content_id: int | None = None) -> None:
 def invalidate_layout() -> None:
     """Invalidate layout navigation and footer cache."""
     cache.delete(key_layout_context())
+
+
+def invalidate_home_for_you(user_id: int) -> None:
+    """Invalidate a user's personalized home shelf, e.g. after clearing history."""
+    cache.delete(key_home_for_you(user_id))

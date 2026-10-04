@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import math
 from datetime import datetime, timezone, timedelta
-from typing import Any, Sequence
+from typing import Any, NamedTuple, Sequence
 
 from sqlalchemy import desc, func, and_, or_
 from sqlalchemy.orm import joinedload, selectinload
@@ -20,6 +20,22 @@ log = logging.getLogger(__name__)
 
 HALF_LIFE_DAYS = 30.0
 LN_2 = math.log(2)
+
+REASON_TRENDING = "Popular right now"
+
+
+def trending_reason(item: Content) -> str:
+    """Explain why a non-personalized or fallback item was selected."""
+    if item.category and item.category.name:
+        return f"Trending in {item.category.name}"
+    return REASON_TRENDING
+
+
+class PersonalizedFeed(NamedTuple):
+    """Discovery feed entries as (content, reason) pairs plus whether they reflect real user interests."""
+
+    entries: list[tuple[Content, str | None]]
+    personalized: bool
 
 
 def calculate_relevance_score(candidate: Content, reference: Content, now: datetime | None = None) -> float:
@@ -65,6 +81,11 @@ def calculate_relevance_score(candidate: Content, reference: Content, now: datet
     return round(total_score, 4)
 
 
+def _interest_reason(name: str | None) -> str | None:
+    """Build the user-facing explanation for a personalized recommendation."""
+    return f"Based on your interest in {name}" if name else None
+
+
 class RecommendationService:
     """Service layer for computing recommendations and managing user interest vectors."""
 
@@ -108,16 +129,51 @@ class RecommendationService:
         return [item[0] for item in scored[:limit]]
 
     @staticmethod
-    def get_personalized_discovery_feed(user_id: int, limit: int = 24) -> list[Content]:
-        """Generate a personalized discovery feed for an authenticated user."""
+    def _feed_query():
+        """Base query for active, published content with card relations eager-loaded."""
+        return (
+            db.session.query(Content)
+            .options(
+                joinedload(Content.section),
+                joinedload(Content.category),
+                joinedload(Content.source),
+                selectinload(Content.content_entities).joinedload(ContentEntity.entity),
+            )
+            .filter(Content.is_active.is_(True), Content.is_published.is_(True))
+        )
+
+    @staticmethod
+    def get_trending_items(limit: int = 6, exclude_ids: Sequence[int] | None = None) -> list[Content]:
+        """Return globally popular content ranked by score, views, and recency."""
+        query = RecommendationService._feed_query()
+        if exclude_ids:
+            query = query.filter(~Content.id.in_(list(exclude_ids)))
+        items = query.order_by(desc(Content.score), desc(Content.view_count), desc(Content.published_at)).limit(limit).all()
+        return ContentRepository.resolve_polymorphic_payloads(items)
+
+    @staticmethod
+    def get_personalized_feed_with_reasons(user_id: int | None, limit: int = 24, exclude_ids: Sequence[int] | None = None) -> PersonalizedFeed:
+        """Generate a discovery feed for a user with a human-readable reason attached to every item.
+
+        ``exclude_ids`` removes items from the candidate pool (e.g. already featured in the hero)
+        without affecting the user's interest profile.
+        """
+        if not user_id:
+            trending = RecommendationService.get_trending_items(limit, exclude_ids=exclude_ids)
+            return PersonalizedFeed(
+                entries=[(item, trending_reason(item)) for item in trending],
+                personalized=False,
+            )
+
         seen_views = [r[0] for r in db.session.query(View.content_id).filter(View.user_id == user_id).order_by(desc(View.created_at)).limit(100).all()]
         seen_saves = [r[0] for r in db.session.query(Save.content_id).filter(Save.user_id == user_id).all()]
         seen_ids = set(seen_views + seen_saves)
+        blocked_ids = seen_ids | set(exclude_ids or ())
 
         history_contents = (
             db.session.query(Content)
             .options(joinedload(Content.category), selectinload(Content.content_entities).joinedload(ContentEntity.entity))
-            .filter(Content.id.in_(seen_ids or [-1]))
+            .filter(Content.id.in_(list(seen_ids) if seen_ids else [-1]))
             .all()
         )
 
@@ -136,73 +192,55 @@ class RecommendationService:
 
         cat_items: list[Content] = []
         if top_category_ids:
-            cat_query = (
-                db.session.query(Content)
-                .options(
-                    joinedload(Content.section),
-                    joinedload(Content.category),
-                    joinedload(Content.source),
-                    selectinload(Content.content_entities).joinedload(ContentEntity.entity),
-                )
-                .filter(Content.category_id.in_(top_category_ids), Content.is_active.is_(True), Content.is_published.is_(True))
-            )
-            if seen_ids:
-                cat_query = cat_query.filter(~Content.id.in_(seen_ids))
+            cat_query = RecommendationService._feed_query().filter(Content.category_id.in_(top_category_ids))
+            if blocked_ids:
+                cat_query = cat_query.filter(~Content.id.in_(list(blocked_ids)))
 
             cat_items = cat_query.order_by(desc(Content.score), desc(Content.published_at)).limit(limit).all()
 
         entity_items: list[Content] = []
         if top_entity_ids:
-            ent_query = (
-                db.session.query(Content)
-                .options(
-                    joinedload(Content.section),
-                    joinedload(Content.category),
-                    joinedload(Content.source),
-                    selectinload(Content.content_entities).joinedload(ContentEntity.entity),
-                )
-                .join(Content.content_entities)
-                .filter(ContentEntity.entity_id.in_(top_entity_ids), Content.is_active.is_(True), Content.is_published.is_(True))
-            )
-            if seen_ids:
-                ent_query = ent_query.filter(~Content.id.in_(seen_ids))
+            ent_query = RecommendationService._feed_query().join(Content.content_entities).filter(ContentEntity.entity_id.in_(top_entity_ids))
+            if blocked_ids:
+                ent_query = ent_query.filter(~Content.id.in_(list(blocked_ids)))
 
             entity_items = ent_query.order_by(desc(Content.score), desc(Content.published_at)).limit(limit).all()
 
-        interleaved: list[Content] = []
+        def entity_reason(item: Content) -> str | None:
+            """Name the strongest history-backed entity shared with the candidate."""
+            matches = [ce for ce in item.content_entities if ce.entity_id in entity_counts and ce.entity_id in top_entity_ids and ce.entity]
+            if not matches:
+                return None
+            best = max(matches, key=lambda ce: entity_counts[ce.entity_id])
+            return _interest_reason(best.entity.name)
+
+        entries: list[tuple[Content, str | None]] = []
         seen_in_feed: set[int] = set()
 
-        max_len = max(len(cat_items), len(entity_items))
-        for i in range(max_len):
-            if i < len(cat_items) and cat_items[i].id not in seen_in_feed:
-                interleaved.append(cat_items[i])
-                seen_in_feed.add(cat_items[i].id)
-            if i < len(entity_items) and entity_items[i].id not in seen_in_feed:
-                interleaved.append(entity_items[i])
-                seen_in_feed.add(entity_items[i].id)
-            if len(interleaved) >= limit:
-                break
+        def add(item: Content, reason: str | None) -> None:
+            if item.id not in seen_in_feed and len(entries) < limit:
+                entries.append((item, reason))
+                seen_in_feed.add(item.id)
 
-        if len(interleaved) < limit:
-            remaining = limit - len(interleaved)
-            fallback = (
-                db.session.query(Content)
-                .options(
-                    joinedload(Content.section),
-                    joinedload(Content.category),
-                    joinedload(Content.source),
-                    selectinload(Content.content_entities).joinedload(ContentEntity.entity),
-                )
-                .filter(
-                    Content.is_active.is_(True), Content.is_published.is_(True), ~Content.id.in_(seen_in_feed | seen_ids if (seen_in_feed | seen_ids) else [-1])
-                )
-                .order_by(desc(Content.score), desc(Content.view_count), desc(Content.published_at))
-                .limit(remaining)
-                .all()
-            )
-            interleaved.extend(fallback)
+        for i in range(max(len(cat_items), len(entity_items))):
+            if i < len(cat_items):
+                add(cat_items[i], _interest_reason(cat_items[i].category.name if cat_items[i].category else None))
+            if i < len(entity_items):
+                add(entity_items[i], entity_reason(entity_items[i]))
 
-        return ContentRepository.resolve_polymorphic_payloads(interleaved[:limit])
+        if len(entries) < limit:
+            for item in RecommendationService.get_trending_items(limit - len(entries), exclude_ids=seen_in_feed | blocked_ids):
+                add(item, trending_reason(item))
+
+        ContentRepository.resolve_polymorphic_payloads([item for item, _ in entries])
+        personalized = any(reason and not reason.startswith("Trending in") and reason != REASON_TRENDING for _, reason in entries)
+        return PersonalizedFeed(entries=entries, personalized=personalized)
+
+    @staticmethod
+    def get_personalized_discovery_feed(user_id: int, limit: int = 24) -> list[Content]:
+        """Generate a personalized discovery feed for an authenticated user."""
+        feed = RecommendationService.get_personalized_feed_with_reasons(user_id, limit)
+        return [item for item, _ in feed.entries]
 
     @staticmethod
     def update_user_interest_graph(user_id: int, content_id: int, interaction_weight: float = 1.0) -> None:

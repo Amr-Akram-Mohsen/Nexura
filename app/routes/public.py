@@ -9,7 +9,16 @@ from flask import Blueprint, abort, jsonify, redirect, render_template, request,
 from flask_login import current_user
 
 from app.extensions import cache, db
-from app.caching import CACHE_TTL_HOME, CACHE_TTL_CONTENT_PAGE, CACHE_TTL_SEARCH_RESULTS, CACHE_TTL_SEARCH_SUGGESTIONS, CACHE_TTL_LAYOUT
+from app.caching import (
+    CACHE_TTL_HOME,
+    CACHE_TTL_HOME_FOR_YOU,
+    CACHE_TTL_CONTENT_PAGE,
+    CACHE_TTL_SEARCH_RESULTS,
+    CACHE_TTL_SEARCH_SUGGESTIONS,
+    CACHE_TTL_LAYOUT,
+    key_home_for_you,
+    invalidate_home_for_you,
+)
 from app.models.taxonomy import Category, Entity
 from app.models.article import Article
 from app.models.video import Video
@@ -21,6 +30,7 @@ from app.repositories.taxonomy_repo import TaxonomyRepository
 from app.repositories.search_repo import SearchRepository
 from app.repositories.analytics_repo import AnalyticsRepository
 from app.serializers.content_serializers import serialize_content_card, _format_duration
+from app.services.recommendation_service import RecommendationService, trending_reason
 from config import SOCIAL_LINKS
 
 log = logging.getLogger(__name__)
@@ -65,6 +75,7 @@ def _record_view(content_id: int) -> None:
     try:
         if current_user.is_authenticated:
             AnalyticsRepository.record_view(content_id=content_id, user_id=current_user.id)
+            invalidate_home_for_you(current_user.id)
         else:
             AnalyticsRepository.record_view(content_id=content_id, ip_address=request.remote_addr)
     except Exception as exc:
@@ -106,12 +117,59 @@ def _prepare_detail_view(content_id: int, slug_or_id: str | int | None, endpoint
     return content_live, None
 
 
+HOME_SHELF_SIZE = 6
+HOME_SHELF_FETCH = HOME_SHELF_SIZE + 2  # headroom for hero overlap when a cached shelf outlives the hero data
+
+
+def _serialize_shelf_items(entries) -> list[dict[str, Any]]:
+    """Serialize (content, reason) pairs into card payloads carrying the recommendation reason."""
+    cards = []
+    for content, reason in entries:
+        card = serialize_content_card(content)
+        if reason:
+            card["recommendation_reason"] = reason
+        cards.append(card)
+    return cards
+
+
+def _build_for_you_shelf(hero_items: list[dict[str, Any]], trending_picks: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Resolve the homepage shelf: personalized for readers with history, trending for everyone else."""
+    items = trending_picks
+    personalized = False
+
+    if current_user.is_authenticated:
+        cache_key = key_home_for_you(current_user.id)
+        payload = cache.get(cache_key)
+        if payload is None:
+            feed = RecommendationService.get_personalized_feed_with_reasons(
+                current_user.id, limit=HOME_SHELF_FETCH, exclude_ids=[h.get("id") for h in hero_items]
+            )
+            payload = {"personalized": feed.personalized, "items": _serialize_shelf_items(feed.entries)}
+            cache.set(cache_key, payload, timeout=CACHE_TTL_HOME_FOR_YOU)
+        if payload["personalized"]:
+            items, personalized = payload["items"], True
+
+    hero_ids = {h.get("id") for h in hero_items}
+    items = [item for item in items if item.get("id") not in hero_ids][:HOME_SHELF_SIZE]
+    if not items:
+        return None
+
+    if personalized:
+        title, subtitle = "Recommended For You", "Picked from your reading history and saved stories."
+    elif current_user.is_authenticated:
+        title, subtitle = "Trending Now", "Read and save a few stories and we'll tailor this shelf to you."
+    else:
+        title, subtitle = "Trending Now", "What readers are exploring on Nexura right now."
+
+    return {"title": title, "subtitle": subtitle, "items": items, "personalized": personalized}
+
+
 @public_bp.route("/")
 def home():
-    """Render home feed with hero banner, section rows, and trending entities."""
+    """Render home feed with hero banner, personalized shelf, section rows, and trending entities."""
     page_data = cache.get("home_page_data")
 
-    if page_data is None:
+    if page_data is None or "trending_picks" not in page_data:
         sections = TaxonomyRepository.get_active_sections()
         hero_items = [serialize_content_card(c) for c in ContentRepository.get_hero_items(limit=5)]
 
@@ -122,12 +180,25 @@ def home():
             section_rows.append({"name": section_obj.name, "slug": section_obj.slug, "content_items": serialized, "items": serialized})
 
         trending_entities = TaxonomyRepository.get_trending_entities(limit=20)
+        trending_items = RecommendationService.get_trending_items(limit=HOME_SHELF_FETCH, exclude_ids=[h["id"] for h in hero_items])
+        trending_picks = _serialize_shelf_items([(c, trending_reason(c)) for c in trending_items])
 
-        page_data = {"hero_items": hero_items, "section_rows": section_rows, "trending_entities": [{"name": e.name, "slug": e.slug} for e in trending_entities]}
+        page_data = {
+            "hero_items": hero_items,
+            "section_rows": section_rows,
+            "trending_entities": [{"name": e.name, "slug": e.slug} for e in trending_entities],
+            "trending_picks": trending_picks,
+        }
         cache.set("home_page_data", page_data, timeout=CACHE_TTL_HOME)
 
+    for_you = _build_for_you_shelf(page_data["hero_items"], page_data["trending_picks"])
+
     return render_template(
-        "public/home.html", hero_items=page_data["hero_items"], section_rows=page_data["section_rows"], trending_entities=page_data["trending_entities"]
+        "public/home.html",
+        hero_items=page_data["hero_items"],
+        section_rows=page_data["section_rows"],
+        trending_entities=page_data["trending_entities"],
+        for_you=for_you,
     )
 
 

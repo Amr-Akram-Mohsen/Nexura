@@ -469,6 +469,8 @@ mark {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-6);
+  gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .section-row__title {
@@ -487,6 +489,21 @@ mark {
   border-radius: 2px;
   margin-right: var(--space-3);
   vertical-align: middle;
+}
+
+.section-row__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.section-row__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.home-section {
+  margin-bottom: var(--space-12);
 }
 
 .section-row__view-all {

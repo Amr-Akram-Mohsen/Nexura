@@ -27,7 +27,7 @@
 
   {# Hero Carousel #}
   {% if hero_items %}
-  <section aria-label="Featured stories" style="margin-bottom: var(--space-12);">
+  <section class="home-section" aria-label="Featured stories">
     <div class="hero-carousel">
       {% for item in hero_items %}
       <article class="hero-slide {% if loop.first %}active{% endif %}">
@@ -75,9 +75,34 @@
   </section>
   {% endif %}
 
+  {# For You / Trending shelf #}
+  {% if for_you %}
+  <section class="home-section" aria-labelledby="for-you-heading" data-home-shelf="{{ 'personalized' if for_you.personalized else 'trending' }}">
+    <div class="section-row__header">
+      <div class="section-row__heading">
+        <h2 class="section-row__title" id="for-you-heading">
+          <span aria-hidden="true"></span>{{ for_you.title }}
+        </h2>
+        <p class="section-row__subtitle">{{ for_you.subtitle }}</p>
+      </div>
+      {% if not current_user.is_authenticated %}
+      <a class="section-row__view-all" href="{{ url_for('auth.login', next=request.path) }}">
+        Sign in to personalize
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% endif %}
+    </div>
+    <div class="grid-cards">
+      {% for item in for_you['items'] %}
+      {{ content_card(item) }}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   {# Section Content Rows #}
   {% for section_row in section_rows %}
-  <section aria-labelledby="section-{{ section_row.slug }}" style="margin-bottom: var(--space-12);">
+  <section class="home-section" aria-labelledby="section-{{ section_row.slug }}">
     <div class="section-row__header">
       <h2 class="section-row__title" id="section-{{ section_row.slug }}">
         <span aria-hidden="true"></span>{{ section_row.name }}
@@ -112,7 +137,7 @@
 
   {# Trending Topics #}
   {% if trending_entities %}
-  <section aria-labelledby="trending-topics" style="margin-bottom: var(--space-12);">
+  <section class="home-section" aria-labelledby="trending-topics">
     <div class="section-row__header">
       <h2 class="section-row__title" id="trending-topics">
         <span aria-hidden="true"></span>Trending Topics

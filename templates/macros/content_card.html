@@ -12,6 +12,7 @@
   {% set item_source = item.get('source_name') or item.get('channel_name') or 'Nexura' %}
   {% set item_source_logo = item.get('source_logo') %}
   {% set item_views = item.get('view_count', 0) %}
+  {% set item_reason = item.get('recommendation_reason') %}
   {% set item_date = item.get('formatted_date') or item.get('age') or item.get('published_at', '') %}
   {% set cat_obj = item.get('category') %}
   {% if item.get('category_name') %}
@@ -38,6 +39,7 @@
   {% set item_source = item.source.name if (item.source is defined and item.source) else 'Nexura' %}
   {% set item_source_logo = item.source.logo_url if (item.source is defined and item.source) else None %}
   {% set item_views = item.view_count if item.view_count is defined else 0 %}
+  {% set item_reason = item.recommendation_reason if (item.recommendation_reason is defined) else None %}
   {% set item_date = item.published_at.strftime('%b %d, %Y') if (item.published_at is defined and item.published_at) else '' %}
   {% set cat_name = item.category.name if (item.category is defined and item.category) else '' %}
   {% set item_url = item.url if item.url is defined else ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.slug_id if item.slug_id is defined else item_id)) %}
@@ -89,6 +91,12 @@
 
   {# Body #}
   <div class="card__body">
+    {% if item_reason %}
+    <span class="card__reason">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
+      {{ item_reason }}
+    </span>
+    {% endif %}
     <div class="card__meta">
       {% if cat_name %}
       <span class="card__category">{{ cat_name }}</span>
