@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from flask_login import UserMixin
-from sqlalchemy import Boolean, CheckConstraint, Column, Index, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 
@@ -43,7 +43,31 @@ class User(UserMixin, db.Model):
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     shares = relationship("Share", back_populates="user", cascade="all, delete-orphan")
     user_interests = relationship("UserInterest", back_populates="user", cascade="all, delete-orphan")
-    newsletter_subscriber = relationship("NewsletterSubscriber", back_populates="user", uselist=False)
+
+    @property
+    def newsletter_subscriber(self) -> NewsletterSubscriber | None:
+        """Fetch the active subscriber record associated with this user."""
+        clean_email = (self.email or "").strip().lower()
+        if clean_email:
+            sub = db.session.query(NewsletterSubscriber).filter(
+                func.lower(NewsletterSubscriber.email) == clean_email
+            ).first()
+            if sub:
+                if self.id and sub.user_id != self.id:
+                    sub.user_id = self.id
+                    db.session.commit()
+                return sub
+        if self.id:
+            return db.session.query(NewsletterSubscriber).filter(
+                NewsletterSubscriber.user_id == self.id
+            ).order_by(NewsletterSubscriber.id.desc()).first()
+        return None
+
+    @property
+    def is_subscribed_to_newsletter(self) -> bool:
+        """Check if user has an active confirmed newsletter subscription."""
+        sub = self.newsletter_subscriber
+        return bool(sub and sub.is_confirmed and not sub.unsubscribed_at)
 
     def __repr__(self) -> str:
         return f"<User {self.email!r}>"
@@ -69,7 +93,8 @@ class NewsletterSubscriber(db.Model):
     confirmation_token = Column(String(255))
     unsubscribe_token = Column(String(255))
 
-    user = relationship("User", back_populates="newsletter_subscriber")
+    user = relationship("User", foreign_keys=[user_id])
+
 
     def __repr__(self) -> str:
         return f"<NewsletterSubscriber {self.email!r}>"

@@ -180,14 +180,35 @@ class UserRepository:
         return db.session.query(NewsletterSubscriber).filter(func.lower(NewsletterSubscriber.email) == email.strip().lower()).first()
 
     @staticmethod
-    def upsert_subscriber(email: str, *, user_id: int | None = None, confirmation_token: str | None = None) -> tuple[NewsletterSubscriber, bool]:
+    def get_subscriber_by_confirmation_token(token: str) -> NewsletterSubscriber | None:
+        """Fetch subscriber by confirmation token."""
+        if not token:
+            return None
+        return db.session.query(NewsletterSubscriber).filter(NewsletterSubscriber.confirmation_token == token).first()
+
+    @staticmethod
+    def get_subscriber_by_unsubscribe_token(token: str) -> NewsletterSubscriber | None:
+        """Fetch subscriber by unsubscribe token."""
+        if not token:
+            return None
+        return db.session.query(NewsletterSubscriber).filter(NewsletterSubscriber.unsubscribe_token == token).first()
+
+    @staticmethod
+    def upsert_subscriber(
+        email: str, *, user_id: int | None = None, confirmation_token: str | None = None, unsubscribe_token: str | None = None
+    ) -> tuple[NewsletterSubscriber, bool]:
         """Subscribe or re-subscribe an email. Returns (subscriber, is_created)."""
         clean_email = email.strip().lower()
         sub = UserRepository.get_subscriber_by_email(clean_email)
         created = False
         if not sub:
             sub = NewsletterSubscriber(
-                email=clean_email, user_id=user_id, confirmation_token=confirmation_token, is_confirmed=False, created_at=datetime.now(timezone.utc)
+                email=clean_email,
+                user_id=user_id,
+                confirmation_token=confirmation_token,
+                unsubscribe_token=unsubscribe_token,
+                is_confirmed=False,
+                created_at=datetime.now(timezone.utc),
             )
             db.session.add(sub)
             created = True
@@ -196,8 +217,15 @@ class UserRepository:
                 sub.unsubscribed_at = None
             if confirmation_token:
                 sub.confirmation_token = confirmation_token
-            if user_id and not sub.user_id:
-                sub.user_id = user_id
+            if unsubscribe_token and not sub.unsubscribe_token:
+                sub.unsubscribe_token = unsubscribe_token
+        if user_id:
+            # Ensure no other subscriber record has this user_id
+            db.session.query(NewsletterSubscriber).filter(
+                NewsletterSubscriber.user_id == user_id,
+                func.lower(NewsletterSubscriber.email) != clean_email,
+            ).update({"user_id": None}, synchronize_session=False)
+            sub.user_id = user_id
 
         db.session.commit()
         return sub, created

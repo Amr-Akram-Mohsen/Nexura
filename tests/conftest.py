@@ -64,6 +64,9 @@ def app():
     application = create_app()
     application.config["TESTING"] = True
     application.config["WTF_CSRF_ENABLED"] = False
+    application.config["RATELIMIT_ENABLED"] = False
+    from app.extensions import limiter
+    limiter.enabled = False
     yield application
 
 @pytest.fixture(autouse=True)

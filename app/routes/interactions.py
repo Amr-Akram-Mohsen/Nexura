@@ -11,8 +11,17 @@ from pydantic import ValidationError
 from app.extensions import limiter
 from app.caching import invalidate_home_for_you
 from app.services.interaction_service import toggle_reaction, toggle_save, record_share, submit_comment
-from app.services.newsletter_service import subscribe_newsletter
-from app.schemas import InteractionPayload, CommentPayload, NewsletterSubscribePayload
+from app.services.newsletter_service import (
+    subscribe_newsletter,
+    unsubscribe_current_user,
+    unsubscribe_by_email,
+)
+from app.schemas import (
+    InteractionPayload,
+    CommentPayload,
+    NewsletterSubscribePayload,
+    NewsletterUnsubscribePayload,
+)
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +86,9 @@ def subscribe():
     """Register a new newsletter subscriber with double opt-in and Pydantic validation."""
     raw_data = (request.get_json(silent=True) if request.is_json else None) or request.form.to_dict()
 
+    if current_user.is_authenticated and not raw_data.get("email"):
+        raw_data["email"] = current_user.email
+
     try:
         payload = NewsletterSubscribePayload.model_validate(raw_data)
     except ValidationError:
@@ -87,3 +99,27 @@ def subscribe():
     result = subscribe_newsletter(payload.email, user_id=user_id)
     status = 200 if result.get("success") else 400
     return jsonify(result), status
+
+
+@interactions_bp.route("/unsubscribe", methods=["POST"])
+@limiter.limit("10 per minute")
+def unsubscribe():
+    """Unsubscribe authenticated user or guest by email."""
+    if current_user.is_authenticated:
+        result = unsubscribe_current_user(current_user.id)
+        status = 200 if result.get("success") else 400
+        return jsonify(result), status
+
+    raw_data = (request.get_json(silent=True) if request.is_json else None) or request.form.to_dict()
+    try:
+        payload = NewsletterUnsubscribePayload.model_validate(raw_data)
+    except ValidationError:
+        return jsonify({"success": False, "message": "Invalid request."}), 400
+
+    if not payload.email or not payload.email.strip():
+        return jsonify({"success": False, "message": "Email is required to unsubscribe."}), 400
+
+    result = unsubscribe_by_email(payload.email)
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
+

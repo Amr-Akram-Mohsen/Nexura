@@ -556,3 +556,30 @@ def terms():
 def privacy():
     """Render privacy policy page."""
     return render_template("public/privacy.html")
+
+
+@public_bp.route("/newsletter/confirm/<token>")
+def confirm_newsletter(token: str):
+    """Confirm a newsletter subscription via double opt-in link."""
+    from app.services.newsletter_service import confirm_subscription
+    result = confirm_subscription(token)
+    return render_template(
+        "public/newsletter_feedback.html",
+        title="Subscription Confirmed" if result.get("success") else "Confirmation Failed",
+        message=result.get("message"),
+        success=result.get("success", False),
+    ), (200 if result.get("success") else 400)
+
+
+@public_bp.route("/newsletter/unsubscribe/<token>")
+def unsubscribe_newsletter(token: str):
+    """Unsubscribe from Nexura newsletter."""
+    from app.services.newsletter_service import unsubscribe_newsletter
+    result = unsubscribe_newsletter(token)
+    return render_template(
+        "public/newsletter_feedback.html",
+        title="Unsubscribed" if result.get("success") else "Unsubscribe Failed",
+        message=result.get("message"),
+        success=result.get("success", False),
+    ), (200 if result.get("success") else 400)
+

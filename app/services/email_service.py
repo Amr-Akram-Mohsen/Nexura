@@ -82,5 +82,36 @@ class EmailService:
             log.error("Failed to send password reset email to %s: %s", user.email, e)
             return False
 
+    @staticmethod
+    def send_newsletter_confirmation(email: str, token: str) -> bool:
+        """Send newsletter subscription confirmation link."""
+        try:
+            confirm_url = url_for("public.confirm_newsletter", token=token, _external=True)
+        except Exception:
+            confirm_url = f"/newsletter/confirm/{token}"
+
+        if not current_app.config.get("MAIL_ENABLED", False):
+            log.info("[EMAIL DISABLED] Newsletter confirmation link for %s: %s", email, confirm_url)
+            return False
+
+        try:
+            subject = "Confirm your Nexura newsletter subscription"
+            plain_body = (
+                f"Hi,\n\n"
+                f"Thank you for subscribing to Nexura's weekly technology digest!\n\n"
+                f"Please confirm your subscription by clicking the link below:\n"
+                f"{confirm_url}\n\n"
+                f"If you did not request this subscription, you can safely ignore this email.\n\n"
+                f"— The Nexura Team"
+            )
+            sender = current_app.config.get("MAIL_DEFAULT_SENDER") or "noreply@nexura.tech"
+            msg = Message(subject=subject, recipients=[email], body=plain_body, sender=sender)
+            mail.send(msg)
+            log.info("Newsletter confirmation email sent to %s", email)
+            return True
+        except Exception as e:
+            log.error("Failed to send newsletter confirmation to %s: %s", email, e)
+            return False
+
 
 __all__ = ["EmailService"]

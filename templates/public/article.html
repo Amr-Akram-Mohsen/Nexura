@@ -2,6 +2,7 @@
 {% from "macros/content_card.html" import content_card %}
 {% from "macros/comments.html" import comments_section %}
 {% from "macros/breadcrumb.html" import breadcrumb %}
+{% from "macros/newsletter.html" import newsletter_box with context %}
 
 {% block title %}{{ article.title }}{% endblock %}
 {% block description %}{{ article.summary or article.preview or (article.content_text[:160] if article.content_text else
@@ -233,16 +234,7 @@
       {% endif %}
 
       {# Newsletter sidebar #}
-      <div class="newsletter-box">
-        <h3 class="newsletter-box__title">Get the best of Nexura</h3>
-        <p class="newsletter-box__desc">Weekly digest of the top articles and videos.</p>
-        <form class="newsletter-form" data-subscribe-form>
-          <input class="newsletter-form__input" type="email" name="email" placeholder="your@email.com"
-            aria-label="Email address" required>
-          <button class="btn btn--gradient btn--full" type="submit" data-action="subscribe"
-            id="sidebar-subscribe-btn">Subscribe</button>
-        </form>
-      </div>
+      {{ newsletter_box(variant='sidebar', title='Get the best of Nexura', desc='Weekly digest of the top articles and videos.', btn_id='sidebar-subscribe-btn') }}
 
     </aside>
   </div>

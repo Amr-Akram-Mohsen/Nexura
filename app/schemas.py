@@ -44,6 +44,14 @@ class NewsletterSubscribePayload(BaseModel):
     email: str = Field(min_length=5, max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+class NewsletterUnsubscribePayload(BaseModel):
+    """Validation schema for guest newsletter unsubscription."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    email: str | None = Field(default=None, max_length=255)
+
+
 class BatchContentPayload(BaseModel):
     """Validation schema for admin batch content mutation."""
 
