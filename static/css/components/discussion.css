@@ -572,6 +572,11 @@
   justify-content: center;
 }
 
+.comments-empty__icon {
+  opacity: 0.4;
+  margin-bottom: var(--space-2);
+}
+
 .comments-empty p {
   margin: 0;
 }

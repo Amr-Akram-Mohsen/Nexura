@@ -321,13 +321,18 @@ def article(slug_or_id: str | None = None, content_id: int | None = None):
         if not article_obj:
             abort(404)
 
+        related_entries = RecommendationService.get_related_recommendations_with_reasons(cid, limit=6)
+        if not related_entries:
+            fallback = ContentRepository.get_related_content(cid, limit=6)
+            related_entries = [(item, "Related story") for item in fallback]
+
         page_data = {
             "content": content,
             "article": article_obj,
             "authors": ArticleRepository.get_authors(article_obj.id),
             "source": db.session.get(Source, content.source_id) if content.source_id else None,
             "entities": ContentRepository.get_entities_for_content(cid),
-            "related": [serialize_content_card(r) for r in ContentRepository.get_related_content(cid, limit=6)],
+            "related": _serialize_shelf_items(related_entries),
             "section_slug": content.section.slug if content.section else None,
             "section_name": content.section.name if content.section else None,
             "category_slug": content.category.slug if content.category else None,
@@ -378,11 +383,16 @@ def video(slug_or_id: str | None = None, content_id: int | None = None):
         if not video_obj:
             abort(404)
 
+        related_entries = RecommendationService.get_related_recommendations_with_reasons(cid, limit=6)
+        if not related_entries:
+            fallback = ContentRepository.get_related_content(cid, limit=6)
+            related_entries = [(item, "Related story") for item in fallback]
+
         page_data = {
             "content": content,
             "video": video_obj,
             "yt_comments": VideoRepository.get_top_comments(video_obj.id, limit=15),
-            "related": [serialize_content_card(r) for r in ContentRepository.get_related_content(cid, limit=6)],
+            "related": _serialize_shelf_items(related_entries),
             "duration_formatted": _format_duration(video_obj.duration_seconds),
             "section_slug": content.section.slug if content.section else None,
             "section_name": content.section.name if content.section else None,

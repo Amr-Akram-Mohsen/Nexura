@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "macros/content_card.html" import content_card %}
 {% from "macros/comments.html" import comments_section %}
+{% from "macros/breadcrumb.html" import breadcrumb %}
 
 {% block title %}{{ video.title }}{% endblock %}
 {% block description %}{{ video.description[:200] if video.description else 'Watch ' ~ video.title ~ ' on Nexura.' }}{%
@@ -18,7 +19,19 @@ endblock %}
 {% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: var(--space-8);">
+<div class="container">
+
+  {# Breadcrumb #}
+  {% set breadcrumb_items = [{'name': 'Home', 'url': '/'}] %}
+  {% if content.section_name and content.section_slug %}
+    {% set _ = breadcrumb_items.append({'name': content.section_name, 'url': '/' ~ content.section_slug}) %}
+  {% endif %}
+  {% if content.category_name and content.category_slug and content.section_slug %}
+    {% set _ = breadcrumb_items.append({'name': content.category_name, 'url': '/' ~ content.section_slug ~ '/' ~ content.category_slug}) %}
+  {% endif %}
+  {% set _ = breadcrumb_items.append({'name': video.title | truncate(50)}) %}
+  {{ breadcrumb(breadcrumb_items) }}
+
   <div class="content-with-sidebar">
 
     {# Video Main Column #}
@@ -27,10 +40,10 @@ endblock %}
       {# Video Facade (§24 §13.2) #}
       <div class="video-facade" data-video-id="{{ video.external_id }}"
         data-video-title="{{ video.title | replace('"', ' &quot;') }}" role="button" tabindex="0"
-        aria-label="Play video: {{ video.title }}" style="margin-bottom: var(--space-6);"
+        aria-label="Play video: {{ video.title }}"
         onkeydown="if(event.key==='Enter'||event.key===' '){this.click();}">
         <div class="video-facade__ambient" aria-hidden="true"
-          style="background: url('{{ video.thumbnail_url or '' }}') center/cover;"></div>
+          style="--ambient-bg: url('{{ video.thumbnail_url or '' }}');"></div>
         <img class="video-facade__thumb" src="{{ video.thumbnail_url or '' }}" alt="{{ video.title | truncate(80) }}"
           loading="eager" fetchpriority="high" itemprop="thumbnailUrl">
         <div class="video-facade__play" aria-hidden="true">
@@ -201,7 +214,7 @@ endblock %}
         <div class="yt-comment-grid">
           {% for comment in yt_comments %}
           <div class="comment-card">
-            <div class="comment-card__avatar" aria-hidden="true" style="background: linear-gradient(135deg, hsl({{ (loop.index0 * 47) % 360 }}, 60%, 42%), hsl({{ (loop.index0 * 47 + 60) % 360 }}, 70%, 52%)); color: #fff; font-weight: var(--weight-bold); font-size: var(--text-xs); text-shadow: 0 1px 2px rgba(0,0,0,0.35);">
+            <div class="comment-card__avatar comment-card__avatar--gradient" aria-hidden="true" style="--avatar-gradient: linear-gradient(135deg, hsl({{ (loop.index0 * 47) % 360 }}, 60%, 42%), hsl({{ (loop.index0 * 47 + 60) % 360 }}, 70%, 52%));">
               {{ (comment.author_name or 'A')[:1] | upper }}
             </div>
             <div class="comment-card__body">
@@ -260,7 +273,7 @@ endblock %}
       {% endif %}
 
       <div class="newsletter-box">
-        <h3 class="newsletter-box__title" style="font-size:var(--text-md);">Get weekly digests</h3>
+        <h3 class="newsletter-box__title">Get weekly digests</h3>
         <p class="newsletter-box__desc">Top tech articles and videos every week.</p>
         <form class="newsletter-form" data-subscribe-form>
           <input class="newsletter-form__input" type="email" name="email" placeholder="your@email.com"
@@ -328,7 +341,7 @@ endblock %}
 
     <div class="share-copy-row">
       <span class="share-copy-url">{{ request.url }}</span>
-      <button class="share-copy-btn" type="button">
+      <button class="share-copy-btn" type="button" id="video-share-copy-link-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>

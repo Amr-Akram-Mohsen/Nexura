@@ -90,8 +90,28 @@ class RecommendationService:
     """Service layer for computing recommendations and managing user interest vectors."""
 
     @staticmethod
-    def get_related_recommendations(content_id: int, limit: int = 6) -> list[Content]:
-        """Rank candidate related items using the multi-signal relevance formula."""
+    def _related_reason(candidate: Content, reference: Content) -> str | None:
+        """Determine explanatory attribution reason connecting candidate to reference content."""
+        ref_entities = {ce.entity_id: ce.entity for ce in (reference.content_entities or []) if ce.entity}
+        cand_entities = {ce.entity_id: ce.entity for ce in (candidate.content_entities or []) if ce.entity}
+
+        shared_ids = set(ref_entities.keys()) & set(cand_entities.keys())
+        shared_topics = [ref_entities[eid] for eid in shared_ids if ref_entities[eid].entity_type != "brand"]
+        shared_brands = [ref_entities[eid] for eid in shared_ids if ref_entities[eid].entity_type == "brand"]
+
+        if shared_topics:
+            return f"Topic: {shared_topics[0].name}"
+        if shared_brands:
+            return f"Brand: {shared_brands[0].name}"
+        if candidate.category and reference.category_id and candidate.category_id == reference.category_id:
+            return f"Category: {candidate.category.name}"
+        if candidate.section and reference.section_id and candidate.section_id == reference.section_id:
+            return f"Section: {candidate.section.name}"
+        return "Related story"
+
+    @staticmethod
+    def get_related_recommendations_with_reasons(content_id: int, limit: int = 6) -> list[tuple[Content, str | None]]:
+        """Rank candidate related items using multi-signal scoring and attach explanatory attribution reason."""
         reference = ContentRepository.get_by_id(content_id, published_only=True)
         if not reference:
             return []
@@ -115,7 +135,13 @@ class RecommendationService:
         if reference.section_id:
             conditions.append(Content.section_id == reference.section_id)
         if entity_ids:
-            conditions.append(Content.id.in_(db.session.query(ContentEntity.content_id).filter(ContentEntity.entity_id.in_(entity_ids)).scalar_subquery()))
+            conditions.append(
+                Content.id.in_(
+                    db.session.query(ContentEntity.content_id)
+                    .filter(ContentEntity.entity_id.in_(entity_ids))
+                    .scalar_subquery()
+                )
+            )
 
         if conditions:
             query = query.filter(or_(*conditions))
@@ -126,7 +152,13 @@ class RecommendationService:
         scored = [(candidate, calculate_relevance_score(candidate, reference)) for candidate in candidates]
         scored.sort(key=lambda x: x[1], reverse=True)
 
-        return [item[0] for item in scored[:limit]]
+        return [(item[0], RecommendationService._related_reason(item[0], reference)) for item in scored[:limit]]
+
+    @staticmethod
+    def get_related_recommendations(content_id: int, limit: int = 6) -> list[Content]:
+        """Rank candidate related items using the multi-signal relevance formula."""
+        pairs = RecommendationService.get_related_recommendations_with_reasons(content_id, limit=limit)
+        return [item[0] for item in pairs]
 
     @staticmethod
     def _feed_query():
