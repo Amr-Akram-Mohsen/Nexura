@@ -1,0 +1,151 @@
+/* =============================================================================
+   Nexura — Alert Component (components/alerts.css)
+   Page-level flash messages and contextual form notifications
+   ============================================================================= */
+
+.alert {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 12px 14px;
+  border-radius: var(--radius-xl);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-4);
+  box-shadow: 0 4px 12px -2px hsla(0, 0%, 0%, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    opacity var(--duration-normal) var(--ease-out),
+    max-height var(--duration-normal) var(--ease-out),
+    margin var(--duration-normal) var(--ease-out),
+    padding var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+.alert--collapsing {
+  opacity: 0;
+  max-height: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+
+.alert__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert__message {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+.alert__action {
+  margin-top: var(--space-1);
+}
+
+.alert__action a {
+  color: inherit;
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: opacity var(--duration-fast);
+}
+
+.alert__action a:hover {
+  opacity: 0.8;
+}
+
+.alert__close {
+  background: transparent;
+  border: none;
+  color: currentColor;
+  opacity: 0.65;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    opacity var(--duration-fast),
+    transform var(--duration-fast),
+    background-color var(--duration-fast);
+}
+
+.alert__close:hover {
+  opacity: 1;
+  background: hsla(0, 0%, 50%, 0.12);
+  transform: scale(1.1);
+}
+
+.alert__close:active {
+  transform: scale(0.92);
+}
+
+.alert__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Alert Variants — Tokenized */
+.alert--error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+.alert--error .alert__icon {
+  background: hsla(var(--hue-danger), 72%, 58%, 0.16);
+  border: 1px solid var(--danger-border);
+}
+
+.alert--success {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success);
+}
+.alert--success .alert__icon {
+  background: hsla(var(--hue-success), 60%, 52%, 0.16);
+  border: 1px solid var(--success-border);
+}
+
+.alert--warning {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning);
+}
+.alert--warning .alert__icon {
+  background: hsla(var(--hue-warning), 90%, 58%, 0.16);
+  border: 1px solid var(--warning-border);
+}
+
+.alert--info {
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+  color: var(--info);
+}
+.alert--info .alert__icon {
+  background: hsla(var(--hue-brand), 90%, 62%, 0.16);
+  border: 1px solid var(--info-border);
+}

@@ -3,27 +3,30 @@
 {% from "macros/comments.html" import comments_section %}
 {% from "macros/breadcrumb.html" import breadcrumb %}
 {% from "macros/newsletter.html" import newsletter_box with context %}
-
+{% from "macros/interactions.html" import interaction_bar, sticky_pill %}
 {% block title %}{{ article.title }}{% endblock %}
 {% block description %}{{ article.summary or article.preview or (article.content_text[:160] if article.content_text else
-'') }}{% endblock %}
+  '') }}{% endblock %}
 {% block robots %}index, follow{% endblock %}
 {% block canonical %}
-<link rel="canonical" href="{{ request.host_url }}article/{{ content.slug_id }}">{% endblock %}
-
-{% block og_tags %}
-<meta property="og:title" content="{{ article.title }}">
-<meta property="og:description" content="{{ article.summary or '' | truncate(200) }}">
-<meta property="og:type" content="article">
-<meta property="og:url" content="{{ request.host_url }}article/{{ content.slug_id }}">
-{% if article.image_url %}
-<meta property="og:image" content="{{ article.image_url }}">{% endif %}
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ article.title }}">
+  <link rel="canonical"
+        href="{{ request.host_url }}article/{{ content.slug_id }}">
 {% endblock %}
-
+{% block og_tags %}
+  <meta property="og:title" content="{{ article.title }}">
+  <meta property="og:description"
+        content="{{ article.summary or '' | truncate(200) }}">
+  <meta property="og:type" content="article">
+  <meta property="og:url"
+        content="{{ request.host_url }}article/{{ content.slug_id }}">
+  {% if article.image_url %}
+    <meta property="og:image" content="{{ article.image_url }}">
+  {% endif %}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ article.title }}">
+{% endblock %}
 {% block structured_data %}
-<script type="application/ld+json">
+  <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "NewsArticle",
@@ -33,328 +36,182 @@
   "datePublished": "{{ content.published_at.isoformat() if content.published_at else '' }}",
   "publisher": {"@type": "Organization", "name": "Nexura"}
 }
-</script>
+  </script>
 {% endblock %}
-
 {% block content %}
-<div class="container">
-
-  {# Breadcrumb #}
-  {% set breadcrumb_items = [{'name': 'Home', 'url': '/'}] %}
-  {% if content.section_name and content.section_slug %}
-    {% set _ = breadcrumb_items.append({'name': content.section_name, 'url': '/' ~ content.section_slug}) %}
-  {% endif %}
-  {% if content.category_name and content.category_slug and content.section_slug %}
-    {% set _ = breadcrumb_items.append({'name': content.category_name, 'url': '/' ~ content.section_slug ~ '/' ~ content.category_slug}) %}
-  {% endif %}
-  {% set _ = breadcrumb_items.append({'name': article.title | truncate(50)}) %}
-  {{ breadcrumb(breadcrumb_items) }}
-
-  <div class="content-with-sidebar">
-
-    {# Article Main Column #}
-    <article itemscope itemtype="https://schema.org/NewsArticle">
-
-      {# Article header #}
-      <header class="article-header">
-        <div class="article-header__kicker">
-          {% if content.category_name %}
-          <a class="badge badge--category" href="/{{ content.section_slug }}/{{ content.category_slug }}">
-            {{ content.category_name }}
-          </a>
-          {% endif %}
-          {% if content.section_slug %}
-          <a class="badge badge--category" href="/{{ content.section_slug }}">{{ content.section_name }}</a>
-          {% endif %}
-          {% if article.word_count and article.word_count > 0 %}
-          <span class="badge badge--category">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-            {{ ((article.word_count / 200) | int) + 1 }} min read
-          </span>
+  <div class="container">
+    {# Breadcrumb #}
+    {% set breadcrumb_items = [{"name": "Home", "url": "/"}] %}
+    {% if content.section_name and content.section_slug %}
+      {% set _ = breadcrumb_items.append({'name': content.section_name, 'url': '/' ~ content.section_slug}) %}
+    {% endif %}
+    {% if content.category_name and content.category_slug and content.section_slug %}
+      {% set _ = breadcrumb_items.append({'name': content.category_name, 'url': '/' ~ content.section_slug ~ '/' ~ content.category_slug}) %}
+    {% endif %}
+    {% set _ = breadcrumb_items.append({'name': article.title | truncate(50)}) %}
+    {{ breadcrumb(breadcrumb_items) }}
+    <div class="content-with-sidebar">
+      {# Article Main Column #}
+      <article itemscope itemtype="https://schema.org/NewsArticle">
+        {# Article header #}
+        <header class="article-header">
+          <div class="article-header__kicker">
+            {% if content.category_name %}
+              <a class="badge badge--category"
+                 href="/{{ content.section_slug }}/{{ content.category_slug }}">{{ content.category_name }}</a>
+            {% endif %}
+            {% if content.section_slug %}
+              <a class="badge badge--category" href="/{{ content.section_slug }}">{{ content.section_name }}</a>
+            {% endif %}
+            {% if article.word_count and article.word_count > 0 %}
+              <span class="badge badge--category">
+                <svg width="10"
+                     height="10"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2.5"
+                     aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {{ ((article.word_count / 200) | int) + 1 }} min read
+              </span>
+            {% endif %}
+          </div>
+          <h1 class="article-header__title" itemprop="headline">{{ article.title }}</h1>
+          <div class="article-header__meta">
+            {# Author(s) #}
+            {% if authors %}
+              {% for author in authors[:2] %}
+                <div class="author-bar">
+                  <div class="author-bar__avatar-placeholder" aria-hidden="true">
+                    {{ author.name[0] | upper if author.name else 'A' }}
+                  </div>
+                  <div class="author-bar__info">
+                    <span class="author-bar__name" itemprop="author">{{ author.name }}</span>
+                    {% if content.published_at %}
+                      <time class="author-bar__date"
+                            datetime="{{ content.published_at.isoformat() }}"
+                            itemprop="datePublished">
+                        {{ content.published_at.strftime("%B %d, %Y") }}
+                      </time>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              {% if content.published_at %}
+                <time class="author-bar__date"
+                      datetime="{{ content.published_at.isoformat() }}">
+                  {{ content.published_at.strftime("%B %d, %Y") }}
+                </time>
+              {% endif %}
+            {% endif %}
+            {# Source badge #}
+            {% if source %}
+              <a class="source-badge"
+                 href="{{ source.domain or '#' }}"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                {% if source.logo_url %}
+                  <img src="{{ source.logo_url }}"
+                       alt="{{ source.name }}"
+                       width="14"
+                       height="14"
+                       loading="lazy">
+                {% endif %}
+                {{ source.name }}
+              </a>
+            {% endif %}
+          </div>
+        </header>
+        {# Hero image #}
+        {% if article.image_url %}
+          <img class="article-hero-image"
+               src="{{ article.image_url }}"
+               alt="{{ article.title | truncate(80) }}"
+               loading="eager"
+               fetchpriority="high"
+               itemprop="image">
+        {% endif %}
+        {# Interaction bar #}
+        {{ interaction_bar(content, user_state, comments_tree, kind='article') }}
+        {# Article body #}
+        <div class="article-body article-html" itemprop="articleBody">
+          {% if article.content_html %}
+            {{ article.content_html | safe }}
+          {% elif article.content_text %}
+            {% for paragraph in article.content_text.split('\n\n') %}
+              {% if paragraph.strip() %}
+                <p>{{ paragraph.strip() }}</p>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <p class="text-muted"><em>Full article content not yet available.</em></p>
           {% endif %}
         </div>
-
-        <h1 class="article-header__title" itemprop="headline">{{ article.title }}</h1>
-
-        <div class="article-header__meta">
-          {# Author(s) #}
-          {% if authors %}
-          {% for author in authors[:2] %}
-          <div class="author-bar">
-            <div class="author-bar__avatar-placeholder" aria-hidden="true">
-              {{ author.name[0] | upper if author.name else 'A' }}
-            </div>
-            <div class="author-bar__info">
-              <span class="author-bar__name" itemprop="author">{{ author.name }}</span>
-              {% if content.published_at %}
-              <time class="author-bar__date" datetime="{{ content.published_at.isoformat() }}" itemprop="datePublished">
-                {{ content.published_at.strftime('%B %d, %Y') }}
-              </time>
-              {% endif %}
+        {# Tags #}
+        {% if entities %}
+          <div class="article-topics">
+            <p class="article-topics__title">Topics</p>
+            <div class="article-topics__list">
+              {% for entity in entities[:10] %}
+                <a class="card__tag" href="/topic/{{ entity.slug }}">{{ entity.name }}</a>
+              {% endfor %}
             </div>
           </div>
-          {% endfor %}
-          {% else %}
-          {% if content.published_at %}
-          <time class="author-bar__date" datetime="{{ content.published_at.isoformat() }}">
-            {{ content.published_at.strftime('%B %d, %Y') }}
-          </time>
-          {% endif %}
-          {% endif %}
-
-          {# Source badge #}
-          {% if source %}
-          <a class="source-badge" href="{{ source.domain or '#' }}" target="_blank" rel="noopener noreferrer">
-            {% if source.logo_url %}
-            <img src="{{ source.logo_url }}" alt="{{ source.name }}" width="14" height="14" loading="lazy">
-            {% endif %}
-            {{ source.name }}
-          </a>
-          {% endif %}
-        </div>
-      </header>
-
-      {# Hero image #}
-      {% if article.image_url %}
-      <img class="article-hero-image" src="{{ article.image_url }}" alt="{{ article.title | truncate(80) }}"
-        loading="eager" fetchpriority="high" itemprop="image">
-      {% endif %}
-
-      {# Interaction bar #}
-      <div class="interaction-bar" aria-label="Article interactions">
-        <button class="interaction-btn {% if user_state.liked %}active{% endif %}" data-interaction="like"
-          data-content-id="{{ content.id }}" aria-label="Like this article"
-          aria-pressed="{{ 'true' if user_state.liked else 'false' }}" type="button">
-          <svg viewBox="0 0 24 24" fill="{% if user_state.liked %}currentColor{% else %}none{% endif %}"
-            stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
-            <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-          </svg>
-          <span data-count>{{ content.like_count or 0 }}</span>
-        </button>
-
-        <button class="interaction-btn {% if user_state.disliked %}active dislike{% endif %}" data-interaction="dislike"
-          data-content-id="{{ content.id }}" aria-label="Dislike this article"
-          aria-pressed="{{ 'true' if user_state.disliked else 'false' }}" type="button">
-          <svg viewBox="0 0 24 24" fill="{% if user_state.disliked %}currentColor{% else %}none{% endif %}"
-            stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
-            <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-          </svg>
-          <span data-count>{{ content.dislike_count or 0 }}</span>
-        </button>
-
-        <a class="interaction-btn" href="#comments" aria-label="Comments" data-action="scroll-to-comments">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          <span data-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
-        </a>
-
-        <button class="interaction-btn {% if user_state.saved %}active{% endif %}" data-interaction="save"
-          data-content-id="{{ content.id }}"
-          aria-label="{{ 'Saved to library' if user_state.saved else 'Save to library' }}"
-          aria-pressed="{{ 'true' if user_state.saved else 'false' }}" type="button">
-          <svg viewBox="0 0 24 24" fill="{% if user_state.saved %}currentColor{% else %}none{% endif %}"
-            stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-          </svg>
-          <span>{{ 'Saved' if user_state.saved else 'Save' }}</span>
-        </button>
-
-        <button class="interaction-btn" data-action="open-share" aria-label="Share this article" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
-          Share
-        </button>
-      </div>
-
-      {# Article body #}
-      <div class="article-body article-html" itemprop="articleBody">
-        {% if article.content_html %}
-        {{ article.content_html | safe }}
-        {% elif article.content_text %}
-        {% for paragraph in article.content_text.split('\n\n') %}
-        {% if paragraph.strip() %}
-        <p>{{ paragraph.strip() }}</p>
         {% endif %}
-        {% endfor %}
-        {% else %}
-        <p class="text-muted"><em>Full article content not yet available.</em></p>
-        {% endif %}
-      </div>
-
-      {# Tags #}
-      {% if entities %}
-      <div class="article-topics">
-        <p class="article-topics__title">Topics</p>
-        <div class="article-topics__list">
-          {% for entity in entities[:10] %}
-          <a class="card__tag" href="/topic/{{ entity.slug }}">{{ entity.name }}</a>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      {# Discussion / Comments Section #}
-      {{ comments_section(content, comments_tree, current_user) }}
-
-    </article>
-
-    {# Sidebar #}
-    <aside class="sidebar" aria-label="Related content">
-
-      {# Related articles widget #}
-      {% if related_items %}
-      <div class="sidebar-widget">
-        <h2 class="sidebar-widget__title">Related</h2>
-        <div class="related-articles-list">
-          {% for related in related_items[:5] %}
-          <a href="{{ related.url or ('/video/' ~ (related.slug_id or related.id) if related.object_type == 'video' else '/article/' ~ (related.slug_id or related.id)) }}"
-            class="related-article-card">
-            {% if related.thumbnail %}
-            <img src="{{ related.thumbnail }}" alt="" class="related-article-card__thumb" loading="lazy">
-            {% endif %}
-            <div class="related-article-card__info">
-              <p class="related-article-card__title">{{ related.title }}</p>
-              {% if related.published_at %}
-              <time class="related-article-card__date">{{ related.published_at }}</time>
-              {% endif %}
+        {# Discussion / Comments Section #}
+        {{ comments_section(content, comments_tree, current_user) }}
+      </article>
+      {# Sidebar #}
+      <aside class="sidebar" aria-label="Related content">
+        {# Related articles widget #}
+        {% if related_items %}
+          <div class="sidebar-widget">
+            <h2 class="sidebar-widget__title">Related</h2>
+            <div class="related-articles-list">
+              {% for related in related_items[:5] %}
+                <a href="{{ related.url or ('/video/' ~ (related.slug_id or related.id) if related.object_type == 'video' else '/article/' ~ (related.slug_id or related.id)) }}"
+                   class="related-article-card">
+                  {% if related.thumbnail %}
+                    <img src="{{ related.thumbnail }}"
+                         alt=""
+                         class="related-article-card__thumb"
+                         loading="lazy">
+                  {% endif %}
+                  <div class="related-article-card__info">
+                    <p class="related-article-card__title">{{ related.title }}</p>
+                    {% if related.published_at %}
+                      <time class="related-article-card__date">{{ related.published_at }}</time>
+                    {% endif %}
+                  </div>
+                </a>
+              {% endfor %}
             </div>
-          </a>
+          </div>
+        {% endif %}
+        {# Newsletter sidebar #}
+        {{ newsletter_box(variant='sidebar', title='Get the best of Nexura', desc='Weekly digest of the top articles and videos.', btn_id='sidebar-subscribe-btn') }}
+      </aside>
+    </div>
+    {# Related Content Section (below article) #}
+    {% if related_items %}
+      <section class="related-section" aria-labelledby="related-content">
+        <h2 class="related-section__title" id="related-content">More Like This</h2>
+        <div class="related-section__grid">
+          {% for item in related_items[:4] %}
+            {{ content_card(item) }}
           {% endfor %}
         </div>
-      </div>
-      {% endif %}
-
-      {# Newsletter sidebar #}
-      {{ newsletter_box(variant='sidebar', title='Get the best of Nexura', desc='Weekly digest of the top articles and videos.', btn_id='sidebar-subscribe-btn') }}
-
-    </aside>
+      </section>
+    {% endif %}
   </div>
-
-  {# Related Content Section (below article) #}
-  {% if related_items %}
-  <section class="related-section" aria-labelledby="related-content">
-    <h2 class="related-section__title" id="related-content">More Like This</h2>
-    <div class="related-section__grid">
-      {% for item in related_items[:4] %}
-      {{ content_card(item) }}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-</div>
-
-{# Floating Sticky Action Pill #}
-<div class="sticky-pill" id="sticky-action-pill" role="toolbar" aria-label="Article actions">
-
-  <button class="pill-btn {% if user_state.liked %}active{% endif %}" data-pill-action="like"
-    aria-label="Like" aria-pressed="{{ 'true' if user_state.liked else 'false' }}" type="button">
-    <svg viewBox="0 0 24 24" fill="{% if user_state.liked %}currentColor{% else %}none{% endif %}"
-      stroke="currentColor" aria-hidden="true">
-      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
-      <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-    </svg>
-    <span data-pill-count>{{ content.like_count or 0 }}</span>
-  </button>
-
-  <button class="pill-btn {% if user_state.saved %}active{% endif %}" data-pill-action="save"
-    aria-label="Save" aria-pressed="{{ 'true' if user_state.saved else 'false' }}" type="button">
-    <svg viewBox="0 0 24 24" fill="{% if user_state.saved %}currentColor{% else %}none{% endif %}"
-      stroke="currentColor" aria-hidden="true">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-    </svg>
-    <span>{{ 'Saved' if user_state.saved else 'Save' }}</span>
-  </button>
-
-  <div class="sticky-pill__divider" aria-hidden="true"></div>
-
-  <a class="pill-btn" href="#comments" data-pill-action="comments" aria-label="Jump to comments">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>
-    <span data-pill-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
-  </a>
-
-  <button class="pill-btn" data-pill-action="share" aria-label="Share" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-    </svg>
-    Share
-  </button>
-
-  <div class="sticky-pill__divider" aria-hidden="true"></div>
-
-  <span class="pill-progress-badge" aria-live="polite" aria-label="Reading progress">0% read</span>
-
-</div>
-
-{# Share Modal #}
-<div class="share-modal-backdrop" id="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
-  <div class="share-modal-card">
-    <div class="share-modal-card__header">
-      <h2 class="share-modal-card__title" id="share-modal-title">Share this article</h2>
-      <button class="share-modal-card__close" aria-label="Close share dialog" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-
-    <div class="share-copy-row">
-      <span class="share-copy-url">{{ request.url }}</span>
-      <button class="share-copy-btn" type="button" id="share-copy-link-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
-        Copy Link
-      </button>
-    </div>
-
-    <div class="share-grid" role="list">
-      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
-        data-platform="twitter" role="listitem" aria-label="Share on X (Twitter)">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.76l7.73-8.835L2.132 2.25h6.58l4.258 5.636L18.245 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-        </svg>
-        X
-      </a>
-      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
-        data-platform="linkedin" role="listitem" aria-label="Share on LinkedIn">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-          <rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
-        </svg>
-        LinkedIn
-      </a>
-      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
-        data-platform="whatsapp" role="listitem" aria-label="Share on WhatsApp">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
-        </svg>
-        WhatsApp
-      </a>
-      <a class="share-grid-item" href="#" target="_blank" rel="noopener noreferrer"
-        data-platform="reddit" role="listitem" aria-label="Share on Reddit">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"/>
-          <path fill="white" d="M17.07 12.18A1.6 1.6 0 1 1 15 10.8a3.94 3.94 0 0 1 2.07.38zM8.46 11.2a1.13 1.13 0 1 0 1.13 1.13 1.13 1.13 0 0 0-1.13-1.13zm7.08 0a1.13 1.13 0 1 0 1.13 1.13 1.13 1.13 0 0 0-1.13-1.13zM12 15.9a3.27 3.27 0 0 1-2-.55.27.27 0 0 0-.37.37 3.8 3.8 0 0 0 2.34.72 3.8 3.8 0 0 0 2.34-.72.27.27 0 0 0-.37-.37A3.27 3.27 0 0 1 12 15.9zM6.93 12.18a3.94 3.94 0 0 1 2.07-.38A1.6 1.6 0 1 1 9 10.8z"/>
-          <circle fill="white" cx="12" cy="7" r="1.5"/>
-        </svg>
-        Reddit
-      </a>
-    </div>
-  </div>
-</div>
-
+  {# Floating Sticky Action Pill #}
+  {{ sticky_pill(content, user_state, comments_tree, kind='article', show_progress=True) }}
+{% endblock %}
+{% block extra_js %}
+  <script src="{{ url_for('static', filename='js/features/article-chrome.js') }}"
+          defer></script>
 {% endblock %}

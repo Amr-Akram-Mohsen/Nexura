@@ -1,129 +1,119 @@
 {% extends "admin/base_admin.html" %}
-
 {% block title %}Social Drafts — {{ (content.title or 'Item') | truncate(40) }}{% endblock %}
 {% block page_title %}Social Media Drafts for #{{ content.id }}{% endblock %}
-
 {% block content %}
-<div style="margin-bottom:var(--space-6); display:flex; justify-content:space-between; align-items:center;">
-  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.syndication.index') }}">← Back to Syndication Hub</a>
-</div>
-
-<div class="admin-panel" style="margin-bottom:var(--space-6);">
-  <div class="admin-panel__header">
-    <h2 class="admin-panel__title">{{ content.title }}</h2>
+  <div class="admin-header-actions">
+    <a class="btn btn--ghost btn--sm"
+       href="{{ url_for('admin.syndication.index') }}">← Back to Syndication Hub</a>
   </div>
-</div>
-
-{# ── Social Platform Cards Grid ── #}
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:var(--space-6);">
-
-  {# Twitter / X #}
-  {% if drafts.twitter %}
-  <div class="social-card">
-    <div class="social-card__header social-card__header--twitter">
-      <h3 class="admin-panel__title" style="font-size:var(--text-sm);">
-        <span style="color:#1DA1F2;">🐦</span> Twitter / X Thread Draft
-      </h3>
-      <button class="btn btn--ghost btn--sm" type="button" onclick="window.copyToClipboard(`{{ drafts.twitter.text }}`, this)">Copy</button>
-    </div>
-    <div class="social-card__content">
-      <pre class="social-copy-box">{{ drafts.twitter.text }}</pre>
+  <div class="admin-panel admin-panel--compact">
+    <div class="admin-panel__header">
+      <h2 class="admin-panel__title">{{ content.title }}</h2>
     </div>
   </div>
-  {% endif %}
-
-  {# LinkedIn #}
-  {% if drafts.linkedin %}
-  <div class="social-card">
-    <div class="social-card__header social-card__header--linkedin">
-      <h3 class="admin-panel__title" style="font-size:var(--text-sm);">
-        <span style="color:#0A66C2;">💼</span> LinkedIn Post Draft
-      </h3>
-      <button class="btn btn--ghost btn--sm" type="button" onclick="window.copyToClipboard(`{{ drafts.linkedin.text }}`, this)">Copy</button>
-    </div>
-    <div class="social-card__content">
-      <pre class="social-copy-box">{{ drafts.linkedin.text }}</pre>
-    </div>
-  </div>
-  {% endif %}
-
-  {# YouTube Script #}
-  {% if drafts.youtube %}
-  <div class="social-card">
-    <div class="social-card__header social-card__header--youtube">
-      <h3 class="admin-panel__title" style="font-size:var(--text-sm);">
-        <span style="color:#FF0000;">▶️</span> YouTube Video Outline & Hook
-      </h3>
-    </div>
-    <div class="social-card__content" style="display:flex; flex-direction:column; gap:var(--space-3); font-size:var(--text-sm);">
-      <div style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-subtle);">
-        <span style="font-size:var(--text-xs); font-weight:var(--weight-bold); color:var(--text-muted); text-transform:uppercase;">0-5s Hook:</span>
-        <p style="margin-top:var(--space-1); font-weight:var(--weight-semibold); color:var(--text-primary);">{{ drafts.youtube.hook }}</p>
+  {# ── Social Platform Cards Grid ── #}
+  <div class="social-grid">
+    {# Twitter / X #}
+    {% if drafts.twitter %}
+      <div class="social-card">
+        <div class="social-card__header social-card__header--twitter">
+          <h3 class="admin-panel__title social-card__title">
+            <span class="social-icon--twitter">🐦</span> Twitter / X Thread Draft
+          </h3>
+          <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
+        </div>
+        <div class="social-card__content">
+          <pre class="social-copy-box">{{ drafts.twitter.text }}</pre>
+        </div>
       </div>
-      <div style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-subtle);">
-        <span style="font-size:var(--text-xs); font-weight:var(--weight-bold); color:var(--text-muted); text-transform:uppercase;">Timestamps & Outline:</span>
-        <ul style="margin-top:var(--space-2); padding-left:var(--space-4); display:flex; flex-direction:column; gap:var(--space-1);">
-          {% for step in drafts.youtube.outline %}
-          <li><strong>{{ step.time }}</strong> — <span style="color:var(--text-secondary);">{{ step.topic }}</span></li>
-          {% endfor %}
-        </ul>
+    {% endif %}
+    {# LinkedIn #}
+    {% if drafts.linkedin %}
+      <div class="social-card">
+        <div class="social-card__header social-card__header--linkedin">
+          <h3 class="admin-panel__title social-card__title">
+            <span class="social-icon--linkedin">💼</span> LinkedIn Post Draft
+          </h3>
+          <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
+        </div>
+        <div class="social-card__content">
+          <pre class="social-copy-box">{{ drafts.linkedin.text }}</pre>
+        </div>
       </div>
-    </div>
-  </div>
-  {% endif %}
-
-  {# Instagram #}
-  {% if drafts.instagram %}
-  <div class="social-card">
-    <div class="social-card__header social-card__header--instagram">
-      <h3 class="admin-panel__title" style="font-size:var(--text-sm);">
-        <span style="color:#E1306C;">📸</span> Instagram Caption
-      </h3>
-      <button class="btn btn--ghost btn--sm" type="button" onclick="window.copyToClipboard(`{{ drafts.instagram.caption }}`, this)">Copy</button>
-    </div>
-    <div class="social-card__content">
-      <pre class="social-copy-box">{{ drafts.instagram.caption }}</pre>
-    </div>
-  </div>
-  {% endif %}
-
-  {# Pinterest #}
-  {% if drafts.pinterest %}
-  <div class="social-card">
-    <div class="social-card__header" style="border-top: 3px solid #E60023;">
-      <h3 class="admin-panel__title" style="font-size:var(--text-sm);">
-        <span>📌</span> Pinterest Pin Specification
-      </h3>
-    </div>
-    <div class="social-card__content" style="font-size:var(--text-sm);">
-      <div style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-subtle);">
-        <p><strong>Title:</strong> {{ drafts.pinterest.pin_title }}</p>
-        <p style="margin-top:var(--space-2); color:var(--text-secondary);"><strong>Description:</strong> {{ drafts.pinterest.description }}</p>
+    {% endif %}
+    {# YouTube Script #}
+    {% if drafts.youtube %}
+      <div class="social-card">
+        <div class="social-card__header social-card__header--youtube">
+          <h3 class="admin-panel__title social-card__title">
+            <span class="social-icon--youtube">▶️</span> YouTube Video Outline & Hook
+          </h3>
+        </div>
+        <div class="social-card__content social-card__flow">
+          <div class="social-callout">
+            <span class="social-callout__label">0-5s Hook:</span>
+            <p class="social-callout__text">{{ drafts.youtube.hook }}</p>
+          </div>
+          <div class="social-callout">
+            <span class="social-callout__label">Timestamps & Outline:</span>
+            <ul class="social-callout__list">
+              {% for step in drafts.youtube.outline %}
+                <li><strong>{{ step.time }}</strong> — <span class="social-callout__topic">{{ step.topic }}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  {% endif %}
-
-  {# TikTok #}
-  {% if drafts.tiktok %}
-  <div class="social-card">
-    <div class="social-card__header" style="border-top: 3px solid #00F2FE;">
-      <h3 class="admin-panel__title" style="font-size:var(--text-sm);">
-        <span>🎵</span> TikTok / Reels Script Hook
-      </h3>
-    </div>
-    <div class="social-card__content" style="font-size:var(--text-sm);">
-      <div style="background:var(--bg-secondary); padding:var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border-subtle);">
-        <p><strong>Hook:</strong> {{ drafts.tiktok.hook }}</p>
-        <ul style="margin-top:var(--space-2); padding-left:var(--space-4); display:flex; flex-direction:column; gap:var(--space-1);">
-          {% for pt in drafts.tiktok.talking_points %}
-          <li>{{ pt }}</li>
-          {% endfor %}
-        </ul>
+    {% endif %}
+    {# Instagram #}
+    {% if drafts.instagram %}
+      <div class="social-card">
+        <div class="social-card__header social-card__header--instagram">
+          <h3 class="admin-panel__title social-card__title">
+            <span class="social-icon--instagram">📸</span> Instagram Caption
+          </h3>
+          <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
+        </div>
+        <div class="social-card__content">
+          <pre class="social-copy-box">{{ drafts.instagram.caption }}</pre>
+        </div>
       </div>
-    </div>
+    {% endif %}
+    {# Pinterest #}
+    {% if drafts.pinterest %}
+      <div class="social-card">
+        <div class="social-card__header social-card__header--pinterest">
+          <h3 class="admin-panel__title social-card__title">
+            <span>📌</span> Pinterest Pin Specification
+          </h3>
+        </div>
+        <div class="social-card__content">
+          <div class="social-callout">
+            <p><strong>Title:</strong> {{ drafts.pinterest.pin_title }}</p>
+            <p class="social-callout__field"><strong>Description:</strong> {{ drafts.pinterest.description }}</p>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    {# TikTok #}
+    {% if drafts.tiktok %}
+      <div class="social-card">
+        <div class="social-card__header social-card__header--tiktok">
+          <h3 class="admin-panel__title social-card__title">
+            <span>🎵</span> TikTok / Reels Script Hook
+          </h3>
+        </div>
+        <div class="social-card__content">
+          <div class="social-callout">
+            <p><strong>Hook:</strong> {{ drafts.tiktok.hook }}</p>
+            <ul class="social-callout__list">
+              {% for pt in drafts.tiktok.talking_points %}
+                <li>{{ pt }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </div>
-  {% endif %}
-
-</div>
 {% endblock %}

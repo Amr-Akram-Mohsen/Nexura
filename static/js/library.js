@@ -103,7 +103,11 @@
       if (!this.modal) return;
       this.prevFocus = triggerEl || document.activeElement;
       this.modal.classList.add('is-open');
-      document.body.style.overflow = 'hidden';
+      if (window.Nexura && window.Nexura.dom) {
+        window.Nexura.dom.lockScroll();
+      } else {
+        document.body.style.overflow = 'hidden';
+      }
 
       // Focus Cancel button
       const cancelBtn = this.modal.querySelector('[data-action="close-clear-modal"]');
@@ -113,7 +117,11 @@
     close() {
       if (!this.modal) return;
       this.modal.classList.remove('is-open');
-      document.body.style.overflow = '';
+      if (window.Nexura && window.Nexura.dom) {
+        window.Nexura.dom.unlockScroll();
+      } else {
+        document.body.style.overflow = '';
+      }
       if (this.prevFocus && typeof this.prevFocus.focus === 'function') {
         this.prevFocus.focus();
       }
@@ -179,7 +187,9 @@
         if (historyRemoveBtn.disabled) return;
 
         const contentId = historyRemoveBtn.dataset.contentId;
-        const row = document.getElementById(`history-row-${contentId}`) || historyRemoveBtn.closest('.history-row');
+        const row =
+          document.getElementById(`history-row-${contentId}`) ||
+          historyRemoveBtn.closest('.history-row');
         if (!row || !contentId) return;
 
         historyRemoveBtn.disabled = true;
@@ -228,7 +238,8 @@
         if (unsaveBtn.disabled) return;
 
         const contentId = unsaveBtn.dataset.contentId;
-        const card = document.getElementById(`saved-card-${contentId}`) || unsaveBtn.closest('.saved-card');
+        const card =
+          document.getElementById(`saved-card-${contentId}`) || unsaveBtn.closest('.saved-card');
         if (!card || !contentId) return;
 
         unsaveBtn.disabled = true;
@@ -237,22 +248,33 @@
         card.classList.add('saved-card--removing');
 
         try {
-          const res = await fetch('/handle-interaction', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRFToken': getCsrfToken(),
-            },
-            body: new URLSearchParams({
-              action: 'save',
-              content_id: contentId,
-              target_id: contentId,
-              target_type: 'content',
-            }),
+          const params = new URLSearchParams({
+            action: 'save',
+            content_id: contentId,
+            target_id: contentId,
+            target_type: 'content',
           });
 
-          const data = await res.json();
+          let data;
+          if (
+            window.Nexura &&
+            window.Nexura.http &&
+            typeof window.Nexura.http.post === 'function'
+          ) {
+            data = await window.Nexura.http.post('/handle-interaction', params);
+          } else {
+            const res = await fetch('/handle-interaction', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCsrfToken(),
+              },
+              body: params,
+            });
+            data = await res.json();
+          }
+
           if (data.success) {
             setTimeout(() => {
               card.remove();

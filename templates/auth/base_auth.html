@@ -1,11 +1,13 @@
 {% extends "base.html" %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='css/auth.css') }}">
 {% endblock %}
-
 {% block content %}
-<div class="auth-page">
-  {% block auth_content %}{% endblock %}
-</div>
+  <div class="auth-page">
+    {% block auth_content %}{% endblock %}
+  </div>
+{% endblock %}
+{% block extra_js %}
+  <script src="{{ url_for('static', filename='js/auth.js') }}" defer></script>
 {% endblock %}

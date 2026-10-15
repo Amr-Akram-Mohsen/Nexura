@@ -1,13 +1,27 @@
 /* =============================================================================
    Nexura — Components Manifest (components.css)
-   Phase 7 §24 — Clean modular component stylesheets:
+   Modular component stylesheets imported in cascade dependency order:
+   - alerts.css: Feedback banners and toast-adjacent notification elements
+   - buttons.css: Core button primitives, variants, and size scales
    - cards.css: Content cards, thumbnails, badges, and hero carousel
    - article.css: Detail page layout, article typography, authors, video facade
    - discussion.css: Interaction bar, reactions, and threaded comments
-   - ui.css: Search, sidebar, buttons, pagination, filters, library views
+   - search.css: Global search container, discovery tags, autocomplete
+   - newsletter.css: Sidebar widgets, newsletter subscription forms & states
+   - library.css: Reading history list, saved bookmarks grid, removal animations, confirm modal
+   - overlays.css: Floating toast system, auth popovers, share modal dialog
+   - static-pages.css: Static legal and informative content pages
+   - ui.css: Residual UI (pagination, filters, empty state, skeletons, taxonomy)
    ============================================================================= */
 
+@import url('components/alerts.css');
+@import url('components/buttons.css');
 @import url('components/cards.css');
 @import url('components/article.css');
 @import url('components/discussion.css');
+@import url('components/search.css');
+@import url('components/newsletter.css');
+@import url('components/library.css');
+@import url('components/overlays.css');
+@import url('components/static-pages.css');
 @import url('components/ui.css');

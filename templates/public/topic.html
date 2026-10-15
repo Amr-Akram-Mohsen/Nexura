@@ -2,13 +2,12 @@
 {% from "macros/content_card.html" import content_card %}
 {% from "macros/pagination.html" import pagination %}
 {% from "macros/breadcrumb.html" import breadcrumb %}
-
+{% from "macros/ui.html" import empty_state, content_type_tabs %}
 {% block title %}{{ entity.name }} — Topics{% endblock %}
 {% block description %}All articles and video reviews about {{ entity.name }} — curated technology content from the best publishers.{% endblock %}
 {% block canonical %}<link rel="canonical" href="{{ request.host_url }}topic/{{ entity.slug }}">{% endblock %}
-
 {% block structured_data %}
-<script type="application/ld+json">
+  <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
@@ -16,91 +15,75 @@
   "description": "All articles and video reviews about {{ entity.name }} on Nexura.",
   "url": "{{ request.url }}"
 }
-</script>
+  </script>
 {% endblock %}
-
 {% block content %}
-<div class="container">
-
-  {# Breadcrumb #}
-  {{ breadcrumb([
-    {'name': 'Home', 'url': '/'},
-    {'name': 'Topics', 'url': '/search'},
-    {'name': entity.name}
-  ]) }}
-
-  {# Topic header #}
-  <header class="page-header">
-    {% if entity.entity_type %}
-    <p class="page-header__eyebrow">{{ entity.entity_type | capitalize }}</p>
-    {% endif %}
-    <h1 class="page-header__title">{{ entity.name }}</h1>
-    {% if entity.description %}
-    <p class="page-header__desc">{{ entity.description }}</p>
-    {% endif %}
-    <div class="page-header__meta-row">
-      <span class="badge badge--category">{{ total or 0 }} results</span>
-      {% if entity.wikidata_id and entity.wikipedia_url %}
-      <a href="{{ entity.wikipedia_url }}" target="_blank" rel="noopener noreferrer"
-         class="btn btn--ghost btn--sm page-header__btn">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        Wikipedia
-      </a>
+  <div class="container">
+    {# Breadcrumb #}
+    {{ breadcrumb([
+      {'name': 'Home', 'url': '/'},
+      {'name': 'Topics', 'url': '/search'},
+      {'name': entity.name}
+    ]) }}
+    {# Topic header #}
+    <header class="page-header">
+      {% if entity.entity_type %}
+        <p class="page-header__eyebrow">{{ entity.entity_type | capitalize }}</p>
       {% endif %}
-    </div>
-  </header>
-
-  {# Content type filter #}
-  <div class="filter-bar" role="tablist" aria-label="Content type filter">
-    <a class="filter-chip {% if not content_type %}active{% endif %}"
-       href="/topic/{{ entity.slug }}" role="tab"
-       aria-selected="{{ 'true' if not content_type else 'false' }}">All</a>
-    <a class="filter-chip {% if content_type == 'article' %}active{% endif %}"
-       href="/topic/{{ entity.slug }}?type=article" role="tab"
-       aria-selected="{{ 'true' if content_type == 'article' else 'false' }}">Articles</a>
-    <a class="filter-chip {% if content_type == 'video' %}active{% endif %}"
-       href="/topic/{{ entity.slug }}?type=video" role="tab"
-       aria-selected="{{ 'true' if content_type == 'video' else 'false' }}">Videos</a>
-  </div>
-
-  {# Related topics #}
-  {% if related_entities %}
-  <section class="related-topics" aria-label="Related Topics">
-    <h2 class="related-topics__title">Related Topics</h2>
-    <div class="related-topics__chips">
-      {% for rel in related_entities %}
-      <a class="filter-chip" href="/topic/{{ rel.slug }}{% if content_type %}?type={{ content_type }}{% endif %}">{{ rel.name }}</a>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {# Grid #}
-  {% if items %}
-  <div class="grid-cards">
-    {% for item in items %}
-      {{ content_card(item) }}
-    {% endfor %}
-  </div>
-
-  {{ pagination(page, total_pages, endpoint='public.topic',
-               entity_slug=entity.slug,
-               type=content_type if content_type else None) }}
-
-  {% else %}
-  <div class="empty-state">
-    <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-    </svg>
-    <h2 class="empty-state__title">No content tagged with {{ entity.name }}</h2>
-    <p class="empty-state__desc">Content is ingested and tagged automatically. Check back soon.</p>
-    {% if content_type %}
-    <a class="btn btn--secondary" href="/topic/{{ entity.slug }}">Clear filters</a>
+      <h1 class="page-header__title">{{ entity.name }}</h1>
+      {% if entity.description %}
+        <p class="page-header__desc">{{ entity.description }}</p>
+      {% endif %}
+      <div class="page-header__meta-row">
+        <span class="badge badge--category">{{ total or 0 }} results</span>
+        {% if entity.wikidata_id and entity.wikipedia_url %}
+          <a href="{{ entity.wikipedia_url }}"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="btn btn--ghost btn--sm page-header__btn">
+            <svg width="12"
+                 height="12"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 aria-hidden="true">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Wikipedia
+          </a>
+        {% endif %}
+      </div>
+    </header>
+    {# Content type filter #}
+    {{ content_type_tabs('/topic/' ~ entity.slug, content_type) }}
+    {# Related topics #}
+    {% if related_entities %}
+      <section class="related-topics" aria-label="Related Topics">
+        <h2 class="related-topics__title">Related Topics</h2>
+        <div class="related-topics__chips">
+          {% for rel in related_entities %}
+            <a class="filter-chip"
+               href="/topic/{{ rel.slug }}{% if content_type %}?type={{ content_type }}{% endif %}">{{ rel.name }}</a>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+    {# Grid #}
+    {% if items %}
+      <div class="grid-cards">
+        {% for item in items %}
+          {{ content_card(item) }}
+        {% endfor %}
+      </div>
+      {{ pagination(page, total_pages, endpoint='public.topic',
+        entity_slug=entity.slug,
+        type=content_type if content_type else None) }}
     {% else %}
-    <a class="btn btn--secondary" href="/">Back to Home</a>
+      {{ empty_state('No content tagged with ' ~ entity.name, 'Content is ingested and tagged automatically. Check back soon.',
+        action_text='Clear filters' if content_type else 'Back to Home',
+        action_url=('/topic/' ~ entity.slug) if content_type else '/') }}
     {% endif %}
   </div>
-  {% endif %}
-
-</div>
 {% endblock %}

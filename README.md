@@ -24,47 +24,52 @@ The platform continuously aggregates articles and video broadcasts from global f
 ## Key Capabilities & System Highlights
 
 ### 1. Multi-Source Ingestion Pipeline
-* **Multi-Provider Ingestion Orchestration:** Scheduled workers query NewsAPI.ai, YouTube Data API v3, and syndicated RSS feeds for breaking technology journalism and media broadcasts.
-* **Semantic Document Extraction:** Leverages Diffbot Knowledge Graph and Trafilatura to extract structured article bodies, lead paragraphs, publication metadata, high-resolution imagery, and author attributions.
-* **Transformer-Based NLP Enrichment:** Real-time sentiment classification and polarity scoring powered by transformer inference pipelines.
-* **Transactional Reliability & Savepoints:** Every ingested item executes within isolated database transaction savepoints (`SAVEPOINT`), guaranteeing that third-party network timeouts or parsing anomalies never leave orphaned records or corrupted discovery queues.
+
+- **Multi-Provider Ingestion Orchestration:** Scheduled workers query NewsAPI.ai, YouTube Data API v3, and syndicated RSS feeds for breaking technology journalism and media broadcasts.
+- **Semantic Document Extraction:** Leverages Diffbot Knowledge Graph and Trafilatura to extract structured article bodies, lead paragraphs, publication metadata, high-resolution imagery, and author attributions.
+- **Transformer-Based NLP Enrichment:** Real-time sentiment classification and polarity scoring powered by transformer inference pipelines.
+- **Transactional Reliability & Savepoints:** Every ingested item executes within isolated database transaction savepoints (`SAVEPOINT`), guaranteeing that third-party network timeouts or parsing anomalies never leave orphaned records or corrupted discovery queues.
 
 ### 2. Data Integrity & Editorial Quality Gates
-* **Three-Tier Deduplication Engine:**
-  * *Exact Match:* Deterministic URL canonicalization and SHA-256 URI fingerprinting.
-  * *Fuzzy Token Shingling:* N-gram tokenization and MinHash/Jaccard similarity preventing cross-syndicated wire republication.
-  * *Semantic Clustering:* Entity collision detection across shared taxonomy classifications.
-* **Editorial Readiness Index (ERI):** Automated heuristic rubric evaluating submissions across five dimensions:
-  1. *Substance Density:* Word count validation and structural paragraph distribution.
-  2. *Readability Level:* Reading ease assessment tailored for technical audiences.
-  3. *Sentiment Polarity:* Confidence thresholding on model inference classifications.
-  4. *Entity Graph Completeness:* Relational linkage to canonical brand, organization, and concept entities.
-  5. *Media Asset Quality:* Aspect ratio and attribution validation for featured hero assets.
-* **Deterministic Lifecycle (FSM):** Enforces a state-machine progression:
+
+- **Three-Tier Deduplication Engine:**
+  - _Exact Match:_ Deterministic URL canonicalization and SHA-256 URI fingerprinting.
+  - _Fuzzy Token Shingling:_ N-gram tokenization and MinHash/Jaccard similarity preventing cross-syndicated wire republication.
+  - _Semantic Clustering:_ Entity collision detection across shared taxonomy classifications.
+- **Editorial Readiness Index (ERI):** Automated heuristic rubric evaluating submissions across five dimensions:
+  1. _Substance Density:_ Word count validation and structural paragraph distribution.
+  2. _Readability Level:_ Reading ease assessment tailored for technical audiences.
+  3. _Sentiment Polarity:_ Confidence thresholding on model inference classifications.
+  4. _Entity Graph Completeness:_ Relational linkage to canonical brand, organization, and concept entities.
+  5. _Media Asset Quality:_ Aspect ratio and attribution validation for featured hero assets.
+- **Deterministic Lifecycle (FSM):** Enforces a state-machine progression:
   `discovered` &rarr; `scraped` &rarr; `processed` &rarr; `scored` &rarr; `published` / `rejected`.
 
 ### 3. Full-Text Search & Discovery
-* **PostgreSQL Native TSVECTOR & GIN Indexing:** High-performance lexical search utilizing generated `tsvector` columns with language-specific stemming indexed via Generalized Inverted Indexes (`GIN`).
-* **Weighted Document Relevance:** Hierarchical term weighting using PostgreSQL `setweight`:
-  * **Weight A:** Headline & Primary Title
-  * **Weight B:** Subtitle, Editorial Hook & Summary
-  * **Weight C:** Full Markdown & Sanitized Body Content
-  * **Weight D:** Taxonomy Tags, Brands & Concept Entities
-* **Multi-Signal Hybrid Ranking:** Balances text relevance with temporal freshness decay, engagement volume, and reader affinity.
-* **Trigram Autocomplete:** Real-time search suggestions powered by PostgreSQL `pg_trgm` GIN indexes.
+
+- **PostgreSQL Native TSVECTOR & GIN Indexing:** High-performance lexical search utilizing generated `tsvector` columns with language-specific stemming indexed via Generalized Inverted Indexes (`GIN`).
+- **Weighted Document Relevance:** Hierarchical term weighting using PostgreSQL `setweight`:
+  - **Weight A:** Headline & Primary Title
+  - **Weight B:** Subtitle, Editorial Hook & Summary
+  - **Weight C:** Full Markdown & Sanitized Body Content
+  - **Weight D:** Taxonomy Tags, Brands & Concept Entities
+- **Multi-Signal Hybrid Ranking:** Balances text relevance with temporal freshness decay, engagement volume, and reader affinity.
+- **Trigram Autocomplete:** Real-time search suggestions powered by PostgreSQL `pg_trgm` GIN indexes.
 
 ### 4. Personalized Reader Portal & Community
-* **Dynamic User Affinity Vectors:** Implicit and explicit telemetry tracking calculates personalized category, section, and entity weights based on reader interactions (reading history, likes, bookmarks).
-* **Curated User Library:** Private reader collections, bookmark organization, reading progression tracking, and view history.
-* **Threaded, Sanitized Discussions:** Interactive nested commentary secured by strict whitelist sanitization via `bleach` and `DOMPurify` rules.
-* **Double Opt-In Newsletter Engine:** RFC 8058 compliant newsletter distribution supporting cryptographic confirmation tokens and one-click unsubscribe headers.
+
+- **Dynamic User Affinity Vectors:** Implicit and explicit telemetry tracking calculates personalized category, section, and entity weights based on reader interactions (reading history, likes, bookmarks).
+- **Curated User Library:** Private reader collections, bookmark organization, reading progression tracking, and view history.
+- **Threaded, Sanitized Discussions:** Interactive nested commentary secured by strict whitelist sanitization via `bleach` and `DOMPurify` rules.
+- **Double Opt-In Newsletter Engine:** RFC 8058 compliant newsletter distribution supporting cryptographic confirmation tokens and one-click unsubscribe headers.
 
 ### 5. Editorial Control Plane & Media Intelligence
-* **Demand vs. Supply Gap Matrix:** Correlates real-time reader search queries against published category volume to identify unmet editorial demand.
-* **Momentum Velocity Tracking:** Calculates interaction velocity over rolling windows (1h, 6h, 24h) to surface breakout stories.
-* **Content Decay Detection:** Analyzes engagement half-life to alert editors when high-value evergreen content requires updates.
-* **Deduplication Workbench:** Visual editorial console to compare conflicting coverage, merge sources, and resolve cluster collisions.
-* **Multi-Platform Syndication Generator:** Automated draft generation of channel-optimized social copy, hashtags, and UTM campaign parameters for major social distribution platforms.
+
+- **Demand vs. Supply Gap Matrix:** Correlates real-time reader search queries against published category volume to identify unmet editorial demand.
+- **Momentum Velocity Tracking:** Calculates interaction velocity over rolling windows (1h, 6h, 24h) to surface breakout stories.
+- **Content Decay Detection:** Analyzes engagement half-life to alert editors when high-value evergreen content requires updates.
+- **Deduplication Workbench:** Visual editorial console to compare conflicting coverage, merge sources, and resolve cluster collisions.
+- **Multi-Platform Syndication Generator:** Automated draft generation of channel-optimized social copy, hashtags, and UTM campaign parameters for major social distribution platforms.
 
 ---
 
@@ -104,27 +109,27 @@ Nexura is architected as a **Layered Service-Repository Modular Monolith**, enfo
 
 To support diverse media types (long-form articles, tutorials, video broadcasts) without schema redundancy, Nexura employs a **Polymorphic Content Hub** design:
 
-* **`contents` Table (The Central Spine):** Single source of truth for platform-wide concerns: UUIDs, title, slug, publication status, view/like/share counters, primary taxonomy, and full-text search vectors.
-* **Specialized Payload Tables (`articles`, `videos`):** Joined 1-to-1 with `contents.id` to house type-specific payloads (markdown body, reading time, Diffbot dump vs. YouTube video ID, duration, channel metadata).
-* **Polymorphic Interactions:** Engagement entities (`views`, `saves`, `reactions`, `comments`) attach directly to `contents.id`, ensuring uniform reporting and aggregate metrics across all content types.
+- **`contents` Table (The Central Spine):** Single source of truth for platform-wide concerns: UUIDs, title, slug, publication status, view/like/share counters, primary taxonomy, and full-text search vectors.
+- **Specialized Payload Tables (`articles`, `videos`):** Joined 1-to-1 with `contents.id` to house type-specific payloads (markdown body, reading time, Diffbot dump vs. YouTube video ID, duration, channel metadata).
+- **Polymorphic Interactions:** Engagement entities (`views`, `saves`, `reactions`, `comments`) attach directly to `contents.id`, ensuring uniform reporting and aggregate metrics across all content types.
 
 ---
 
 ## Technology Stack
 
-| Component | Technology | Rationale / Purpose |
-|---|---|---|
-| **Core Framework** | Python 3.11+ / Flask 3.1+ | Application Factory pattern, lightweight, deterministic execution |
-| **Database & ORM** | PostgreSQL 15+ / SQLAlchemy 2.0+ | Relational integrity, ACID compliance, GIN full-text indexation |
-| **Schema Migrations** | Alembic / Flask-Migrate | Version-controlled, reproducible transactional DDL migrations |
-| **Distributed Queue** | Celery 5.4+ / Redis 7+ | Asynchronous ingestion pipelines, batch analytics, background tasks |
-| **Scheduler** | Celery Beat / APScheduler | Periodic RSS/API ingestion polling and decay calculation sweeps |
-| **Caching Layer** | Redis / Flask-Caching | Multi-tier caching for hot feeds, sitemaps, and taxonomy trees |
-| **Authentication & IAM**| Flask-Login / Authlib | Session authentication, RBAC, Google OAuth 2.0 with OIDC Nonce |
-| **NLP & Ingestion** | Diffbot API / HuggingFace / Trafilatura | Article semantic extraction, entity resolution, sentiment scoring |
-| **Security & Sanitization** | Bleach / Flask-WTF / Flask-Limiter | CSRF protection, HTML XSS neutralization, distributed rate limiting |
-| **Frontend Architecture**| Jinja2 / CSS3 Design Tokens / Vanilla JS | High-performance, zero-bundle overhead, custom theme tokens |
-| **Testing & Quality** | Pytest / Pytest-Flask / Ruff | Unit/integration testing suite, sub-second linting, PEP 8 formatting |
+| Component                   | Technology                               | Rationale / Purpose                                                  |
+| --------------------------- | ---------------------------------------- | -------------------------------------------------------------------- |
+| **Core Framework**          | Python 3.11+ / Flask 3.1+                | Application Factory pattern, lightweight, deterministic execution    |
+| **Database & ORM**          | PostgreSQL 15+ / SQLAlchemy 2.0+         | Relational integrity, ACID compliance, GIN full-text indexation      |
+| **Schema Migrations**       | Alembic / Flask-Migrate                  | Version-controlled, reproducible transactional DDL migrations        |
+| **Distributed Queue**       | Celery 5.4+ / Redis 7+                   | Asynchronous ingestion pipelines, batch analytics, background tasks  |
+| **Scheduler**               | Celery Beat / APScheduler                | Periodic RSS/API ingestion polling and decay calculation sweeps      |
+| **Caching Layer**           | Redis / Flask-Caching                    | Multi-tier caching for hot feeds, sitemaps, and taxonomy trees       |
+| **Authentication & IAM**    | Flask-Login / Authlib                    | Session authentication, RBAC, Google OAuth 2.0 with OIDC Nonce       |
+| **NLP & Ingestion**         | Diffbot API / HuggingFace / Trafilatura  | Article semantic extraction, entity resolution, sentiment scoring    |
+| **Security & Sanitization** | Bleach / Flask-WTF / Flask-Limiter       | CSRF protection, HTML XSS neutralization, distributed rate limiting  |
+| **Frontend Architecture**   | Jinja2 / CSS3 Design Tokens / Vanilla JS | High-performance, zero-bundle overhead, custom theme tokens          |
+| **Testing & Quality**       | Pytest / Pytest-Flask / Ruff             | Unit/integration testing suite, sub-second linting, PEP 8 formatting |
 
 ---
 
@@ -132,16 +137,16 @@ To support diverse media types (long-form articles, tutorials, video broadcasts)
 
 Nexura incorporates enterprise security best practices across all layers:
 
-* **Decoupled Verification & Reset Lifecycles:** Dedicated database columns and independent cryptographic token lifecycles for email verification (`email_verification_token`) and password recovery (`password_reset_token`).
-* **Account Verification Gates:** Enforced verification checks during authentication, supported by rate-limited token regeneration endpoints.
-* **Cryptographic OAuth Nonce Validation:** OpenID Connect `nonce` parameter enforcement across OAuth authorization redirects and token exchange callbacks.
-* **Content Security Policy (CSP):** Nonce-based CSP headers dynamically injected on all HTTP responses:
+- **Decoupled Verification & Reset Lifecycles:** Dedicated database columns and independent cryptographic token lifecycles for email verification (`email_verification_token`) and password recovery (`password_reset_token`).
+- **Account Verification Gates:** Enforced verification checks during authentication, supported by rate-limited token regeneration endpoints.
+- **Cryptographic OAuth Nonce Validation:** OpenID Connect `nonce` parameter enforcement across OAuth authorization redirects and token exchange callbacks.
+- **Content Security Policy (CSP):** Nonce-based CSP headers dynamically injected on all HTTP responses:
   ```http
   Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-...'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; object-src 'none'; base-uri 'self';
   ```
-* **Security Headers Suite:** Standard enforcement of `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy`.
-* **Rate Limiting & Abuse Prevention:** Granular endpoint throttling via Redis-backed `Flask-Limiter` across sensitive authentication and interactive endpoints.
-* **Credential Protection:** Salted `scrypt` and `pbkdf2:sha256` password hashing combined with client-side and server-side entropy validation.
+- **Security Headers Suite:** Standard enforcement of `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy`.
+- **Rate Limiting & Abuse Prevention:** Granular endpoint throttling via Redis-backed `Flask-Limiter` across sensitive authentication and interactive endpoints.
+- **Credential Protection:** Salted `scrypt` and `pbkdf2:sha256` password hashing combined with client-side and server-side entropy validation.
 
 ---
 
@@ -237,9 +242,10 @@ Nexura/
 ## Getting Started & Local Development
 
 ### Prerequisites
-* **Python:** Version `3.11` or `3.12`
-* **PostgreSQL:** Version `15+` with `pg_trgm` extension installed
-* **Redis:** Version `7+` (for caching, rate limiting, and task queues)
+
+- **Python:** Version `3.11` or `3.12`
+- **PostgreSQL:** Version `15+` with `pg_trgm` extension installed
+- **Redis:** Version `7+` (for caching, rate limiting, and task queues)
 
 ### 1. Repository Setup & Virtual Environment
 
@@ -316,11 +322,13 @@ flask db upgrade
 ### 5. Running the Application
 
 #### Development Server:
+
 ```bash
 flask run --host=127.0.0.1 --port=5000 --debug
 ```
 
 #### Production Server (Gunicorn WSGI):
+
 ```bash
 gunicorn --workers=4 \
          --threads=2 \
@@ -331,6 +339,7 @@ gunicorn --workers=4 \
 ```
 
 #### Distributed Background Workers (Celery):
+
 ```bash
 # Start Celery asynchronous worker
 celery -A app.celery_worker.celery worker --loglevel=info -c 4
@@ -376,10 +385,10 @@ ruff format .
 
 For production environments (Docker, Kubernetes, or Cloud VMs), observe the following operational checklist:
 
-* **Session Security:** Ensure `SESSION_COOKIE_SECURE=True` and `SESSION_COOKIE_SAMESITE=Strict` in production (configured automatically in `config.py` under `ProductionConfig`).
-* **Connection Pooling:** Configure SQLAlchemy connection pool limits (`pool_size=20`, `max_overflow=40`, `pool_pre_ping=True`) to maintain connection health during traffic surges.
-* **Static Assets & CDN:** In high-volume production deployments, serve static assets via an edge CDN (Cloudflare, AWS CloudFront).
-* **Reverse Proxy Headers:** Always deploy behind a reverse proxy (Nginx, Caddy, Cloudflare) with `X-Forwarded-For` and `X-Forwarded-Proto` enabled to ensure accurate client IP resolution and rate-limiting enforcement.
+- **Session Security:** Ensure `SESSION_COOKIE_SECURE=True` and `SESSION_COOKIE_SAMESITE=Strict` in production (configured automatically in `config.py` under `ProductionConfig`).
+- **Connection Pooling:** Configure SQLAlchemy connection pool limits (`pool_size=20`, `max_overflow=40`, `pool_pre_ping=True`) to maintain connection health during traffic surges.
+- **Static Assets & CDN:** In high-volume production deployments, serve static assets via an edge CDN (Cloudflare, AWS CloudFront).
+- **Reverse Proxy Headers:** Always deploy behind a reverse proxy (Nginx, Caddy, Cloudflare) with `X-Forwarded-For` and `X-Forwarded-Proto` enabled to ensure accurate client IP resolution and rate-limiting enforcement.
 
 ---
 

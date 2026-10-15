@@ -12,13 +12,16 @@
     } else {
       const toast = document.createElement('div');
       toast.className = `badge badge--${type === 'success' ? 'ready' : type === 'error' ? 'not-ready' : 'almost'}`;
-      toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.3);font-size:14px;border-radius:10px;animation:fadeIn 0.2s ease;';
+      toast.style.cssText =
+        'position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.3);font-size:14px;border-radius:10px;animation:fadeIn 0.2s ease;';
       toast.textContent = message;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
     }
   }
   window.showAdminToast = showAdminToast;
+  window.Nexura = window.Nexura || {};
+  window.Nexura.showAdminToast = showAdminToast;
 
   const sidebar = document.querySelector('.admin-sidebar');
   const hamburgerBtn = document.querySelector('.admin-hamburger');
@@ -30,7 +33,11 @@
     });
 
     document.addEventListener('click', (e) => {
-      if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+      if (
+        sidebar.classList.contains('open') &&
+        !sidebar.contains(e.target) &&
+        !hamburgerBtn.contains(e.target)
+      ) {
         sidebar.classList.remove('open');
       }
     });
@@ -80,7 +87,10 @@
         return;
       }
 
-      if (action === 'delete' && !confirm(`Are you sure you want to delete ${selected.length} item(s)?`)) {
+      if (
+        action === 'delete' &&
+        !confirm(`Are you sure you want to delete ${selected.length} item(s)?`)
+      ) {
         return;
       }
 
@@ -225,7 +235,9 @@
       const sourceName = this.dataset.sourceName;
       const targetName = this.dataset.targetName;
 
-      if (!confirm(`Merge "${sourceName}" into "${targetName}"? "${sourceName}" will be deleted.`)) {
+      if (
+        !confirm(`Merge "${sourceName}" into "${targetName}"? "${sourceName}" will be deleted.`)
+      ) {
         return;
       }
 
@@ -289,20 +301,35 @@
 
   window.copyToClipboard = function (text, btnElement) {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        showAdminToast('Copied to clipboard! ✓', 'success');
-        if (btnElement) {
-          const original = btnElement.innerHTML;
-          btnElement.innerHTML = '✓ Copied';
-          btnElement.style.color = 'var(--accent-green)';
-          setTimeout(() => {
-            btnElement.innerHTML = original;
-            btnElement.style.color = '';
-          }, 2000);
-        }
-      }).catch(() => {
-        showAdminToast('Failed to copy', 'error');
-      });
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          showAdminToast('Copied to clipboard! ✓', 'success');
+          if (btnElement) {
+            const original = btnElement.textContent;
+            btnElement.textContent = '✓ Copied';
+            btnElement.classList.add('btn--copied');
+            setTimeout(() => {
+              btnElement.textContent = original;
+              btnElement.classList.remove('btn--copied');
+            }, 2000);
+          }
+        })
+        .catch(() => {
+          showAdminToast('Failed to copy', 'error');
+        });
     }
   };
+
+  /* Delegated copy action handler for admin drafts & snippets */
+  document.addEventListener('click', function (e) {
+    const copyBtn = e.target.closest('[data-action="copy-draft"]');
+    if (!copyBtn) return;
+    const card = copyBtn.closest('.social-card');
+    const copyBox = card ? card.querySelector('.social-copy-box') : null;
+    const text = copyBox ? copyBox.textContent.trim() : '';
+    if (text) {
+      window.copyToClipboard(text, copyBtn);
+    }
+  });
 })();

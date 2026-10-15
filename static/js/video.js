@@ -13,8 +13,8 @@ if (typeof window.mountVideoFacade !== 'function') {
     const videoId = facade.dataset.videoId;
     if (!videoId) return;
 
-    const thumb      = facade.querySelector('.video-facade__thumb');
-    const playEl     = facade.querySelector('.video-facade__play');
+    const thumb = facade.querySelector('.video-facade__thumb');
+    const playEl = facade.querySelector('.video-facade__play');
     const durationEl = facade.querySelector('.video-facade__duration');
     const theaterBtn = facade.querySelector('.video-facade__theater-btn');
 
@@ -24,9 +24,9 @@ if (typeof window.mountVideoFacade !== 'function') {
     spinner.innerHTML = '<div class="video-facade__spinner-ring"></div>';
     facade.appendChild(spinner);
 
-    if (thumb)      thumb.style.display      = 'none';
-    if (playEl)     playEl.style.display      = 'none';
-    if (durationEl) durationEl.style.display  = 'none';
+    if (thumb) thumb.style.display = 'none';
+    if (playEl) playEl.style.display = 'none';
+    if (durationEl) durationEl.style.display = 'none';
 
     const iframe = document.createElement('iframe');
     iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
@@ -36,46 +36,96 @@ if (typeof window.mountVideoFacade !== 'function') {
     iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0&modestbranding=1`;
 
     // Remove spinner once iframe loads
-    iframe.addEventListener('load', () => {
-      spinner.remove();
-      if (theaterBtn) theaterBtn.style.display = 'flex';
-    }, { once: true });
+    iframe.addEventListener(
+      'load',
+      () => {
+        spinner.remove();
+        if (theaterBtn) theaterBtn.style.display = 'flex';
+      },
+      { once: true }
+    );
 
     facade.appendChild(iframe);
     facade.dataset.mounted = 'true';
     facade.style.aspectRatio = '16/9';
   });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const facade = e.target.closest('.video-facade[data-video-id]');
+    if (!facade || facade !== document.activeElement) return;
+    e.preventDefault();
+    facade.click();
+  });
 }
 
+let currentTheaterKeyHandler = null;
+
 /* ── Theater Mode ─────────────────────────────────────────────────────────── */
-window.toggleTheaterMode = function(facade) {
+window.toggleTheaterMode = function (facade) {
+  if (!facade) return;
   const isTheater = facade.classList.toggle('video-facade--theater');
 
   // Create / remove the floating close button
   if (isTheater) {
-    document.body.style.overflow = 'hidden';
+    if (window.Nexura && window.Nexura.dom) {
+      window.Nexura.dom.lockScroll();
+    } else {
+      document.body.style.overflow = 'hidden';
+    }
+
+    const oldBtn = document.getElementById('theater-close-btn');
+    if (oldBtn) oldBtn.remove();
 
     const closeBtn = document.createElement('button');
-    closeBtn.className  = 'theater-close-btn';
-    closeBtn.id         = 'theater-close-btn';
+    closeBtn.className = 'theater-close-btn';
+    closeBtn.id = 'theater-close-btn';
     closeBtn.setAttribute('aria-label', 'Exit theater mode');
-    closeBtn.innerHTML  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+    closeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>`;
-    closeBtn.addEventListener('click', () => window.toggleTheaterMode(facade));
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.toggleTheaterMode(facade);
+    });
     document.body.appendChild(closeBtn);
 
     // Keyboard: Escape closes theater
-    const onKey = (e) => {
+    if (currentTheaterKeyHandler) {
+      document.removeEventListener('keydown', currentTheaterKeyHandler);
+    }
+    currentTheaterKeyHandler = (e) => {
       if (e.key === 'Escape') {
         window.toggleTheaterMode(facade);
-        document.removeEventListener('keydown', onKey);
       }
     };
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', currentTheaterKeyHandler);
   } else {
-    document.body.style.overflow = '';
+    if (window.Nexura && window.Nexura.dom) {
+      window.Nexura.dom.unlockScroll();
+    } else {
+      document.body.style.overflow = '';
+    }
     const closeBtn = document.getElementById('theater-close-btn');
     if (closeBtn) closeBtn.remove();
+    if (currentTheaterKeyHandler) {
+      document.removeEventListener('keydown', currentTheaterKeyHandler);
+      currentTheaterKeyHandler = null;
+    }
   }
 };
+
+window.Nexura = window.Nexura || {};
+window.Nexura.toggleTheaterMode = window.toggleTheaterMode;
+
+/* ── Delegated listener for data-action="toggle-theater" ──────────────────── */
+document.addEventListener('click', (e) => {
+  const theaterBtn = e.target.closest('[data-action="toggle-theater"]');
+  if (theaterBtn) {
+    e.stopPropagation();
+    const facade = theaterBtn.closest('.video-facade');
+    if (facade && typeof window.toggleTheaterMode === 'function') {
+      window.toggleTheaterMode(facade);
+    }
+  }
+});

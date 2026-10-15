@@ -16,3 +16,15 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
+
+[tool.djlint]
+profile = "jinja"
+indent = 2
+max_line_length = 120
+
+# Ignore rules that don't fit standard Flask/Jinja projects:
+# H021: Inline styles (needed for email templates & dynamic CSS vars)
+# H023: Entity references (&copy;, &middot;)
+# H030: Meta description requirement on partials/emails
+# H036: <br> spacing warnings
+ignore = "H021,H023,H030,H036"

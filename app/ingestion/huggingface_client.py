@@ -30,9 +30,19 @@ class HuggingFaceClient:
             res = requests.post(self.api_url, json=payload, headers=headers, timeout=12)
             if res.status_code == 200:
                 data = res.json()
-                score = float(data.get("score") or data.get("sentiment_score") or 0.0)
+                label = data.get("label") or data.get("sentiment")
                 confidence = float(data.get("confidence") or 0.7)
-                label = data.get("label") or ("positive" if score > 0.1 else "negative" if score < -0.1 else "neutral")
+                raw_score = data.get("score") or data.get("sentiment_score")
+                if raw_score is not None:
+                    score = float(raw_score)
+                elif label == "positive":
+                    score = confidence
+                elif label == "negative":
+                    score = -confidence
+                else:
+                    score = 0.0
+                if not label:
+                    label = "positive" if score > 0.1 else "negative" if score < -0.1 else "neutral"
                 return score, confidence, label
 
         except requests.RequestException as exc:

@@ -30,14 +30,17 @@ const SearchAutocomplete = {
   _onInput() {
     clearTimeout(this.debounceTimer);
     const q = this.input.value.trim();
-    if (q.length < this.MIN_CHARS) { this._close(); return; }
+    if (q.length < this.MIN_CHARS) {
+      this._close();
+      return;
+    }
     this.debounceTimer = setTimeout(() => this._fetch(q), this.DEBOUNCE_MS);
   },
 
   _onKeydown(e) {
     if (!this.dropdown.classList.contains('open')) return;
     const items = [...this.dropdown.querySelectorAll('.autocomplete-item')];
-    const focusedIdx = items.findIndex(i => i.classList.contains('focused'));
+    const focusedIdx = items.findIndex((i) => i.classList.contains('focused'));
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -70,7 +73,10 @@ const SearchAutocomplete = {
 
     try {
       const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`);
-      if (!res.ok) { this._close(); return; }
+      if (!res.ok) {
+        this._close();
+        return;
+      }
       const data = await res.json();
       this.localCache.set(q, data);
       if (this.currentQuery === q) this._render(q, data);
@@ -96,13 +102,18 @@ const SearchAutocomplete = {
     const articles = data.articles || [];
     const videos = data.videos || [];
 
-    if (!articles.length && !videos.length) { this._close(); return; }
+    if (!articles.length && !videos.length) {
+      this._close();
+      return;
+    }
 
     let html = '';
 
     if (articles.length) {
       html += `<div class="autocomplete-section-title">Articles</div>`;
-      html += articles.map(item => `
+      html += articles
+        .map(
+          (item) => `
         <a class="autocomplete-item" href="${this._esc(item.url)}" data-type="article">
           ${item.thumb ? `<img class="autocomplete-item__thumb" src="${this._esc(item.thumb)}" alt="" loading="lazy">` : `<div class="autocomplete-item__thumb"></div>`}
           <div class="autocomplete-item__text">
@@ -110,12 +121,16 @@ const SearchAutocomplete = {
             ${item.category ? `<div class="autocomplete-item__category">${this._esc(item.category)}</div>` : ''}
           </div>
           <span class="autocomplete-item__badge autocomplete-item__badge--article">Article</span>
-        </a>`).join('');
+        </a>`
+        )
+        .join('');
     }
 
     if (videos.length) {
       html += `<div class="autocomplete-section-title">Videos</div>`;
-      html += videos.map(item => `
+      html += videos
+        .map(
+          (item) => `
         <a class="autocomplete-item" href="${this._esc(item.url)}" data-type="video">
           ${item.thumb ? `<img class="autocomplete-item__thumb" src="${this._esc(item.thumb)}" alt="" loading="lazy">` : `<div class="autocomplete-item__thumb"></div>`}
           <div class="autocomplete-item__text">
@@ -123,7 +138,9 @@ const SearchAutocomplete = {
             ${item.channel ? `<div class="autocomplete-item__category">${this._esc(item.channel)}</div>` : ''}
           </div>
           <span class="autocomplete-item__badge autocomplete-item__badge--video">Video</span>
-        </a>`).join('');
+        </a>`
+        )
+        .join('');
     }
 
     // "View all results" footer
@@ -136,9 +153,19 @@ const SearchAutocomplete = {
     this._open();
   },
 
-  _open() { this.dropdown.classList.add('open'); },
-  _close() { this.dropdown.classList.remove('open'); },
-  _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); },
+  _open() {
+    this.dropdown.classList.add('open');
+  },
+  _close() {
+    this.dropdown.classList.remove('open');
+  },
+  _esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
 };
 
 const SearchHighlighter = {
@@ -148,23 +175,17 @@ const SearchHighlighter = {
     this.removeHighlights(rootEl);
 
     const pattern = new RegExp(`(${this._escapeRegex(query)})`, 'gi');
-    const walker = document.createTreeWalker(
-      rootEl,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          const parent = node.parentElement;
-          if (!parent) return NodeFilter.FILTER_REJECT;
-          const tag = parent.tagName.toUpperCase();
-          if (['SCRIPT','STYLE','NOSCRIPT','MARK'].includes(tag)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          return pattern.test(node.nodeValue)
-            ? NodeFilter.FILTER_ACCEPT
-            : NodeFilter.FILTER_SKIP;
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = parent.tagName.toUpperCase();
+        if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'MARK'].includes(tag)) {
+          return NodeFilter.FILTER_REJECT;
         }
-      }
-    );
+        return pattern.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      },
+    });
 
     const textNodes = [];
     while (walker.nextNode()) {
@@ -172,10 +193,10 @@ const SearchHighlighter = {
       pattern.lastIndex = 0;
     }
 
-    textNodes.forEach(node => {
+    textNodes.forEach((node) => {
       const parts = node.nodeValue.split(pattern);
       const frag = document.createDocumentFragment();
-      parts.forEach(part => {
+      parts.forEach((part) => {
         if (pattern.test(part)) {
           const mark = document.createElement('mark');
           mark.dataset.highlight = '';
@@ -191,7 +212,7 @@ const SearchHighlighter = {
   },
 
   removeHighlights(rootEl) {
-    rootEl.querySelectorAll('mark[data-highlight]').forEach(mark => {
+    rootEl.querySelectorAll('mark[data-highlight]').forEach((mark) => {
       const parent = mark.parentNode;
       parent.replaceChild(document.createTextNode(mark.textContent), mark);
       parent.normalize();

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{# templates/public/_legal_base.html
+   Shared shell for legal pages. Children fill: title, description (SEO),
+   legal_eyebrow, legal_title, legal_date, legal_body. #}
+{% block content %}
+  <div class="container static-page-container--legal">
+    <header class="page-header">
+      <span class="page-header__eyebrow">
+        {% block legal_eyebrow %}{% endblock %}
+      </span>
+      <h1 class="page-header__title">
+        {% block legal_title %}{% endblock %}
+      </h1>
+      <p class="page-header__desc">
+        {% block legal_date %}{% endblock %}
+      </p>
+    </header>
+    <article class="legal-document">
+      {% block legal_body %}{% endblock %}
+    </article>
+  </div>
+{% endblock %}

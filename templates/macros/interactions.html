@@ -1,0 +1,163 @@
+{# templates/macros/interactions.html
+   Shared action controls for content detail pages (article, video).
+   JS hooks preserved: [data-interaction], [data-action], [data-pill-action], #sticky-action-pill. #}
+{% macro _icon_like(active) -%}
+  <svg viewBox="0 0 24 24"
+       fill="{% if active %}currentColor{% else %}none{% endif %}"
+       stroke="currentColor"
+       stroke-width="2"
+       aria-hidden="true">
+    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
+    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+  </svg>
+{%- endmacro %}
+{% macro _icon_comment() -%}
+  <svg viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       aria-hidden="true">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+{%- endmacro %}
+{% macro _icon_save(active) -%}
+  <svg viewBox="0 0 24 24"
+       fill="{% if active %}currentColor{% else %}none{% endif %}"
+       stroke="currentColor"
+       stroke-width="2"
+       aria-hidden="true">
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </svg>
+{%- endmacro %}
+{% macro _icon_share() -%}
+  <svg viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       aria-hidden="true">
+    <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+  </svg>
+{%- endmacro %}
+{#
+  interaction_bar: Like, Dislike, Comments jump, Save, [Watch on YouTube], Share.
+  kind: 'article' | 'video' (used in aria-labels).
+  yt_external_id: when set, renders a "Watch on YouTube" link.
+#}
+{% macro interaction_bar(content, user_state, comments_tree, kind='article', yt_external_id=None) %}
+  <div class="interaction-bar"
+       aria-label="{{ kind | capitalize }} interactions">
+    <button class="interaction-btn {% if user_state.liked %}active{% endif %}"
+            data-interaction="like"
+            data-content-id="{{ content.id }}"
+            aria-label="Like this {{ kind }}"
+            aria-pressed="{{ 'true' if user_state.liked else 'false' }}"
+            type="button">
+      {{ _icon_like(user_state.liked) }}
+      <span data-count>{{ content.like_count or 0 }}</span>
+    </button>
+    <button class="interaction-btn {% if user_state.disliked %}active dislike{% endif %}"
+            data-interaction="dislike"
+            data-content-id="{{ content.id }}"
+            aria-label="Dislike this {{ kind }}"
+            aria-pressed="{{ 'true' if user_state.disliked else 'false' }}"
+            type="button">
+      <svg viewBox="0 0 24 24"
+           fill="{% if user_state.disliked %}currentColor{% else %}none{% endif %}"
+           stroke="currentColor"
+           stroke-width="2"
+           aria-hidden="true">
+        <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
+        <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+      </svg>
+      <span data-count>{{ content.dislike_count or 0 }}</span>
+    </button>
+    <a class="interaction-btn"
+       href="#comments"
+       aria-label="Comments"
+       data-action="scroll-to-comments">
+      {{ _icon_comment() }}
+      <span data-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
+    </a>
+    <button class="interaction-btn {% if user_state.saved %}active{% endif %}"
+            data-interaction="save"
+            data-content-id="{{ content.id }}"
+            aria-label="{{ 'Saved to library' if user_state.saved else 'Save to library' }}"
+            aria-pressed="{{ 'true' if user_state.saved else 'false' }}"
+            type="button">
+      {{ _icon_save(user_state.saved) }}
+      <span class="interaction-btn__label">{{ 'Saved' if user_state.saved else 'Save' }}</span>
+    </button>
+    {% if yt_external_id %}
+      <a class="interaction-btn"
+         href="https://www.youtube.com/watch?v={{ yt_external_id }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         aria-label="Watch on YouTube">
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             aria-hidden="true">
+          <path d="M22.54 6.42A2.78 2.78 0 0 0 20.6 4.46C18.88 4 12 4 12 4s-6.88 0-8.6.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.54C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
+          <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" />
+        </svg>
+        <span class="interaction-btn__label">Watch on YouTube</span>
+      </a>
+    {% endif %}
+    <button class="interaction-btn"
+            data-action="open-share"
+            aria-label="Share this {{ kind }}"
+            type="button">
+      {{ _icon_share() }}
+      <span class="interaction-btn__label">Share</span>
+    </button>
+  </div>
+{% endmacro %}
+{#
+  sticky_pill: floating toolbar (Like, Save, Comments jump, Share, optional reading progress).
+#}
+{% macro sticky_pill(content, user_state, comments_tree, kind='article', show_progress=False) %}
+  <div class="sticky-pill"
+       id="sticky-action-pill"
+       role="toolbar"
+       aria-label="{{ kind | capitalize }} actions">
+    <button class="pill-btn {% if user_state.liked %}active{% endif %}"
+            data-pill-action="like"
+            aria-label="Like"
+            aria-pressed="{{ 'true' if user_state.liked else 'false' }}"
+            type="button">
+      {{ _icon_like(user_state.liked) }}
+      <span data-pill-count>{{ content.like_count or 0 }}</span>
+    </button>
+    <button class="pill-btn {% if user_state.saved %}active{% endif %}"
+            data-pill-action="save"
+            aria-label="Save"
+            aria-pressed="{{ 'true' if user_state.saved else 'false' }}"
+            type="button">
+      {{ _icon_save(user_state.saved) }}
+      <span>{{ 'Saved' if user_state.saved else 'Save' }}</span>
+    </button>
+    <div class="sticky-pill__divider" aria-hidden="true"></div>
+    <a class="pill-btn"
+       href="#comments"
+       data-pill-action="comments"
+       aria-label="Jump to comments">
+      {{ _icon_comment() }}
+      <span data-pill-comment-count>{{ content.comment_count or (comments_tree | length) or 0 }}</span>
+    </a>
+    <button class="pill-btn"
+            data-pill-action="share"
+            aria-label="Share"
+            type="button">
+      {{ _icon_share() }}
+      Share
+    </button>
+    {% if show_progress %}
+      <div class="sticky-pill__divider" aria-hidden="true"></div>
+      <span class="pill-progress-badge"
+            aria-live="polite"
+            aria-label="Reading progress">0% read</span>
+    {% endif %}
+  </div>
+{% endmacro %}

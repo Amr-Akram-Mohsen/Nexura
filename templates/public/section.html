@@ -2,13 +2,12 @@
 {% from "macros/content_card.html" import content_card %}
 {% from "macros/pagination.html" import pagination %}
 {% from "macros/breadcrumb.html" import breadcrumb %}
-
+{% from "macros/ui.html" import empty_state, content_type_tabs %}
 {% block title %}{{ section.name }}{% endblock %}
 {% block description %}Browse {{ section.name }} — the latest articles, video reviews, and analysis on {{ section.description or section.name }}.{% endblock %}
 {% block canonical %}<link rel="canonical" href="{{ request.host_url }}{{ section.slug }}">{% endblock %}
-
 {% block structured_data %}
-<script type="application/ld+json">
+  <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
@@ -16,79 +15,57 @@
   "description": "Browse {{ section.name }} coverage on Nexura.",
   "url": "{{ request.url }}"
 }
-</script>
+  </script>
 {% endblock %}
-
 {% block content %}
-<div class="container">
-
-  {# Breadcrumb #}
-  {{ breadcrumb([
-    {'name': 'Home', 'url': '/'},
-    {'name': section.name}
-  ]) }}
-
-  {# Page Header #}
-  <header class="page-header">
-    <p class="page-header__eyebrow">Section</p>
-    <h1 class="page-header__title">{{ section.name }}</h1>
-    {% if section.description %}
-    <p class="page-header__desc">{{ section.description }}</p>
+  <div class="container">
+    {# Breadcrumb #}
+    {{ breadcrumb([
+      {'name': 'Home', 'url': '/'},
+      {'name': section.name}
+    ]) }}
+    {# Page Header #}
+    <header class="page-header">
+      <p class="page-header__eyebrow">Section</p>
+      <h1 class="page-header__title">{{ section.name }}</h1>
+      {% if section.description %}
+        <p class="page-header__desc">{{ section.description }}</p>
+      {% endif %}
+    </header>
+    {# Filter bar — intent tabs, categories #}
+    {% if filter_options %}
+      <div class="filter-bar" role="navigation" aria-label="Content filters">
+        <span class="filter-bar__label">Filter:</span>
+        {{ content_type_tabs('/' ~ section.slug, content_type, {'category': category_slug} if category_slug else None, wrap=False) }}
+        {% for category in filter_options.categories[:8] %}
+          <a class="filter-chip {% if category_slug == category.slug %}active{% endif %}"
+             href="/{{ section.slug }}/{{ category.slug }}{% if content_type %}?type={{ content_type }}{% endif %}">{{ category.name }}</a>
+        {% endfor %}
+      </div>
     {% endif %}
-  </header>
-
-  {# Filter bar — intent tabs, categories #}
-  {% if filter_options %}
-  <div class="filter-bar" role="navigation" aria-label="Content filters">
-    <span class="filter-bar__label">Filter:</span>
-    <a class="filter-chip {% if not content_type %}active{% endif %}"
-       href="/{{ section.slug }}{% if category_slug %}?category={{ category_slug }}{% endif %}">All</a>
-    <a class="filter-chip {% if content_type == 'article' %}active{% endif %}"
-       href="/{{ section.slug }}?type=article{% if category_slug %}&category={{ category_slug }}{% endif %}">Articles</a>
-    <a class="filter-chip {% if content_type == 'video' %}active{% endif %}"
-       href="/{{ section.slug }}?type=video{% if category_slug %}&category={{ category_slug }}{% endif %}">Videos</a>
-
-    {% for category in filter_options.categories[:8] %}
-    <a class="filter-chip {% if category_slug == category.slug %}active{% endif %}"
-       href="/{{ section.slug }}/{{ category.slug }}{% if content_type %}?type={{ content_type }}{% endif %}">{{ category.name }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {# Results count #}
-  {% if items %}
-  <p class="search-results-count" aria-live="polite">
-    {{ total or items|length }} results in {{ section.name }}
-    {% if content_type %} · {{ content_type | capitalize }}s only{% endif %}
-  </p>
-  {% endif %}
-
-  {# Content grid #}
-  {% if items %}
-  <div class="grid-cards">
-    {% for item in items %}
-      {{ content_card(item) }}
-    {% endfor %}
-  </div>
-
-  {# Pagination #}
-  {{ pagination(page, total_pages, endpoint='public.section',
-               section_slug=section.slug,
-               type=content_type if content_type else None,
-               category=category_slug if category_slug else None) }}
-
-  {% else %}
-  <div class="empty-state">
-    <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-    </svg>
-    <h2 class="empty-state__title">No content found</h2>
-    <p class="empty-state__desc">Try removing filters or check back soon.</p>
-    {% if content_type or category_slug %}
-    <a class="btn btn--secondary" href="/{{ section.slug }}">Clear filters</a>
+    {# Results count #}
+    {% if items %}
+      <p class="search-results-count" aria-live="polite">
+        {{ total or items|length }} results in {{ section.name }}
+        {% if content_type %}· {{ content_type | capitalize }}s only{% endif %}
+      </p>
+    {% endif %}
+    {# Content grid #}
+    {% if items %}
+      <div class="grid-cards">
+        {% for item in items %}
+          {{ content_card(item) }}
+        {% endfor %}
+      </div>
+      {# Pagination #}
+      {{ pagination(page, total_pages, endpoint='public.section',
+        section_slug=section.slug,
+        type=content_type if content_type else None,
+        category=category_slug if category_slug else None) }}
+    {% else %}
+      {{ empty_state('No content found', 'Try removing filters or check back soon.',
+        action_text='Clear filters' if (content_type or category_slug) else None,
+        action_url='/' ~ section.slug) }}
     {% endif %}
   </div>
-  {% endif %}
-
-</div>
 {% endblock %}

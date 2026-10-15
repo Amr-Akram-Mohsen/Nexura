@@ -1,155 +1,172 @@
 {% extends "admin/base_admin.html" %}
-
 {% block title %}Dashboard Overview{% endblock %}
 {% block page_title %}Dashboard Overview{% endblock %}
-
 {% block content %}
-{# ── KPI Cards Grid ── #}
-<div class="kpi-grid">
-  <div class="kpi-card" style="border-top: 3px solid var(--accent-green);">
-    <span class="kpi-card__label">Total Published</span>
-    <span class="kpi-card__value" style="color:var(--accent-green);">{{ kpis.published_count }}</span>
-    <span class="kpi-card__sub">{{ kpis.total_articles }} articles · {{ kpis.total_videos }} videos</span>
+  {# ── KPI Cards Grid ── #}
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-card--green">
+      <span class="kpi-card__label">Total Published</span>
+      <span class="kpi-card__value">{{ kpis.published_count }}</span>
+      <span class="kpi-card__sub">{{ kpis.total_articles }} articles · {{ kpis.total_videos }} videos</span>
+    </div>
+    <div class="kpi-card kpi-card--blue">
+      <span class="kpi-card__label">24h Reading Views</span>
+      <span class="kpi-card__value">{{ '{:,}'.format(kpis.views_24h) }}</span>
+      <span class="kpi-card__sub">{{ '{:,}'.format(kpis.views_7d) }} views in last 7 days</span>
+    </div>
+    <div class="kpi-card kpi-card--amber">
+      <span class="kpi-card__label">Discovered Queue</span>
+      <span class="kpi-card__value">{{ kpis.discovered_articles }}</span>
+      <span class="kpi-card__sub">{{ kpis.failed_articles }} enrichment failures</span>
+    </div>
+    <div class="kpi-card kpi-card--violet">
+      <span class="kpi-card__label">Community & Subs</span>
+      <span class="kpi-card__value">{{ kpis.subscribers_count }}</span>
+      <span class="kpi-card__sub">{{ kpis.comments_count }} total comments</span>
+    </div>
   </div>
-
-  <div class="kpi-card" style="border-top: 3px solid var(--accent-blue);">
-    <span class="kpi-card__label">24h Reading Views</span>
-    <span class="kpi-card__value" style="color:var(--accent-blue);">{{ '{:,}'.format(kpis.views_24h) }}</span>
-    <span class="kpi-card__sub">{{ '{:,}'.format(kpis.views_7d) }} views in last 7 days</span>
+  {# ── Quick Operations Panels ── #}
+  <div class="social-grid">
+    <div class="admin-panel admin-panel--flat">
+      <div class="admin-panel__header">
+        <h2 class="admin-panel__title">
+          <svg class="icon-blue"
+               width="18"
+               height="18"
+               viewBox="0 0 24 24"
+               fill="none"
+               stroke="currentColor"
+               stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          Quick Ingestion Triggers
+        </h2>
+        <a class="btn btn--ghost btn--sm"
+           href="{{ url_for('admin.ingestions.index') }}">View All →</a>
+      </div>
+      <div class="admin-panel__body admin-card-column">
+        <p class="admin-panel__desc">
+          Trigger automated ingestion pipelines in the background to scrape articles or fetch YouTube uploads.
+        </p>
+        <div class="admin-actions-cluster">
+          <a class="btn btn--secondary btn--sm"
+             href="{{ url_for('admin.ingestions.index') }}">
+            <span>⚡</span> NewsAPI Tech
+          </a>
+          <a class="btn btn--secondary btn--sm"
+             href="{{ url_for('admin.ingestions.index') }}">
+            <span>🎬</span> YouTube Channels
+          </a>
+          <a class="btn btn--secondary btn--sm"
+             href="{{ url_for('admin.ingestions.index') }}">
+            <span>🧪</span> Diffbot Enrichment
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="admin-panel admin-panel--flat">
+      <div class="admin-panel__header">
+        <h2 class="admin-panel__title">
+          <svg class="icon-green"
+               width="18"
+               height="18"
+               viewBox="0 0 24 24"
+               fill="none"
+               stroke="currentColor"
+               stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+          Operational Health
+        </h2>
+        <span class="badge badge--ready badge--pill-icon">
+          <span class="pulse-dot pulse-dot--green"></span>
+          All Systems Nominal
+        </span>
+      </div>
+      <div class="admin-panel__body admin-kv-list">
+        <div class="health-kv-item">
+          <span class="text-muted">Active Source Publishers</span>
+          <strong>{{ kpis.active_sources }} verified sources</strong>
+        </div>
+        <div class="health-kv-item">
+          <span class="text-muted">Database (PostgreSQL)</span>
+          <strong class="health-status-active">
+            <span class="health-status-dot"></span> Connected
+          </strong>
+        </div>
+        <div class="admin-kv-item">
+          <span class="text-muted">Full-Text Search (tsvector)</span>
+          <strong class="health-status-active">
+            <span class="health-status-dot"></span> Active (GIN Index)
+          </strong>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <div class="kpi-card" style="border-top: 3px solid var(--accent-amber);">
-    <span class="kpi-card__label">Discovered Queue</span>
-    <span class="kpi-card__value" style="color:var(--accent-amber);">{{ kpis.discovered_articles }}</span>
-    <span class="kpi-card__sub">{{ kpis.failed_articles }} enrichment failures</span>
-  </div>
-
-  <div class="kpi-card" style="border-top: 3px solid var(--accent-violet);">
-    <span class="kpi-card__label">Community & Subs</span>
-    <span class="kpi-card__value" style="color:var(--accent-violet);">{{ kpis.subscribers_count }}</span>
-    <span class="kpi-card__sub">{{ kpis.comments_count }} total comments</span>
-  </div>
-</div>
-
-{# ── Quick Operations Panels ── #}
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:var(--space-6); margin-bottom:var(--space-8);">
-
-  <div class="admin-panel" style="margin-bottom:0;">
+  {# ── Recent Content Items Table ── #}
+  <div class="admin-panel">
     <div class="admin-panel__header">
       <h2 class="admin-panel__title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Quick Ingestion Triggers
+        <svg class="icon-blue"
+             width="18"
+             height="18"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        Recently Added Content
       </h2>
-      <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.ingestions.index') }}">View All →</a>
+      <a class="btn btn--ghost btn--sm"
+         href="{{ url_for('admin.contents.index') }}">Manage All Content →</a>
     </div>
-    <div style="padding:var(--space-6); display:flex; flex-direction:column; gap:var(--space-4);">
-      <p style="font-size:var(--text-sm); color:var(--text-secondary); margin:0;">
-        Trigger automated ingestion pipelines in the background to scrape articles or fetch YouTube uploads.
-      </p>
-      <div style="display:flex; gap:var(--space-3); flex-wrap:wrap;">
-        <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.ingestions.index') }}" style="gap:var(--space-2);">
-          <span>⚡</span> NewsAPI Tech
-        </a>
-        <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.ingestions.index') }}" style="gap:var(--space-2);">
-          <span>🎬</span> YouTube Channels
-        </a>
-        <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.ingestions.index') }}" style="gap:var(--space-2);">
-          <span>🧪</span> Diffbot Enrichment
-        </a>
-      </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th class="col-xs">ID</th>
+            <th>Title</th>
+            <th class="col-sm">Type</th>
+            <th class="col-md">Status</th>
+            <th class="col-sm">Views</th>
+            <th class="col-sm text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in recent_items %}
+            <tr>
+              <td><code class="admin-cell-meta">#{{ item.id }}</code></td>
+              <td>
+                <a class="admin-cell-title"
+                   href="{{ url_for('admin.contents.inspect', content_id=item.id) }}">
+                  {{ (item.title or 'Untitled') | truncate(60) }}
+                </a>
+              </td>
+              <td>
+                <span class="badge badge--{{ item.object_type }} text-capitalize">{{ item.object_type }}</span>
+              </td>
+              <td>
+                {% if item.is_published %}
+                  <span class="badge badge--ready">Published</span>
+                {% else %}
+                  <span class="badge badge--needs-work">Draft / Queued</span>
+                {% endif %}
+              </td>
+              <td class="admin-cell-secondary">{{ '{:,}'.format(item.view_count or 0) }}</td>
+              <td class="text-right">
+                <a class="btn btn--ghost btn--sm"
+                   href="{{ url_for('admin.contents.inspect', content_id=item.id) }}">Inspect</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" class="admin-table-empty">No content records in database yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
-
-  <div class="admin-panel" style="margin-bottom:0;">
-    <div class="admin-panel__header">
-      <h2 class="admin-panel__title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-green);"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        Operational Health
-      </h2>
-      <span class="badge badge--ready" style="display:flex; align-items:center; gap:var(--space-2);">
-        <span class="pulse-dot pulse-dot--green"></span>
-        All Systems Nominal
-      </span>
-    </div>
-    <div style="padding:var(--space-6); display:flex; flex-direction:column; gap:var(--space-3); font-size:var(--text-sm);">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-2);">
-        <span style="color:var(--text-muted);">Active Source Publishers</span>
-        <strong>{{ kpis.active_sources }} verified sources</strong>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-2);">
-        <span style="color:var(--text-muted);">Database (PostgreSQL)</span>
-        <strong style="color:var(--accent-green); display:flex; align-items:center; gap:var(--space-2);">
-          <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-green);"></span> Connected
-        </strong>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:var(--text-muted);">Full-Text Search (tsvector)</span>
-        <strong style="color:var(--accent-green); display:flex; align-items:center; gap:var(--space-2);">
-          <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-green);"></span> Active (GIN Index)
-        </strong>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-{# ── Recent Content Items Table ── #}
-<div class="admin-panel">
-  <div class="admin-panel__header">
-    <h2 class="admin-panel__title">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Recently Added Content
-    </h2>
-    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.index') }}">Manage All Content →</a>
-  </div>
-
-  <div class="admin-table-wrap">
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th style="width:70px;">ID</th>
-          <th>Title</th>
-          <th style="width:100px;">Type</th>
-          <th style="width:130px;">Status</th>
-          <th style="width:100px;">Views</th>
-          <th style="width:100px; text-align:right;">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in recent_items %}
-        <tr>
-          <td><code style="color:var(--text-muted); font-size:var(--text-xs);">#{{ item.id }}</code></td>
-          <td>
-            <a href="{{ url_for('admin.contents.inspect', content_id=item.id) }}" style="color:var(--text-primary); font-weight:var(--weight-medium); text-decoration:none;">
-              {{ (item.title or 'Untitled') | truncate(60) }}
-            </a>
-          </td>
-          <td>
-            <span class="badge badge--{{ item.object_type }}" style="text-transform:capitalize;">{{ item.object_type }}</span>
-          </td>
-          <td>
-            {% if item.is_published %}
-            <span class="badge badge--ready">Published</span>
-            {% else %}
-            <span class="badge badge--needs-work">Draft / Queued</span>
-            {% endif %}
-          </td>
-          <td style="color:var(--text-secondary);">{{ '{:,}'.format(item.view_count or 0) }}</td>
-          <td style="text-align:right;">
-            <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contents.inspect', content_id=item.id) }}">
-              Inspect
-            </a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" style="text-align:center; padding:var(--space-6); color:var(--text-muted);">
-            No content records in database yet.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
 {% endblock %}

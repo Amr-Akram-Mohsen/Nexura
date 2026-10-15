@@ -1,0 +1,67 @@
+{# templates/macros/ui.html
+   Generic UI primitives shared across public pages.
+   - empty_state():       unified empty / feedback panel
+   - content_type_tabs(): All / Articles / Videos filter chips #}
+{#
+  empty_state: renders .empty-state panel.
+  icon: 'search' | 'saved' | 'history' | 'success' | 'info'
+  action_text/action_url: optional single button (class from action_class).
+  title_tag: 'h2' (default) or 'h1' for standalone pages.
+  id / hidden: pass-through for JS-driven panels (e.g. library).
+  Optional {% call %} body is rendered after the description (chips, custom actions, ...).
+#}
+{% macro empty_state(title, desc=None, icon='search', action_text=None, action_url=None,
+  action_class='btn btn--secondary', id=None, hidden=False, title_tag='h2') %}
+  {% set stroke = '2' if icon in ('success', 'info') else '1.5' %}
+  <div class="empty-state"
+       {% if id %} id="{{ id }}"{% endif %}
+       {% if hidden %} hidden{% endif %}>
+    <svg class="empty-state__icon{% if icon == 'success' %} empty-state__icon--success{% endif %}"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="{{ stroke }}"
+         aria-hidden="true">
+      {% if icon == "saved" %}
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      {% elif icon == "history" %}
+        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+      {% elif icon == "success" %}
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      {% elif icon == "info" %}
+        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      {% else %}
+        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+      {% endif %}
+    </svg>
+    <{{ title_tag }} class="empty-state__title">{{ title }}</{{ title_tag }}>
+    {% if desc %}<p class="empty-state__desc">{{ desc }}</p>{% endif %}
+    {% if action_text and action_url %}<a class="{{ action_class }}"
+   href="{{ action_url }}">{{ action_text }}</a>{% endif %}
+    {% if caller %}{{ caller() }}{% endif %}
+  </div>
+{% endmacro %}
+{#
+  content_type_tabs: All / Articles / Videos chips.
+  base_url: path without query string. extra_params: dict of query params to preserve.
+  wrap=True renders a standalone tablist .filter-bar; wrap=False renders bare chips
+  (for embedding inside an existing filter bar).
+#}
+{% macro content_type_tabs(base_url, active_type=None, extra_params=None, wrap=True) %}
+  {% set tabs = [(None, 'All'), ('article', 'Articles'), ('video', 'Videos')] %}
+  {% if wrap %}<div class="filter-bar" role="tablist" aria-label="Content type filter">{% endif %}
+  {% for value, label in tabs %}
+    {% set params = {} %}
+    {% if value %}
+      {% set _ = params.update({'type': value}) %}
+    {% endif %}
+    {% if extra_params %}
+      {% set _ = params.update(extra_params) %}
+    {% endif %}
+    <a class="filter-chip {% if (active_type or None) == value %}active{% endif %}"
+       href="{{ base_url }}{% if params %}?{{ params | urlencode }}{% endif %}"
+       {% if wrap %}role="tab" aria-selected="{{ 'true' if (active_type or None) == value else 'false' }}"{% endif %}>{{ label }}</a>
+  {% endfor %}
+  {% if wrap %}</div>{% endif %}
+{% endmacro %}
