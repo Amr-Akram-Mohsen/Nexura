@@ -7,15 +7,8 @@ from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
-from sqlalchemy import func, desc, case
 
-from app.extensions import db
-from app.models.content import Content, Article
-from app.models.video import Video
-from app.models.source import Source
-from app.models.interaction import View, Comment
-from app.models.user import User, NewsletterSubscriber
-
+from app.services.admin_stats_service import AdminStatsService
 from app.utils.audit import log_event
 
 log = logging.getLogger(__name__)
@@ -44,51 +37,8 @@ def admin_required(f):
 @admin_required
 def dashboard():
     """Render admin dashboard overview with platform KPI metrics and recent items."""
-    now = datetime.now(timezone.utc)
-    d24h = now - timedelta(hours=24)
-    d7d = now - timedelta(days=7)
-
-    # 1. Consolidated Content metrics
-    content_stats = db.session.query(
-        func.count(Content.id).label("total_contents"),
-        func.count(case((Content.object_type == "article", 1))).label("total_articles"),
-        func.count(case((Content.object_type == "video", 1))).label("total_videos"),
-        func.count(case((Content.is_published.is_(True), 1))).label("published_count"),
-    ).first()
-
-    # 2. Consolidated Article pipeline status metrics
-    article_stats = db.session.query(
-        func.count(case((Article.status == "discovered", 1))).label("discovered_articles"),
-        func.count(case((Article.status == "failed", 1))).label("failed_articles"),
-    ).first()
-
-    # 3. Consolidated View windowed metrics
-    view_stats = db.session.query(
-        func.count(case((View.created_at >= d24h, 1))).label("views_24h"),
-        func.count(case((View.created_at >= d7d, 1))).label("views_7d"),
-    ).first()
-
-    comments_count = db.session.query(func.count(Comment.id)).scalar() or 0
-    subscribers_count = db.session.query(func.count(NewsletterSubscriber.id)).filter(NewsletterSubscriber.unsubscribed_at.is_(None)).scalar() or 0
-    active_sources = db.session.query(func.count(Source.id)).filter(Source.is_active.is_(True)).scalar() or 0
-
-    recent_items = db.session.query(Content).order_by(desc(Content.id)).limit(8).all()
-
-    kpis = {
-        "total_contents": content_stats.total_contents if content_stats else 0,
-        "total_articles": content_stats.total_articles if content_stats else 0,
-        "total_videos": content_stats.total_videos if content_stats else 0,
-        "published_count": content_stats.published_count if content_stats else 0,
-        "discovered_articles": article_stats.discovered_articles if article_stats else 0,
-        "failed_articles": article_stats.failed_articles if article_stats else 0,
-        "views_24h": view_stats.views_24h if view_stats else 0,
-        "views_7d": view_stats.views_7d if view_stats else 0,
-        "comments_count": comments_count,
-        "subscribers_count": subscribers_count,
-        "active_sources": active_sources,
-    }
-
-    return render_template("admin/dashboard.html", kpis=kpis, recent_items=recent_items, active_tab="dashboard")
+    data = AdminStatsService.get_dashboard_stats()
+    return render_template("admin/dashboard.html", kpis=data["kpis"], recent_items=data["recent_items"], active_tab="dashboard")
 
 
 from app.routes.admin.ingestions import ingestions_bp

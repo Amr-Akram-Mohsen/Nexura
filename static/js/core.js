@@ -31,31 +31,123 @@
       return this.container;
     },
 
+    _createIcon(type) {
+      const svgNs = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('class', 'toast__icon');
+      svg.setAttribute('width', '14');
+      svg.setAttribute('height', '14');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '2.5');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      svg.setAttribute('aria-hidden', 'true');
+
+      if (type === 'success') {
+        const poly = document.createElementNS(svgNs, 'polyline');
+        poly.setAttribute('points', '20 6 9 17 4 12');
+        svg.appendChild(poly);
+      } else if (type === 'error') {
+        const circle = document.createElementNS(svgNs, 'circle');
+        circle.setAttribute('cx', '12');
+        circle.setAttribute('cy', '12');
+        circle.setAttribute('r', '10');
+        const l1 = document.createElementNS(svgNs, 'line');
+        l1.setAttribute('x1', '15');
+        l1.setAttribute('y1', '9');
+        l1.setAttribute('x2', '9');
+        l1.setAttribute('y2', '15');
+        const l2 = document.createElementNS(svgNs, 'line');
+        l2.setAttribute('x1', '9');
+        l2.setAttribute('y1', '9');
+        l2.setAttribute('x2', '15');
+        l2.setAttribute('y2', '15');
+        svg.append(circle, l1, l2);
+      } else if (type === 'warning') {
+        const path = document.createElementNS(svgNs, 'path');
+        path.setAttribute(
+          'd',
+          'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'
+        );
+        const l1 = document.createElementNS(svgNs, 'line');
+        l1.setAttribute('x1', '12');
+        l1.setAttribute('y1', '9');
+        l1.setAttribute('x2', '12');
+        l1.setAttribute('y2', '13');
+        const l2 = document.createElementNS(svgNs, 'line');
+        l2.setAttribute('x1', '12');
+        l2.setAttribute('y1', '17');
+        l2.setAttribute('x2', '12.01');
+        l2.setAttribute('y2', '17');
+        svg.append(path, l1, l2);
+      } else {
+        const circle = document.createElementNS(svgNs, 'circle');
+        circle.setAttribute('cx', '12');
+        circle.setAttribute('cy', '12');
+        circle.setAttribute('r', '10');
+        const l1 = document.createElementNS(svgNs, 'line');
+        l1.setAttribute('x1', '12');
+        l1.setAttribute('y1', '8');
+        l1.setAttribute('x2', '12');
+        l1.setAttribute('y2', '12');
+        const l2 = document.createElementNS(svgNs, 'line');
+        l2.setAttribute('x1', '12');
+        l2.setAttribute('y1', '16');
+        l2.setAttribute('x2', '12.01');
+        l2.setAttribute('y2', '16');
+        svg.append(circle, l1, l2);
+      }
+      return svg;
+    },
+
+    _createCloseBtn() {
+      const svgNs = 'http://www.w3.org/2000/svg';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toast__close';
+      btn.setAttribute('aria-label', 'Dismiss notification');
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('width', '12');
+      svg.setAttribute('height', '12');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '2.5');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      svg.setAttribute('aria-hidden', 'true');
+      const l1 = document.createElementNS(svgNs, 'line');
+      l1.setAttribute('x1', '18');
+      l1.setAttribute('y1', '6');
+      l1.setAttribute('x2', '6');
+      l1.setAttribute('y2', '18');
+      const l2 = document.createElementNS(svgNs, 'line');
+      l2.setAttribute('x1', '6');
+      l2.setAttribute('y1', '6');
+      l2.setAttribute('x2', '18');
+      l2.setAttribute('y2', '18');
+      svg.append(l1, l2);
+      btn.appendChild(svg);
+      return btn;
+    },
+
     show(message, type = 'info', duration = null, title = null) {
       const c = this._getContainer();
       const toast = document.createElement('div');
       toast.className = `toast toast--${type}`;
       toast.setAttribute('role', 'alert');
 
-      const icons = {
-        success: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-        error: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-        warning: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-        info: `<svg class="toast__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-      };
-
       const effectiveDuration = duration || (type === 'error' || type === 'warning' ? 4000 : 2500);
 
-      toast.innerHTML = `
-        ${icons[type] || icons.info}
-        <span class="toast__message">${message}</span>
-        <button type="button" class="toast__close" aria-label="Dismiss notification">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      `;
+      const icon = this._createIcon(type);
+      const msgSpan = document.createElement('span');
+      msgSpan.className = 'toast__message';
+      msgSpan.textContent = message;
+      const closeBtn = this._createCloseBtn();
+
+      toast.append(icon, msgSpan, closeBtn);
       c.appendChild(toast);
 
       let timer = null;
@@ -83,14 +175,11 @@
         else dismiss();
       });
 
-      const closeBtn = toast.querySelector('.toast__close');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          clearTimeout(timer);
-          dismiss();
-        });
-      }
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearTimeout(timer);
+        dismiss();
+      });
 
       startTimer();
     },
@@ -122,13 +211,10 @@
       const btn = document.querySelector('[data-action="toggle-theme"]');
       if (btn) {
         btn.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
-        btn.innerHTML =
-          theme === 'dark'
-            ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
-            : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
       }
     },
   };
+
 
   /* ── Hero Carousel ───────────────────────────────────────────────────────── */
   const HeroCarousel = {
@@ -183,7 +269,8 @@
         const hidden = [...container.querySelectorAll('.reveal-item:nth-child(n+7)')];
         if (hidden.length === 0) {
           btn.classList.add('hidden');
-          btn.style.display = 'none';
+          btn.setAttribute('hidden', '');
+          btn.hidden = true;
           return;
         }
 
@@ -196,7 +283,8 @@
 
           if (hidden.length === 0) {
             btn.classList.add('hidden');
-            btn.style.display = 'none';
+            btn.setAttribute('hidden', '');
+            btn.hidden = true;
           }
         });
       });

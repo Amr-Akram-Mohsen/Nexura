@@ -28,6 +28,12 @@ def _reading_time(word_count: int | None) -> int | None:
     return max(1, round(word_count / 200))
 
 
+def _reading_time_text(word_count: int | None) -> str | None:
+    """Formatted reading time label string (e.g. '3 min read')."""
+    mins = _reading_time(word_count)
+    return f"{mins} min read" if mins else None
+
+
 def serialize_content_card(content, *, include_article: bool = True) -> dict[str, Any]:
     """Lightweight card payload for listing, feed, category, and search results."""
     result: dict[str, Any] = {
@@ -38,6 +44,7 @@ def serialize_content_card(content, *, include_article: bool = True) -> dict[str
         "preview_text": content.preview_text,
         "published_at": content.published_at.isoformat() if content.published_at else None,
         "formatted_date": content.published_at.strftime("%b %d, %Y") if content.published_at else None,
+        "formatted_date_long": content.published_at.strftime("%B %d, %Y") if content.published_at else None,
         "age": content.published_at.strftime("%b %d, %Y") if content.published_at else None,
         "view_count": content.view_count or 0,
         "like_count": content.like_count or 0,
@@ -118,11 +125,13 @@ def serialize_content_card(content, *, include_article: bool = True) -> dict[str
     result["thumbnail"] = thumbnail
     result["preview"] = content.preview_text
     result["reading_time"] = reading_time
+    result["reading_time_text"] = _reading_time_text(article_obj.word_count) if (content.object_type == "article" and article_obj) else None
     result["duration"] = duration
     result["source_name"] = content.source.name if content.source else channel_name
     result["source_logo"] = content.source.logo_url if content.source else None
     result["category_name"] = content.category.name if content.category else None
     result["category_slug"] = content.category.slug if content.category else None
+    result["category_display_name"] = content.category.name if content.category else ""
     result["section_name"] = content.section.name if content.section else None
     result["section_slug"] = content.section.slug if content.section else None
     result["channel_name"] = channel_name
@@ -151,6 +160,7 @@ def serialize_content_detail(content, *, article=None, video=None, comments_tree
             "image_url": article.image_url,
             "word_count": article.word_count,
             "reading_time": _reading_time(article.word_count),
+            "reading_time_text": _reading_time_text(article.word_count),
             "language": article.language,
             "status": article.status,
             "canonical_url": article.canonical_url,

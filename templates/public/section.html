@@ -2,20 +2,13 @@
 {% from "macros/content_card.html" import content_card %}
 {% from "macros/pagination.html" import pagination %}
 {% from "macros/breadcrumb.html" import breadcrumb %}
-{% from "macros/ui.html" import empty_state, content_type_tabs %}
+{% from "macros/ui.html" import empty_state, content_type_tabs, page_header %}
+{% from "macros/meta_tags.html" import collection_json_ld %}
 {% block title %}{{ section.name }}{% endblock %}
 {% block description %}Browse {{ section.name }} — the latest articles, video reviews, and analysis on {{ section.description or section.name }}.{% endblock %}
 {% block canonical %}<link rel="canonical" href="{{ request.host_url }}{{ section.slug }}">{% endblock %}
 {% block structured_data %}
-  <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "CollectionPage",
-  "name": "{{ section.name }}",
-  "description": "Browse {{ section.name }} coverage on Nexura.",
-  "url": "{{ request.url }}"
-}
-  </script>
+  {{ collection_json_ld(section.name, 'Browse ' ~ section.name ~ ' coverage on Nexura.') }}
 {% endblock %}
 {% block content %}
   <div class="container">
@@ -25,13 +18,7 @@
       {'name': section.name}
     ]) }}
     {# Page Header #}
-    <header class="page-header">
-      <p class="page-header__eyebrow">Section</p>
-      <h1 class="page-header__title">{{ section.name }}</h1>
-      {% if section.description %}
-        <p class="page-header__desc">{{ section.description }}</p>
-      {% endif %}
-    </header>
+    {{ page_header(section.name, eyebrow='Section', desc=section.description) }}
     {# Filter bar — intent tabs, categories #}
     {% if filter_options %}
       <div class="filter-bar" role="navigation" aria-label="Content filters">

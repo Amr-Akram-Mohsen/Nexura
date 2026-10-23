@@ -79,15 +79,9 @@
             {{ content_row(item, variant='search') }}
           {% endfor %}
         </div>
-        {% if object_type and sort and sort != "relevance" %}
-          {{ pagination(page, total_pages, endpoint='public.search', q=query, type=object_type, sort=sort) }}
-        {% elif object_type %}
-          {{ pagination(page, total_pages, endpoint='public.search', q=query, type=object_type) }}
-        {% elif sort and sort != "relevance" %}
-          {{ pagination(page, total_pages, endpoint='public.search', q=query, sort=sort) }}
-        {% else %}
-          {{ pagination(page, total_pages, endpoint='public.search', q=query) }}
-        {% endif %}
+        {{ pagination(page, total_pages, endpoint='public.search', q=query,
+                      type=object_type if object_type else None,
+                      sort=sort if (sort and sort != 'relevance') else None) }}
       {% else %}
         {# ── No results ── #}
         {% call empty_state('No results for "' ~ query ~ '"', 'Try different keywords, check your spelling, or explore a trending topic below.') %}

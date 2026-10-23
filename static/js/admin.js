@@ -3,6 +3,9 @@
   'use strict';
 
   function getCsrfToken() {
+    if (window.Nexura && window.Nexura.http && typeof window.Nexura.http.getCsrfToken === 'function') {
+      return window.Nexura.http.getCsrfToken();
+    }
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   }
 
@@ -11,9 +14,7 @@
       window.Nexura.toast(message, type);
     } else {
       const toast = document.createElement('div');
-      toast.className = `badge badge--${type === 'success' ? 'ready' : type === 'error' ? 'not-ready' : 'almost'}`;
-      toast.style.cssText =
-        'position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.3);font-size:14px;border-radius:10px;animation:fadeIn 0.2s ease;';
+      toast.className = `admin-toast-fallback badge badge--${type === 'success' ? 'ready' : type === 'error' ? 'not-ready' : 'almost'}`;
       toast.textContent = message;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
@@ -43,8 +44,6 @@
     });
   }
 
-  const selectAllCheckbox = document.getElementById('select-all-rows');
-  const rowCheckboxes = document.querySelectorAll('.row-select-checkbox');
   const batchBar = document.getElementById('batch-action-bar');
   const selectedCountEl = document.getElementById('selected-count-label');
 
@@ -62,61 +61,17 @@
     }
   }
 
-  if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', function () {
-      rowCheckboxes.forEach((cb) => {
-        cb.checked = selectAllCheckbox.checked;
+  // Delegated table selection listener
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'select-all-rows') {
+      const isChecked = e.target.checked;
+      document.querySelectorAll('.row-select-checkbox').forEach((cb) => {
+        cb.checked = isChecked;
       });
       updateBatchBar();
-    });
-  }
-
-  rowCheckboxes.forEach((cb) => {
-    cb.addEventListener('change', updateBatchBar);
-  });
-
-  document.querySelectorAll('[data-batch-action]').forEach((btn) => {
-    btn.addEventListener('click', async function () {
-      const action = this.dataset.batchAction;
-      const selected = Array.from(document.querySelectorAll('.row-select-checkbox:checked')).map(
-        (cb) => cb.value
-      );
-
-      if (!selected.length) {
-        showAdminToast('No items selected', 'warning');
-        return;
-      }
-
-      if (
-        action === 'delete' &&
-        !confirm(`Are you sure you want to delete ${selected.length} item(s)?`)
-      ) {
-        return;
-      }
-
-      try {
-        const formData = new FormData();
-        formData.append('action', action);
-        formData.append('csrf_token', getCsrfToken());
-        selected.forEach((id) => formData.append('content_ids', id));
-
-        const res = await fetch('/admin/contents/batch', {
-          method: 'POST',
-          body: formData,
-          headers: { 'X-CSRFToken': getCsrfToken() },
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          showAdminToast(data.message, 'success');
-          setTimeout(() => window.location.reload(), 800);
-        } else {
-          showAdminToast(data.message || 'Batch action failed', 'error');
-        }
-      } catch (err) {
-        showAdminToast('Network error during batch action', 'error');
-      }
-    });
+    } else if (e.target.matches('.row-select-checkbox')) {
+      updateBatchBar();
+    }
   });
 
   const runIngestionForm = document.getElementById('run-ingestion-form');
@@ -141,7 +96,7 @@
 
         if (data.success && data.task_id) {
           showAdminToast('Task started...', 'info');
-          if (taskProgressPanel) taskProgressPanel.style.display = 'block';
+          if (taskProgressPanel) taskProgressPanel.classList.add('is-visible');
           pollTaskStatus(data.task_id);
         } else {
           showAdminToast(data.message || 'Failed to start task', 'error');
@@ -168,7 +123,7 @@
           }
 
           if (taskProgressBar) {
-            taskProgressBar.style.width = `${task.progress || 10}%`;
+            taskProgressBar.style.setProperty('--progress', `${task.progress || 10}%`);
           }
           if (taskStatusLabel) {
             taskStatusLabel.textContent = `${(task.status || '').toUpperCase()} (${task.progress}%): ${task.message || ''}`;
@@ -208,7 +163,7 @@
         const task = await res.json();
 
         if (taskProgressBar) {
-          taskProgressBar.style.width = `${task.progress || 10}%`;
+          taskProgressBar.style.setProperty('--progress', `${task.progress || 10}%`);
         }
         if (taskStatusLabel) {
           taskStatusLabel.textContent = `${task.status.toUpperCase()} (${task.progress}%): ${task.message || ''}`;
@@ -228,16 +183,90 @@
     }, 1500);
   }
 
-  document.querySelectorAll('[data-merge-entity-btn]').forEach((btn) => {
-    btn.addEventListener('click', async function () {
-      const sourceId = this.dataset.sourceId;
-      const targetId = this.dataset.targetId;
-      const sourceName = this.dataset.sourceName;
-      const targetName = this.dataset.targetName;
+  window.copyToClipboard = function (text, btnElement) {
+    if (navigator.clipboard) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          showAdminToast('Copied to clipboard! ✓', 'success');
+          if (btnElement) {
+            const original = btnElement.textContent;
+            btnElement.textContent = '✓ Copied';
+            btnElement.classList.add('btn--copied');
+            setTimeout(() => {
+              btnElement.textContent = original;
+              btnElement.classList.remove('btn--copied');
+            }, 2000);
+          }
+        })
+        .catch(() => {
+          showAdminToast('Failed to copy', 'error');
+        });
+    }
+  };
 
-      if (
-        !confirm(`Merge "${sourceName}" into "${targetName}"? "${sourceName}" will be deleted.`)
-      ) {
+  /* Delegated click handler for admin actions (copy draft, batch operations, taxonomy merge, moderation) */
+  document.addEventListener('click', async function (e) {
+    // 1. Copy draft snippet
+    const copyBtn = e.target.closest('[data-action="copy-draft"]');
+    if (copyBtn) {
+      const card = copyBtn.closest('.social-card');
+      const copyBox = card ? card.querySelector('.social-copy-box') : null;
+      const text = copyBox ? copyBox.textContent.trim() : '';
+      if (text) {
+        window.copyToClipboard(text, copyBtn);
+      }
+      return;
+    }
+
+    // 2. Batch actions (contents table)
+    const batchBtn = e.target.closest('[data-batch-action]');
+    if (batchBtn) {
+      const action = batchBtn.dataset.batchAction;
+      const selected = Array.from(document.querySelectorAll('.row-select-checkbox:checked'))
+        .map((cb) => parseInt(cb.value, 10))
+        .filter(Boolean);
+
+      if (!selected.length) {
+        showAdminToast('No items selected', 'error');
+        return;
+      }
+
+      if (action === 'delete' && !confirm(`Permanently delete ${selected.length} item(s)?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/admin/contents/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify({ action, content_ids: selected }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAdminToast(data.message, 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showAdminToast(data.message || 'Batch action failed', 'error');
+        }
+      } catch (err) {
+        showAdminToast('Network error during batch action', 'error');
+      }
+      return;
+    }
+
+    // 3. Taxonomy merge entity
+    const mergeBtn = e.target.closest('[data-merge-entity-btn]');
+    if (mergeBtn) {
+      const sourceId = mergeBtn.dataset.sourceId;
+      const targetId = mergeBtn.dataset.targetId;
+      const sourceName = mergeBtn.dataset.sourceName;
+      const targetName = mergeBtn.dataset.targetName;
+
+      if (!confirm(`Merge "${sourceName}" into "${targetName}"? "${sourceName}" will be deleted.`)) {
         return;
       }
 
@@ -263,13 +292,14 @@
       } catch (err) {
         showAdminToast('Network error during merge', 'error');
       }
-    });
-  });
+      return;
+    }
 
-  document.querySelectorAll('[data-moderate-comment]').forEach((btn) => {
-    btn.addEventListener('click', async function () {
-      const commentId = this.dataset.commentId;
-      const action = this.dataset.moderateComment;
+    // 4. Moderate comment
+    const modBtn = e.target.closest('[data-moderate-comment]');
+    if (modBtn) {
+      const commentId = modBtn.dataset.commentId;
+      const action = modBtn.dataset.moderateComment;
 
       try {
         const formData = new FormData();
@@ -296,40 +326,7 @@
       } catch (err) {
         showAdminToast('Network error', 'error');
       }
-    });
-  });
-
-  window.copyToClipboard = function (text, btnElement) {
-    if (navigator.clipboard) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          showAdminToast('Copied to clipboard! ✓', 'success');
-          if (btnElement) {
-            const original = btnElement.textContent;
-            btnElement.textContent = '✓ Copied';
-            btnElement.classList.add('btn--copied');
-            setTimeout(() => {
-              btnElement.textContent = original;
-              btnElement.classList.remove('btn--copied');
-            }, 2000);
-          }
-        })
-        .catch(() => {
-          showAdminToast('Failed to copy', 'error');
-        });
-    }
-  };
-
-  /* Delegated copy action handler for admin drafts & snippets */
-  document.addEventListener('click', function (e) {
-    const copyBtn = e.target.closest('[data-action="copy-draft"]');
-    if (!copyBtn) return;
-    const card = copyBtn.closest('.social-card');
-    const copyBox = card ? card.querySelector('.social-copy-box') : null;
-    const text = copyBox ? copyBox.textContent.trim() : '';
-    if (text) {
-      window.copyToClipboard(text, copyBtn);
+      return;
     }
   });
 })();

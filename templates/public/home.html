@@ -37,19 +37,19 @@
               {% endif %}
               <div class="hero-slide__gradient" aria-hidden="true"></div>
               <div class="hero-slide__content">
-                {% set hero_cat = item.category_name or (item.category.name if item.category is mapping else (item.category.name if item.category.name is defined else (item.category if item.category is string else ''))) %}
+                {% set hero_cat = item.category_display_name or item.category_name %}
                 {% if hero_cat %}
                   <span class="hero-slide__tag">{{ hero_cat }}</span>
                 {% endif %}
                 <h2 class="hero-slide__title">
-                  <a href="{{ item.url or ('/video/' ~ (item.slug_id or item.id) if item.object_type == 'video' else '/article/' ~ (item.slug_id or item.id)) }}"
+                  <a href="{{ item.url }}"
                      class="u-plain-link">{{ item.title }}</a>
                 </h2>
                 {% if item.preview %}
                   <p class="hero-slide__excerpt">{{ item.preview | truncate(180) }}</p>
                 {% endif %}
                 <a class="btn btn--gradient"
-                   href="{{ item.url or ('/video/' ~ (item.slug_id or item.id) if item.object_type == 'video' else '/article/' ~ (item.slug_id or item.id)) }}"
+                   href="{{ item.url }}"
                    aria-label="Read: {{ item.title }}">
                   {% if item.object_type == "video" %}Watch Now{% else %}Read Article{% endif %}
                   <svg width="14"

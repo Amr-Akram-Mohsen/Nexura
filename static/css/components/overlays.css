@@ -140,6 +140,8 @@
    ============================================================================= */
 .auth-popover {
   position: fixed;
+  top: var(--popover-top, auto);
+  left: var(--popover-left, auto);
   z-index: 9999;
   display: flex;
   flex-direction: column;

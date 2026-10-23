@@ -7,9 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for, current_app, session
 from flask_login import current_user, login_required, login_user, logout_user
-from werkzeug.security import generate_password_hash
 
-from app.extensions import db, limiter, oauth
+from app.extensions import limiter, oauth
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
@@ -57,26 +56,14 @@ def register():
 
         if not errors:
             token = secrets.token_urlsafe(32)
-            now_utc = datetime.now(timezone.utc)
-            user = User(
+            user = UserRepository.register_unverified_user(
                 email=email,
                 name=name,
-                password_hash=generate_password_hash(password),
-                is_verified=False,
-                is_active=True,
-                is_admin=False,
-                created_at=now_utc,
-                verification_sent_at=now_utc,
-                email_verification_token=token,
-                email_verification_sent_at=now_utc,
-                password_reset_token=None,
+                password=password,
+                verification_token=token,
             )
-            db.session.add(user)
-            db.session.flush()
-
             EmailService.send_verification_email(user, token)
             log.info("Verification email dispatched for %s", email)
-            db.session.commit()
 
             log_event("user_registered", user_id=user.id, ip_address=request.remote_addr, details={"email": user.email})
 
@@ -118,8 +105,7 @@ def login():
             log_event("login_failed", user_id=user.id, ip_address=request.remote_addr, details={"email": email, "reason": "unverified"})
         else:
             login_user(user, remember=remember)
-            user.last_login_at = datetime.now(timezone.utc)
-            db.session.commit()
+            UserRepository.record_login(user)
             log.info("User %s logged in.", user.email)
             log_event("login_success", user_id=user.id, ip_address=request.remote_addr)
             next_url = request.args.get("next") or url_for("public.home")
@@ -152,10 +138,7 @@ def verify_email(token: str):
         flash("Your email is already verified.", "info")
         return redirect(url_for("auth.login"))
 
-    user.is_verified = True
-    user.verified_at = datetime.now(timezone.utc)
-    user.email_verification_token = None
-    db.session.commit()
+    UserRepository.verify_email(user)
 
     log_event("email_verified", user_id=user.id, ip_address=request.remote_addr)
 
@@ -180,11 +163,7 @@ def resend_verification():
         sent = True
         if user and not user.is_verified and user.is_active:
             token = secrets.token_urlsafe(32)
-            now_utc = datetime.now(timezone.utc)
-            user.email_verification_token = token
-            user.email_verification_sent_at = now_utc
-            user.verification_sent_at = now_utc
-            db.session.commit()
+            UserRepository.set_email_verification_token(user, token)
             EmailService.send_verification_email(user, token)
             log.info("Verification email re-dispatched for %s", email)
             log_event("verification_resend_requested", user_id=user.id, ip_address=request.remote_addr, details={"email": email})
@@ -207,9 +186,7 @@ def forgot_password():
         sent = True
         if user and user.is_active:
             token = secrets.token_urlsafe(32)
-            user.password_reset_token = token
-            user.password_reset_sent_at = datetime.now(timezone.utc)
-            db.session.commit()
+            UserRepository.set_password_reset_token(user, token)
             EmailService.send_password_reset_email(user, token)
             log.info("Password reset email dispatched for %s", email)
             log_event("password_reset_requested", user_id=user.id, ip_address=request.remote_addr, details={"email": email})
@@ -269,31 +246,14 @@ def handle_google_oauth_login(user_info: dict) -> User:
     google_id = str(user_info.get("sub") or user_info.get("id") or "")
     name = user_info.get("name") or (email.split("@")[0] if email else "Google User")
 
-    user = UserRepository.get_by_email(email)
-    if not user:
-        user = User(
-            email=email,
-            name=name,
-            password_hash=generate_password_hash(secrets.token_urlsafe(32)),
-            google_id=google_id,
-            provider="google",
-            is_verified=True,
-            verified_at=datetime.now(timezone.utc),
-            is_active=True,
-            is_admin=False,
-            created_at=datetime.now(timezone.utc),
-            last_login_at=datetime.now(timezone.utc),
-        )
-        db.session.add(user)
-        db.session.commit()
+    user, is_new_user = UserRepository.find_or_create_google_user(
+        email=email,
+        google_id=google_id,
+        name=name,
+    )
+    if is_new_user:
         log.info("[AUTH] New user registered via Google OAuth: %s", email)
     else:
-        if not user.google_id:
-            user.google_id = google_id
-            user.provider = "google"
-        user.is_verified = True
-        user.last_login_at = datetime.now(timezone.utc)
-        db.session.commit()
         log.info("[AUTH] Existing user logged in via Google OAuth: %s", email)
     return user
 

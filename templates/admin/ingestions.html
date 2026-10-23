@@ -1,6 +1,7 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Ingestion & Task Operations{% endblock %}
 {% block page_title %}Ingestion Health & Task Monitoring{% endblock %}
+{% from "macros/ui.html" import panel_header %}
 {% block content %}
   {# ── Provider Status Grid ── #}
   <div class="kpi-grid">
@@ -20,21 +21,9 @@
   </div>
   {# ── Manual Trigger Runner Form ── #}
   <div class="admin-panel">
-    <div class="admin-panel__header">
-      <h2 class="admin-panel__title">
-        <svg class="icon-blue"
-             width="18"
-             height="18"
-             viewBox="0 0 24 24"
-             fill="none"
-             stroke="currentColor"
-             stroke-width="2">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
-        Run Manual Ingestion Task
-      </h2>
+    {% call panel_header('Run Manual Ingestion Task', icon='zap', icon_color='blue') %}
       <span class="badge badge--almost">Background Daemon</span>
-    </div>
+    {% endcall %}
     <div class="admin-panel__body">
       <form class="ingestion-trigger-form" id="run-ingestion-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -72,29 +61,14 @@
         </div>
         <div class="progress-bar-wrap progress-bar-wrap--lg">
           <div class="progress-bar-fill"
-               id="task-progress-bar"
-               style="--progress: 10%"></div>
+               id="task-progress-bar"></div>
         </div>
       </div>
     </div>
   </div>
   {# ── Recent Task Execution History ── #}
   <div class="admin-panel">
-    <div class="admin-panel__header">
-      <h2 class="admin-panel__title">
-        <svg class="icon-blue"
-             width="18"
-             height="18"
-             viewBox="0 0 24 24"
-             fill="none"
-             stroke="currentColor"
-             stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-        </svg>
-        Recent Ingestion Task Logs
-      </h2>
-    </div>
+    {{ panel_header('Recent Ingestion Task Logs', icon='content', icon_color='blue') }}
     <div class="admin-table-wrap">
       <table class="admin-table">
         <thead>

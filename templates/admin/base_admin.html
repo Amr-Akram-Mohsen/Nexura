@@ -11,6 +11,7 @@
     <div class="admin-shell">
       {# Admin Sidebar #}
       {% from "macros/brand.html" import brand_logo %}
+      {% from "macros/ui.html" import admin_icon %}
       <aside class="admin-sidebar" aria-label="Admin Navigation">
         <div class="admin-sidebar__header">
           <a class="admin-sidebar__brand" href="{{ url_for('admin.dashboard') }}">
@@ -19,81 +20,33 @@
           </a>
         </div>
         <nav class="admin-sidebar__nav">
+          {% set operations_nav = [
+            ('dashboard', 'admin.dashboard', 'Dashboard', 'dashboard'),
+            ('ingestions', 'admin.ingestions.index', 'Ingestions & Tasks', 'tasks'),
+            ('contents', 'admin.contents.index', 'Content Library', 'content')
+          ] %}
+          {% set editorial_nav = [
+            ('deduplication', 'admin.deduplication.index', 'Deduplication', 'dedup'),
+            ('taxonomy', 'admin.taxonomy.index', 'Taxonomy & Entities', 'taxonomy'),
+            ('moderation', 'admin.moderation.index', 'Moderation & Users', 'comments'),
+            ('syndication', 'admin.syndication.index', 'Social Syndication', 'syndication')
+          ] %}
           <div class="admin-sidebar__heading">Operations</div>
-          <a class="admin-nav-item {% if active_tab == 'dashboard' %}active{% endif %}"
-             href="{{ url_for('admin.dashboard') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-            </svg>
-            Dashboard
-          </a>
-          <a class="admin-nav-item {% if active_tab == 'ingestions' %}active{% endif %}"
-             href="{{ url_for('admin.ingestions.index') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-              <polyline points="21 5 12 14 9 11" />
-            </svg>
-            Ingestions & Tasks
-          </a>
-          <a class="admin-nav-item {% if active_tab == 'contents' %}active{% endif %}"
-             href="{{ url_for('admin.contents.index') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-            Content Library
-          </a>
+          {% for tab_id, endpoint, label, icon_name in operations_nav %}
+            <a class="admin-nav-item {% if active_tab == tab_id %}active{% endif %}"
+               href="{{ url_for(endpoint) }}">
+              {{ admin_icon(icon_name) }}
+              {{ label }}
+            </a>
+          {% endfor %}
           <div class="admin-sidebar__heading">Editorial Workbenches</div>
-          <a class="admin-nav-item {% if active_tab == 'deduplication' %}active{% endif %}"
-             href="{{ url_for('admin.deduplication.index') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-            Deduplication
-          </a>
-          <a class="admin-nav-item {% if active_tab == 'taxonomy' %}active{% endif %}"
-             href="{{ url_for('admin.taxonomy.index') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-            Taxonomy & Entities
-          </a>
-          <a class="admin-nav-item {% if active_tab == 'moderation' %}active{% endif %}"
-             href="{{ url_for('admin.moderation.index') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            Moderation & Users
-          </a>
-          <a class="admin-nav-item {% if active_tab == 'syndication' %}active{% endif %}"
-             href="{{ url_for('admin.syndication.index') }}">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2">
-              <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-            </svg>
-            Social Syndication
-          </a>
+          {% for tab_id, endpoint, label, icon_name in editorial_nav %}
+            <a class="admin-nav-item {% if active_tab == tab_id %}active{% endif %}"
+               href="{{ url_for(endpoint) }}">
+              {{ admin_icon(icon_name) }}
+              {{ label }}
+            </a>
+          {% endfor %}
         </nav>
         <div class="admin-sidebar__footer">
           <a class="btn btn--ghost btn--sm admin-public-link"

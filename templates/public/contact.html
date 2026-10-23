@@ -1,16 +1,17 @@
 {% extends "base.html" %}
+{% from "macros/ui.html" import page_header, form, field, input, textarea, button %}
 {% block title %}Contact Us — Editorial Tips & Inquiries{% endblock %}
 {% block description %}Get in touch with the Nexura editorial team, submit a confidential tech news tip, or make a press inquiry.{% endblock %}
 {% block content %}
   <div class="container static-page-container">
     {# Page Header #}
-    <header class="page-header page-header--center">
-      <span class="page-header__eyebrow">Contact & Press</span>
-      <h1 class="page-header__title page-header__title--hero">We'd Love to Hear From You</h1>
-      <p class="page-header__desc">
-        Have a confidential news tip, feedback on an article, or a partnership inquiry? Reach out directly to our team.
-      </p>
-    </header>
+    {{ page_header(
+        "We'd Love to Hear From You",
+        eyebrow="Contact & Press",
+        desc="Have a confidential news tip, feedback on an article, or a partnership inquiry? Reach out directly to our team.",
+        center=True,
+        hero=True
+    ) }}
     <div class="contact-grid">
       {# Left: Contact Form #}
       <div class="contact-card">
@@ -30,33 +31,19 @@
             <p class="contact-success-desc">
               Thank you for reaching out. Our editorial desk reviews all incoming submissions and will get back to you if relevant.
             </p>
-            <a class="btn btn--secondary" href="/contact">Send another message</a>
+            {{ button(text="Send another message", href="/contact", variant="secondary") }}
           </div>
         {% else %}
           <h2 class="contact-card__title">Send a Message</h2>
           <p class="contact-card__desc">Fill out the form below and we will route it to the appropriate desk.</p>
-          <form method="post" action="/contact" class="contact-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="contact-field">
-              <label for="contact-name" class="contact-label">Your Name</label>
-              <input id="contact-name"
-                     name="name"
-                     type="text"
-                     placeholder="Alex Rivers"
-                     required
-                     class="contact-input">
-            </div>
-            <div class="contact-field">
-              <label for="contact-email" class="contact-label">Email Address</label>
-              <input id="contact-email"
-                     name="email"
-                     type="email"
-                     placeholder="alex@example.com"
-                     required
-                     class="contact-input">
-            </div>
-            <div class="contact-field">
-              <label for="contact-topic" class="contact-label">Topic / Department</label>
+          {% call form(action="/contact", class="contact-form") %}
+            {% call field(label="Your Name", for_id="contact-name", class="contact-field", label_class="contact-label") %}
+              {{ input(name="name", id="contact-name", placeholder="Alex Rivers", required=True, class="contact-input") }}
+            {% endcall %}
+            {% call field(label="Email Address", for_id="contact-email", class="contact-field", label_class="contact-label") %}
+              {{ input(name="email", id="contact-email", type="email", placeholder="alex@example.com", required=True, class="contact-input") }}
+            {% endcall %}
+            {% call field(label="Topic / Department", for_id="contact-topic", class="contact-field", label_class="contact-label") %}
               <select id="contact-topic" name="topic" required class="contact-input">
                 <option value="tip">Confidential News Tip / Scoop</option>
                 <option value="correction">Editorial Feedback / Correction</option>
@@ -64,75 +51,42 @@
                 <option value="partnership">Advertising & Partnerships</option>
                 <option value="support">General Support & Feedback</option>
               </select>
-            </div>
-            <div class="contact-field">
-              <label for="contact-message" class="contact-label">Message</label>
-              <textarea id="contact-message"
-                        name="message"
-                        rows="5"
-                        placeholder="Share your scoop, feedback, or inquiry in detail…"
-                        required
-                        class="contact-textarea"></textarea>
-            </div>
-            <button class="btn btn--gradient btn--full btn--lg contact-form__submit"
-                    type="submit">Send Message</button>
-          </form>
+            {% endcall %}
+            {% call field(label="Message", for_id="contact-message", class="contact-field", label_class="contact-label") %}
+              {{ textarea(name="message", id="contact-message", rows=5, placeholder="Share your scoop, feedback, or inquiry in detail…", required=True, class="contact-textarea") }}
+            {% endcall %}
+            {{ button(text="Send Message", type="submit", variant="gradient", size="lg", full=True, class="contact-form__submit") }}
+          {% endcall %}
         {% endif %}
       </div>
       {# Right: Desks & Channels #}
       <div class="contact-sidebar">
         <div class="contact-desks-card">
           <h3 class="contact-desks-card__title">Direct Desks</h3>
+          {% set desks = [
+            ('Editorial & Tips', 'tips@nexura.tech', 'blue', '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />'),
+            ('Press & Communications', 'press@nexura.tech', 'green', '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />'),
+            ('General Support', 'hello@nexura.tech', 'violet', '<circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />')
+          ] %}
           <div class="contact-methods-list">
-            <div class="contact-desk-item">
-              <div class="contact-desk-icon contact-desk-icon--blue">
-                <svg width="18"
-                     height="18"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
+            {% for name, email, color, svg_content in desks %}
+              <div class="contact-desk-item">
+                <div class="contact-desk-icon contact-desk-icon--{{ color }}">
+                  <svg width="18"
+                       height="18"
+                       viewBox="0 0 24 24"
+                       fill="none"
+                       stroke="currentColor"
+                       stroke-width="2">
+                    {{ svg_content | safe }}
+                  </svg>
+                </div>
+                <div>
+                  <p class="contact-desk-name">{{ name }}</p>
+                  <p class="contact-desk-email">{{ email }}</p>
+                </div>
               </div>
-              <div>
-                <p class="contact-desk-name">Editorial & Tips</p>
-                <p class="contact-desk-email">tips@nexura.tech</p>
-              </div>
-            </div>
-            <div class="contact-desk-item">
-              <div class="contact-desk-icon contact-desk-icon--green">
-                <svg width="18"
-                     height="18"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </div>
-              <div>
-                <p class="contact-desk-name">Press & Communications</p>
-                <p class="contact-desk-email">press@nexura.tech</p>
-              </div>
-            </div>
-            <div class="contact-desk-item">
-              <div class="contact-desk-icon contact-desk-icon--violet">
-                <svg width="18"
-                     height="18"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-              </div>
-              <div>
-                <p class="contact-desk-name">General Support</p>
-                <p class="contact-desk-email">hello@nexura.tech</p>
-              </div>
-            </div>
+            {% endfor %}
           </div>
         </div>
         <div class="contact-desks-card">
@@ -145,3 +99,4 @@
     </div>
   </div>
 {% endblock %}
+

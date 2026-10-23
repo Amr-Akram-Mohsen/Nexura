@@ -65,3 +65,446 @@
   {% endfor %}
   {% if wrap %}</div>{% endif %}
 {% endmacro %}
+
+{#
+  time_badge: Renders reading time or duration badge with clock icon.
+#}
+{% macro time_badge(text) %}
+  {% if text %}
+    <span class="badge badge--category">
+      <svg width="10"
+           height="10"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="2.5"
+           aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+      {{ text }}
+    </span>
+  {% endif %}
+{% endmacro %}
+
+{#
+  alert_icon: Renders standard SVG icon for toast / noscript alert types.
+#}
+{% macro alert_icon(alert_type) %}
+  {% if alert_type == "success" %}
+    <svg width="18"
+         height="18"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="2.5"
+         aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  {% elif alert_type == "warning" %}
+    <svg width="18"
+         height="18"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="2.5"
+         aria-hidden="true">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  {% else %}
+    <svg width="18"
+         height="18"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="2.5"
+         aria-hidden="true">
+      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  {% endif %}
+{% endmacro %}
+
+{#
+  page_header: Standard page header with eyebrow, title, optional description, and slot for action/meta.
+#}
+{% macro page_header(title, eyebrow=None, desc=None, center=False, hero=False) %}
+  <header class="page-header{% if center %} page-header--center{% endif %}">
+    {% if eyebrow %}<p class="page-header__eyebrow">{{ eyebrow }}</p>{% endif %}
+    <h1 class="page-header__title{% if hero %} page-header__title--hero{% endif %}">{{ title }}</h1>
+    {% if desc %}<p class="page-header__desc{% if hero %} page-header__desc--hero{% endif %}">{{ desc }}</p>{% endif %}
+    {% if caller %}{{ caller() }}{% endif %}
+  </header>
+{% endmacro %}
+
+{#
+  kpi_card: Metric summary card for admin control plane.
+  color: 'blue' | 'green' | 'amber' | 'violet'
+#}
+{% macro kpi_card(label, value, sub=None, color="blue") %}
+  <div class="kpi-card kpi-card--{{ color }}">
+    <span class="kpi-card__label">{{ label }}</span>
+    <span class="kpi-card__value">{{ value }}</span>
+    {% if sub %}<span class="kpi-card__sub">{{ sub }}</span>{% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  pulse_badge: Status pill badge with pulsing indicator dot.
+  dot_color: 'green' | 'amber'
+  badge_class: 'badge--ready' | 'badge--needs-work' | 'badge--almost'
+#}
+{% macro pulse_badge(label, dot_color="green", badge_class="badge--ready") %}
+  <span class="badge {{ badge_class }} badge--pill-icon">
+    <span class="pulse-dot pulse-dot--{{ dot_color }}"></span>
+    {{ label }}
+  </span>
+{% endmacro %}
+
+{#
+  google_oauth_button: Social sign-in button with branded Google vector mark.
+#}
+{% macro google_oauth_button(label="Continue with Google", next_url="") %}
+  <a class="btn-social-google"
+     href="{{ url_for('auth.google_login', next=next_url) if next_url else url_for('auth.google_login') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+    </svg>
+    {{ label }}
+  </a>
+{% endmacro %}
+
+{#
+  auth_password_field: Accessible password input with show/hide toggle and optional strength meter.
+#}
+{% macro auth_password_field(id="password", name="password", label="Password", placeholder="Your password",
+                             autocomplete="current-password", autofocus=False, required=True,
+                             required_mark=False, error=None, show_strength=False) %}
+  <div class="auth-field">
+    <label class="auth-field__label" for="{{ id }}">
+      {{ label }}{% if required_mark %} <span class="auth-field__required">*</span>{% endif %}
+    </label>
+    <div class="auth-field__input-wrapper">
+      <input class="auth-field__input{% if error %} error{% endif %}"
+             type="password"
+             id="{{ id }}"
+             name="{{ name }}"
+             placeholder="{{ placeholder }}"
+             autocomplete="{{ autocomplete }}"
+             {% if autofocus %}autofocus{% endif %}
+             {% if required %}required{% endif %}>
+      <button type="button"
+              class="auth-field__toggle-btn"
+              aria-label="Show password"
+              aria-pressed="false"
+              tabindex="-1">
+        <svg class="icon-eye"
+             width="18"
+             height="18"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+        <svg class="icon-eye-off"
+             width="18"
+             height="18"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             aria-hidden="true">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+      </button>
+    </div>
+    {% if show_strength %}
+      <div class="password-strength" aria-hidden="true">
+        <div class="password-strength__bar" id="pw-strength-bar"></div>
+      </div>
+      <span class="password-strength__label"
+            id="pw-strength-label"
+            aria-live="polite"></span>
+    {% endif %}
+    {% if error %}
+      <span class="auth-field__error" role="alert">{{ error }}</span>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  auth_success_box: Feedback panel for auth confirmation flows (forgot password, resend verification).
+#}
+{% macro auth_success_box(title, desc, back_url, back_label="Back to login") %}
+  <div class="auth-success-box">
+    <div class="auth-success-icon">
+      <svg width="28"
+           height="28"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="2.5"
+           aria-hidden="true">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </div>
+    <h1 class="auth-card__title">{{ title }}</h1>
+    <p class="auth-success-box__desc">{{ desc }}</p>
+    <a class="btn btn--secondary" href="{{ back_url }}">{{ back_label }}</a>
+  </div>
+{% endmacro %}
+
+{#
+  admin_icon: Standard SVG icon for admin panels and navigation.
+#}
+{% macro admin_icon(name, color=None, size=18) %}
+  <svg {% if color %}class="icon-{{ color }}"{% endif %}
+       width="{{ size }}"
+       height="{{ size }}"
+       viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       aria-hidden="true">
+    {% if name in ('zap', 'flash') %}
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    {% elif name in ('dashboard', 'grid') %}
+      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+    {% elif name in ('tasks', 'task') %}
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /><polyline points="21 5 12 14 9 11" />
+    {% elif name == 'health' %}
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    {% elif name == 'content' %}
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+    {% elif name == 'dedup' %}
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    {% elif name == 'comments' %}
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    {% elif name == 'syndication' %}
+      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    {% elif name == 'clock' %}
+      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+    {% elif name == 'mail' %}
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
+    {% elif name == 'warning' %}
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    {% elif name == 'taxonomy' %}
+      <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+    {% elif name in ('check', 'readiness') %}
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+    {% elif name in ('library', 'book') %}
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    {% elif name == 'lock' %}
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    {% elif name == 'logout' %}
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+    {% endif %}
+  </svg>
+{% endmacro %}
+
+{#
+  panel_header: Standard header row for admin-panel cards.
+#}
+{% macro panel_header(title, icon=None, icon_color="blue", action_text=None, action_url=None,
+                      action_class="btn btn--ghost btn--sm", tag="h2") %}
+  <div class="admin-panel__header">
+    <{{ tag }} class="admin-panel__title">
+      {% if icon %}{{ admin_icon(icon, color=icon_color) }}{% endif %}
+      {{ title }}
+    </{{ tag }}>
+    {% if action_text and action_url %}
+      <a class="{{ action_class }}" href="{{ action_url }}">{{ action_text }}</a>
+    {% endif %}
+    {% if caller %}{{ caller() }}{% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  button: Polymorphic button / link primitive.
+  Renders <a> if href is present; otherwise renders <button type="{{ type }}">.
+  Yields caller() if a {% call button(...) %} block is provided, allowing custom icons/markup.
+#}
+{% macro button(
+    text="",
+    href=none,
+    type="button",
+    variant="primary",
+    size=none,
+    full=false,
+    icon=none,
+    icon_pos="left",
+    id=none,
+    class="",
+    attrs={}
+) %}
+  {% set tag = "a" if href else "button" %}
+  {% set size_class = (" btn--" ~ size) if size else "" %}
+  {% set full_class = " btn--full" if full else "" %}
+  {% set variant_class = (" btn--" ~ variant) if variant else "" %}
+  <{{ tag }} {% if href %}href="{{ href }}"{% else %}type="{{ type }}"{% endif %}{% if id %} id="{{ id }}"{% endif %} class="btn{{ variant_class }}{{ size_class }}{{ full_class }}{{ ' ' ~ class if class else '' }}"{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {%- if icon and icon_pos == "left" -%}
+      {{ admin_icon(icon, size=14 if size == 'sm' else 16) }}
+    {%- endif -%}
+    {%- if text -%}
+      <span>{{ text }}</span>
+    {%- endif -%}
+    {%- if caller is defined -%}
+      {{ caller() }}
+    {%- endif -%}
+    {%- if icon and icon_pos == "right" -%}
+      {{ admin_icon(icon, size=14 if size == 'sm' else 16) }}
+    {%- endif -%}
+  </{{ tag }}>
+{% endmacro %}
+
+{#
+  badge: Polymorphic status / category pill.
+  Renders <a> if href is present; otherwise renders <span>.
+  Supports optional pulse dot indicator (e.g. dot="green" | "amber").
+#}
+{% macro badge(
+    text="",
+    href=none,
+    variant="neutral",
+    dot=none,
+    icon=none,
+    class="",
+    attrs={}
+) %}
+  {% set tag = "a" if href else "span" %}
+  {% set dot_class = " badge--pill-icon" if dot else "" %}
+  {% set variant_class = (" badge--" ~ variant) if variant else "" %}
+  <{{ tag }} {% if href %}href="{{ href }}" {% endif %}class="badge{{ variant_class }}{{ dot_class }}{{ ' ' ~ class if class else '' }}"{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {%- if dot -%}
+      <span class="pulse-dot pulse-dot--{{ dot }}"></span>
+    {%- endif -%}
+    {%- if icon -%}
+      {{ admin_icon(icon, size=12) }}
+    {%- endif -%}
+    {%- if text -%}
+      {{ text }}
+    {%- elif caller is defined -%}
+      {{ caller() }}
+    {%- endif -%}
+  </{{ tag }}>
+{% endmacro %}
+
+{#
+  form: Accessible form container with automatic CSRF token injection for mutating methods.
+#}
+{% macro form(action=none, method="post", class="", include_csrf=true, attrs={}) %}
+  <form method="{{ method }}"{% if action %} action="{{ action }}"{% endif %}{% if class %} class="{{ class }}"{% endif %}{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {% if include_csrf and method | lower != 'get' %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% endif %}
+    {% if caller is defined %}
+      {{ caller() }}
+    {% endif %}
+  </form>
+{% endmacro %}
+
+{#
+  field: Composable form field wrapper for label, input slot, help text, and validation errors.
+#}
+{% macro field(label=none, for_id=none, required_mark=false, error=none, class="auth-field", label_class="auth-field__label", help_text=none) %}
+  <div class="{{ class }}">
+    {% if label %}
+      <label class="{{ label_class }}" {% if for_id %}for="{{ for_id }}"{% endif %}>
+        {{ label }}{% if required_mark %} <span class="auth-field__required">*</span>{% endif %}
+      </label>
+    {% endif %}
+    {% if caller is defined %}
+      {{ caller() }}
+    {% endif %}
+    {% if help_text %}
+      <p class="field-help-text">{{ help_text }}</p>
+    {% endif %}
+    {% if error %}
+      <span class="auth-field__error" role="alert">{{ error }}</span>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  input: Standard text / email / password input control with attribute unpacking and error styling.
+#}
+{% macro input(name, id=none, type="text", value="", placeholder="", required=false, autofocus=false, autocomplete=none, class="auth-field__input", error=false, attrs={}) %}
+  <input class="{{ class }}{% if error %} error{% endif %}" type="{{ type }}" name="{{ name }}" id="{{ id or name }}" value="{{ value }}" placeholder="{{ placeholder }}"{% if required %} required{% endif %}{% if autofocus %} autofocus{% endif %}{% if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+{% endmacro %}
+
+{#
+  textarea: Standard multiline text input with attribute unpacking and error styling.
+#}
+{% macro textarea(name, id=none, rows=4, value="", placeholder="", required=false, class="auth-field__input", error=false, attrs={}) %}
+  <textarea class="{{ class }}{% if error %} error{% endif %}" name="{{ name }}" id="{{ id or name }}" rows="{{ rows }}" placeholder="{{ placeholder }}"{% if required %} required{% endif %}{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>{{ value }}</textarea>
+{% endmacro %}
+
+{#
+  alert: Notification banner with icon, optional title/message, dismiss action, and caller slot.
+#}
+{% macro alert(message=none, title=none, type="error", dismissible=true, icon=none, class="", attrs={}) %}
+  <div class="alert alert--{{ type }}{{ ' ' ~ class if class else '' }}" role="alert"{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    <div class="alert__icon">
+      {% if icon %}
+        {{ admin_icon(icon, size=18) }}
+      {% else %}
+        {{ alert_icon(type) }}
+      {% endif %}
+    </div>
+    <div class="alert__content">
+      {% if title %}<strong class="alert__title">{{ title }}</strong>{% endif %}
+      {% if message %}<div class="alert__message">{{ message }}</div>{% endif %}
+      {% if caller is defined %}
+        {{ caller() }}
+      {% endif %}
+    </div>
+    {% if dismissible %}
+      <button type="button" class="alert__close" aria-label="Dismiss alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  modal: Accessible modal dialog with backdrop, dismiss trigger, title, and caller slot for body/actions.
+#}
+{% macro modal(id, title=none, class="", card_class="", close_action=none, attrs={}) %}
+  <div class="{{ class or 'confirm-modal-backdrop' }}" id="{{ id }}" role="dialog" aria-modal="true"{% if title %} aria-labelledby="{{ id }}-title"{% endif %}{% for k, v in attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    <div class="{{ card_class or 'confirm-modal-card' }}">
+      <div class="confirm-modal__header">
+        {% if title %}
+          <h2 class="confirm-modal__title" id="{{ id }}-title">{{ title }}</h2>
+        {% endif %}
+        {% call button(class="confirm-modal__close", attrs={"aria-label": "Close dialog", "data-action": close_action or ("close-" ~ id)}) %}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        {% endcall %}
+      </div>
+      <div class="confirm-modal__body">
+        {% if caller is defined %}
+          {{ caller() }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+
+

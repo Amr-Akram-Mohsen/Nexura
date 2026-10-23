@@ -12,7 +12,7 @@
     typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('nexura_newsletter_sync') : null;
 
   function notify(msg, type = 'info') {
-    if (window.Nexura.toast) {
+    if (window.Nexura && typeof window.Nexura.toast === 'function') {
       window.Nexura.toast(msg, type);
     } else if (window.Toast && typeof window.Toast.show === 'function') {
       window.Toast.show(msg, type);
@@ -90,7 +90,9 @@
     const originalText = triggerBtn ? triggerBtn.textContent : '';
     if (triggerBtn) {
       triggerBtn.disabled = true;
-      triggerBtn.innerHTML = `<span class="spinner"></span>`;
+      const spinner = document.createElement('span');
+      spinner.className = 'spinner';
+      triggerBtn.replaceChildren(spinner);
     }
 
     try {
@@ -138,7 +140,9 @@
 
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner"></span>`;
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
+    btn.replaceChildren(spinner);
 
     try {
       const params = new URLSearchParams({ email });

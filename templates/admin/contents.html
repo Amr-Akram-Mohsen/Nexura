@@ -1,6 +1,7 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Content Inventory{% endblock %}
 {% block page_title %}Content Library & Batch Operations{% endblock %}
+{% from "macros/ui.html" import badge, button %}
 {% block content %}
   <div class="admin-panel">
     {# ── Filter Toolbar ── #}
@@ -53,9 +54,8 @@
         <option value="false"
                 {% if request.args.get('is_published') == 'false' %}selected{% endif %}>Draft / Queued</option>
       </select>
-      <button class="btn btn--secondary btn--sm" type="submit">Filter</button>
-      <a class="btn btn--ghost btn--sm"
-         href="{{ url_for('admin.contents.index') }}">Reset</a>
+      {{ button(text="Filter", type="submit", variant="secondary", size="sm") }}
+      {{ button(text="Reset", href=url_for('admin.contents.index'), variant="ghost", size="sm") }}
       <div class="admin-toolbar__count">
         Showing <strong>{{ items|length }}</strong> of <strong>{{ total }}</strong> total records
       </div>
@@ -95,21 +95,16 @@
                 </a>
               </td>
               <td>
-                <span class="badge badge--{{ item.object_type }} text-capitalize">{{ item.object_type }}</span>
+                {{ badge(item.object_type, variant=item.object_type, class='text-capitalize') }}
               </td>
               <td class="admin-cell-secondary">{{ item.category.name if item.category else '-' }}</td>
               <td>
-                {% if item.is_published %}
-                  <span class="badge badge--ready">Published</span>
-                {% else %}
-                  <span class="badge badge--needs-work">Draft / Queued</span>
-                {% endif %}
+                {{ badge('Published', variant='ready') if item.is_published else badge('Draft / Queued', variant='needs-work') }}
               </td>
               <td class="admin-cell-secondary">{{ '{:,}'.format(item.view_count or 0) }}</td>
               <td class="admin-cell-meta">{{ item.published_at.strftime("%Y-%m-%d %H:%M") if item.published_at else '-' }}</td>
               <td class="text-right">
-                <a class="btn btn--ghost btn--sm"
-                   href="{{ url_for('admin.contents.inspect', content_id=item.id) }}">Inspect</a>
+                {{ button(text="Inspect", href=url_for('admin.contents.inspect', content_id=item.id), variant="ghost", size="sm") }}
               </td>
             </tr>
           {% else %}
@@ -126,12 +121,10 @@
         <span class="admin-pagination__info">Page {{ page }} of {{ total_pages }}</span>
         <div class="admin-pagination__actions">
           {% if page > 1 %}
-            <a class="btn btn--secondary btn--sm"
-               href="{{ url_for('admin.contents.index', page=page-1, q=q, type=request.args.get('type'), section_id=request.args.get('section_id'), category_id=request.args.get('category_id'), is_published=request.args.get('is_published')) }}">Previous</a>
+            {{ button(text="Previous", href=url_for('admin.contents.index', page=page-1, q=q, type=request.args.get('type'), section_id=request.args.get('section_id'), category_id=request.args.get('category_id'), is_published=request.args.get('is_published')), variant="secondary", size="sm") }}
           {% endif %}
           {% if page < total_pages %}
-            <a class="btn btn--secondary btn--sm"
-               href="{{ url_for('admin.contents.index', page=page+1, q=q, type=request.args.get('type'), section_id=request.args.get('section_id'), category_id=request.args.get('category_id'), is_published=request.args.get('is_published')) }}">Next</a>
+            {{ button(text="Next", href=url_for('admin.contents.index', page=page+1, q=q, type=request.args.get('type'), section_id=request.args.get('section_id'), category_id=request.args.get('category_id'), is_published=request.args.get('is_published')), variant="secondary", size="sm") }}
           {% endif %}
         </div>
       </div>
@@ -140,10 +133,9 @@
   {# ── Floating Batch Actions Bar (shown on row selection) ── #}
   <div class="batch-bar" id="batch-action-bar">
     <span class="batch-count-badge" id="selected-count-label">0 selected</span>
-    <button class="btn btn--secondary btn--sm" data-batch-action="publish">✓ Publish</button>
-    <button class="btn btn--secondary btn--sm" data-batch-action="unpublish">✗ Unpublish</button>
-    <button class="btn btn--secondary btn--sm" data-batch-action="deactivate">Deactivate</button>
-    <button class="btn btn--secondary btn--sm btn--danger-outline"
-            data-batch-action="delete">🗑 Delete</button>
+    {{ button(text="✓ Publish", variant="secondary", size="sm", attrs={"data-batch-action": "publish"}) }}
+    {{ button(text="✗ Unpublish", variant="secondary", size="sm", attrs={"data-batch-action": "unpublish"}) }}
+    {{ button(text="Deactivate", variant="secondary", size="sm", attrs={"data-batch-action": "deactivate"}) }}
+    {{ button(text="🗑 Delete", variant="secondary", size="sm", class="btn--danger-outline", attrs={"data-batch-action": "delete"}) }}
   </div>
 {% endblock %}

@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 import logging
-from typing import Any
 
-from flask import Blueprint, jsonify, render_template, request
-from sqlalchemy import desc, func
-from sqlalchemy.orm import joinedload
+from flask import Blueprint, jsonify, render_template
 
-from app.extensions import db
-from app.models.interaction import Comment
-from app.models.content import Content
-from app.models.user import NewsletterSubscriber
+from app.repositories.analytics_repo import AnalyticsRepository
+from app.repositories.user_repo import UserRepository
+from app.services.interaction_service import InteractionService
 from app.routes.admin import admin_required
 
 log = logging.getLogger(__name__)
@@ -23,13 +19,10 @@ moderation_bp = Blueprint("moderation", __name__)
 @admin_required
 def index():
     """Render community moderation and discussion queue with subscriber metrics."""
-    comments = db.session.query(Comment).options(joinedload(Comment.user), joinedload(Comment.content_ref)).order_by(desc(Comment.id)).limit(50).all()
-
-    subscribers = db.session.query(NewsletterSubscriber).order_by(desc(NewsletterSubscriber.created_at)).limit(50).all()
-
-    total_comments = db.session.query(func.count(Comment.id)).scalar() or 0
-    total_subscribers = db.session.query(func.count(NewsletterSubscriber.id)).scalar() or 0
-    confirmed_subscribers = db.session.query(func.count(NewsletterSubscriber.id)).filter(NewsletterSubscriber.is_confirmed.is_(True)).scalar() or 0
+    comments = AnalyticsRepository.get_moderation_queue(limit=50)
+    subscribers = UserRepository.get_subscribers(limit=50)
+    total_comments = AnalyticsRepository.get_total_comments()
+    total_subscribers, confirmed_subscribers = UserRepository.get_subscriber_counts()
 
     return render_template(
         "admin/moderation.html",
@@ -46,29 +39,5 @@ def index():
 @admin_required
 def moderate_comment(comment_id: int, action: str):
     """Execute moderation action (approve, soft_delete, hard_delete) on a user comment."""
-    comment = db.session.get(Comment, comment_id)
-    if not comment:
-        return jsonify({"success": False, "message": "Comment not found."}), 404
-
-    if action == "approve":
-        comment.sentiment = "positive" if not comment.sentiment else comment.sentiment
-        db.session.commit()
-        return jsonify({"success": True, "message": "Comment approved."})
-
-    elif action == "soft_delete":
-        comment.content = "[This comment was removed by moderators for violating community guidelines.]"
-        db.session.commit()
-        return jsonify({"success": True, "message": "Comment soft-deleted."})
-
-    elif action == "hard_delete":
-        content_id = comment.content_id
-        db.session.delete(comment)
-        if content_id:
-            content = db.session.get(Content, content_id)
-            if content:
-                content.comment_count = max(0, (content.comment_count or 0) - 1)
-        db.session.commit()
-        return jsonify({"success": True, "message": "Comment permanently deleted."})
-
-    else:
-        return jsonify({"success": False, "message": f"Invalid moderation action '{action}'."}), 400
+    success, message, status_code = InteractionService.moderate_comment(comment_id, action)
+    return jsonify({"success": success, "message": message}), status_code

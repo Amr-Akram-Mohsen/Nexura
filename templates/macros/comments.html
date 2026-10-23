@@ -14,7 +14,7 @@
         {% endif %}
         {% if c.formatted_date or c.created_at %}
           <time class="comment-card__date">
-            {{ c.formatted_date if c.formatted_date is defined and c.formatted_date else (c.created_at[:10] if c.created_at is string else c.created_at.strftime("%b %d, %Y") if c.created_at else '') }}
+            {{ c.formatted_date or (c.created_at[:10] if c.created_at is string else (c.created_at.strftime("%b %d, %Y") if c.created_at else '')) }}
           </time>
         {% endif %}
       </div>
@@ -223,7 +223,7 @@
                aria-hidden="true">
             <polyline points="6 9 12 15 18 9" />
           </svg>
-          Show {{ (comments_tree | length) - 10 }} more {{ 'comment' if ((comments_tree | length) - 10) == 1 else 'comments' }}
+          <span class="comments-load-more__text">Show {{ (comments_tree | length) - 10 }} more {{ 'comment' if ((comments_tree | length) - 10) == 1 else 'comments' }}</span>
         </button>
       </div>
     {% endif %}
@@ -242,5 +242,96 @@
       </svg>
       <p>No comments yet. Be the first to share your perspective!</p>
     </div>
+
+    {# Inert templates for dynamic comment creation and reply forms #}
+    <template id="comment-card-template">
+      <div class="comment-card" data-comment-id="" data-user-id="">
+        <div class="comment-card__avatar" aria-hidden="true"></div>
+        <div class="comment-card__body">
+          <div class="comment-card__header">
+            <span class="comment-card__author"></span>
+            <span class="comment-card__badge-you">You</span>
+            <time class="comment-card__date"></time>
+          </div>
+          <p class="comment-card__text"></p>
+          <div class="comment-card__actions">
+            <button class="comment-action-btn"
+                    data-interaction="like"
+                    data-target-type="comment"
+                    data-target-id=""
+                    disabled
+                    title="You cannot react to your own comment"
+                    aria-disabled="true"
+                    type="button">
+              <svg viewBox="0 0 24 24"
+                   fill="none"
+                   stroke="currentColor"
+                   stroke-width="2"
+                   aria-hidden="true">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
+                <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+              </svg>
+              <span data-count>0</span>
+            </button>
+            <button class="comment-action-btn"
+                    data-interaction="dislike"
+                    data-target-type="comment"
+                    data-target-id=""
+                    disabled
+                    title="You cannot react to your own comment"
+                    aria-disabled="true"
+                    type="button">
+              <svg viewBox="0 0 24 24"
+                   fill="none"
+                   stroke="currentColor"
+                   stroke-width="2"
+                   aria-hidden="true">
+                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
+                <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+              </svg>
+              <span data-count>0</span>
+            </button>
+          </div>
+          <div class="comment-reply-slot"></div>
+          <div class="comment-card__replies" aria-hidden="true"></div>
+        </div>
+      </div>
+    </template>
+
+    <template id="comment-reply-form-template">
+      <form class="comment-reply-form" data-comment-form="" data-content-id="">
+        <input type="hidden" name="content_id" value="">
+        <input type="hidden" name="parent_id" value="">
+        <textarea name="text"
+                  placeholder="Write a reply..."
+                  rows="2"
+                  maxlength="2000"
+                  required
+                  aria-label="Write a reply"></textarea>
+        <div class="comment-reply-form__actions">
+          <button class="btn btn--ghost btn--sm" type="button" data-action="cancel-reply">Cancel</button>
+          <button class="btn btn--gradient btn--sm" type="submit">Reply</button>
+        </div>
+      </form>
+    </template>
+
+    <template id="comment-replies-toggle-template">
+      <button class="comment-replies-toggle"
+              type="button"
+              data-action="toggle-replies"
+              data-target=""
+              aria-expanded="true">
+        <svg width="12"
+             height="12"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2.5"
+             aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span>1 reply</span>
+      </button>
+    </template>
   </section>
 {% endmacro %}

@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% from "macros/ui.html" import panel_header %}
 {% block title %}Social Drafts — {{ (content.title or 'Item') | truncate(40) }}{% endblock %}
 {% block page_title %}Social Media Drafts for #{{ content.id }}{% endblock %}
 {% block content %}
@@ -7,78 +8,30 @@
        href="{{ url_for('admin.syndication.index') }}">← Back to Syndication Hub</a>
   </div>
   <div class="admin-panel admin-panel--compact">
-    <div class="admin-panel__header">
-      <h2 class="admin-panel__title">{{ content.title }}</h2>
-    </div>
+    {{ panel_header(content.title, tag="h2") }}
   </div>
   {# ── Social Platform Cards Grid ── #}
   <div class="social-grid">
-    {# Twitter / X #}
-    {% if drafts.twitter %}
-      <div class="social-card">
-        <div class="social-card__header social-card__header--twitter">
-          <h3 class="admin-panel__title social-card__title">
-            <span class="social-icon--twitter">🐦</span> Twitter / X Thread Draft
-          </h3>
-          <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
-        </div>
-        <div class="social-card__content">
-          <pre class="social-copy-box">{{ drafts.twitter.text }}</pre>
-        </div>
-      </div>
-    {% endif %}
-    {# LinkedIn #}
-    {% if drafts.linkedin %}
-      <div class="social-card">
-        <div class="social-card__header social-card__header--linkedin">
-          <h3 class="admin-panel__title social-card__title">
-            <span class="social-icon--linkedin">💼</span> LinkedIn Post Draft
-          </h3>
-          <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
-        </div>
-        <div class="social-card__content">
-          <pre class="social-copy-box">{{ drafts.linkedin.text }}</pre>
-        </div>
-      </div>
-    {% endif %}
-    {# YouTube Script #}
-    {% if drafts.youtube %}
-      <div class="social-card">
-        <div class="social-card__header social-card__header--youtube">
-          <h3 class="admin-panel__title social-card__title">
-            <span class="social-icon--youtube">▶️</span> YouTube Video Outline & Hook
-          </h3>
-        </div>
-        <div class="social-card__content social-card__flow">
-          <div class="social-callout">
-            <span class="social-callout__label">0-5s Hook:</span>
-            <p class="social-callout__text">{{ drafts.youtube.hook }}</p>
+    {% set copy_drafts = [
+      ('twitter', '🐦', 'Twitter / X Thread Draft', drafts.twitter.text if drafts.twitter else None),
+      ('linkedin', '💼', 'LinkedIn Post Draft', drafts.linkedin.text if drafts.linkedin else None),
+      ('instagram', '📸', 'Instagram Caption', drafts.instagram.caption if drafts.instagram else None)
+    ] %}
+    {% for platform, icon, title, text in copy_drafts %}
+      {% if text %}
+        <div class="social-card">
+          <div class="social-card__header social-card__header--{{ platform }}">
+            <h3 class="admin-panel__title social-card__title">
+              <span class="social-icon--{{ platform }}">{{ icon }}</span> {{ title }}
+            </h3>
+            <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
           </div>
-          <div class="social-callout">
-            <span class="social-callout__label">Timestamps & Outline:</span>
-            <ul class="social-callout__list">
-              {% for step in drafts.youtube.outline %}
-                <li><strong>{{ step.time }}</strong> — <span class="social-callout__topic">{{ step.topic }}</span></li>
-              {% endfor %}
-            </ul>
+          <div class="social-card__content">
+            <pre class="social-copy-box">{{ text }}</pre>
           </div>
         </div>
-      </div>
-    {% endif %}
-    {# Instagram #}
-    {% if drafts.instagram %}
-      <div class="social-card">
-        <div class="social-card__header social-card__header--instagram">
-          <h3 class="admin-panel__title social-card__title">
-            <span class="social-icon--instagram">📸</span> Instagram Caption
-          </h3>
-          <button class="btn btn--ghost btn--sm" type="button" data-action="copy-draft">Copy</button>
-        </div>
-        <div class="social-card__content">
-          <pre class="social-copy-box">{{ drafts.instagram.caption }}</pre>
-        </div>
-      </div>
-    {% endif %}
+      {% endif %}
+    {% endfor %}
     {# Pinterest #}
     {% if drafts.pinterest %}
       <div class="social-card">

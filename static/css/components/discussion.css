@@ -71,11 +71,6 @@
   transform: scale(1.1);
 }
 
-.interaction-bar__share-group {
-  display: flex;
-  gap: var(--space-2);
-  margin-left: auto;
-}
 
 /* Comments & Discussion (§12, §19) */
 .comments-section {
@@ -164,7 +159,8 @@
   line-height: 1.5;
   resize: none;
   min-height: 21px;
-  max-height: 105px; /* ~5 lines at 21px each */
+  max-height: 105px;
+  /* ~5 lines at 21px each */
   overflow-y: hidden;
   outline: none;
   padding: 0;
@@ -259,7 +255,7 @@
   transition: background-color var(--duration-fast);
 }
 
-.comment-list > .comment-card:last-child {
+.comment-list>.comment-card:last-child {
   border-bottom: none;
 }
 

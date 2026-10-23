@@ -1,6 +1,7 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Inspect #{{ content.id }} — {{ (content.title or 'Item') | truncate(40) }}{% endblock %}
 {% block page_title %}Editorial Inspection & Readiness #{{ content.id }}{% endblock %}
+{% from "macros/ui.html" import panel_header %}
 {% block content %}
   <div class="admin-actions-bar">
     <a class="btn btn--ghost btn--sm"
@@ -16,60 +17,31 @@
   {# ── Readiness Score Card (Articles) ── #}
   {% if readiness %}
     <div class="admin-panel admin-panel--gradient">
-      <div class="admin-panel__header">
-        <h2 class="admin-panel__title">
-          <svg class="icon-blue"
-               width="18"
-               height="18"
-               viewBox="0 0 24 24"
-               fill="none"
-               stroke="currentColor"
-               stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-          Publishing Readiness Index (§9.2)
-        </h2>
+      {% call panel_header('Publishing Readiness Index (§9.2)', icon='readiness', icon_color='blue') %}
         <span class="badge {% if readiness.tier == 'Ready' %}badge--ready{% elif readiness.tier == 'Almost Ready' %}badge--almost{% elif readiness.tier == 'Needs Work' %}badge--needs-work{% else %}badge--not-ready{% endif %} badge--lg">
           {{ readiness.tier }} ({{ readiness.score }} / 100)
         </span>
-      </div>
+      {% endcall %}
       <div class="admin-panel__body">
         <div class="progress-bar-wrap progress-bar-wrap--lg">
           <div class="progress-bar-fill progress-bar-fill--tier-{{ readiness.tier | lower | replace(' ', '-') }}"
                style="--tier-progress: {{ readiness.score }}%"></div>
         </div>
         <div class="readiness-stats-grid">
-          <div class="readiness-stat-box">
-            <span class="readiness-stat-box__label">Core Metadata</span>
-            <div class="readiness-stat-box__val">
-              {{ readiness.breakdown.core_metadata }} <span class="readiness-stat-box__max">/ 25</span>
+          {% for label, val, max_val in [
+            ('Core Metadata', readiness.breakdown.core_metadata, 25),
+            ('Body & Extraction', readiness.breakdown.body_extraction, 30),
+            ('Taxonomy Mapping', readiness.breakdown.taxonomy_mapping, 20),
+            ('Media Assets', readiness.breakdown.media_assets, 15),
+            ('Source Attribution', readiness.breakdown.source_attribution, 10)
+          ] %}
+            <div class="readiness-stat-box">
+              <span class="readiness-stat-box__label">{{ label }}</span>
+              <div class="readiness-stat-box__val">
+                {{ val }} <span class="readiness-stat-box__max">/ {{ max_val }}</span>
+              </div>
             </div>
-          </div>
-          <div class="readiness-stat-box">
-            <span class="readiness-stat-box__label">Body & Extraction</span>
-            <div class="readiness-stat-box__val">
-              {{ readiness.breakdown.body_extraction }} <span class="readiness-stat-box__max">/ 30</span>
-            </div>
-          </div>
-          <div class="readiness-stat-box">
-            <span class="readiness-stat-box__label">Taxonomy Mapping</span>
-            <div class="readiness-stat-box__val">
-              {{ readiness.breakdown.taxonomy_mapping }} <span class="readiness-stat-box__max">/ 20</span>
-            </div>
-          </div>
-          <div class="readiness-stat-box">
-            <span class="readiness-stat-box__label">Media Assets</span>
-            <div class="readiness-stat-box__val">
-              {{ readiness.breakdown.media_assets }} <span class="readiness-stat-box__max">/ 15</span>
-            </div>
-          </div>
-          <div class="readiness-stat-box">
-            <span class="readiness-stat-box__label">Source Attribution</span>
-            <div class="readiness-stat-box__val">
-              {{ readiness.breakdown.source_attribution }} <span class="readiness-stat-box__max">/ 10</span>
-            </div>
-          </div>
+          {% endfor %}
         </div>
       </div>
     </div>
@@ -111,22 +83,17 @@
           <h3 class="admin-panel__title">Taxonomy & Source</h3>
         </div>
         <div class="admin-panel__body admin-kv-list">
-          <div class="admin-kv-item">
-            <span class="text-muted">Section</span>
-            <strong>{{ content.section.name if content.section else '-' }}</strong>
-          </div>
-          <div class="admin-kv-item">
-            <span class="text-muted">Category</span>
-            <strong>{{ content.category.name if content.category else '-' }}</strong>
-          </div>
-          <div class="admin-kv-item">
-            <span class="text-muted">Source</span>
-            <strong>{{ content.source.name if content.source else '-' }}</strong>
-          </div>
-          <div class="admin-kv-item">
-            <span class="text-muted">Calculated Score</span>
-            <strong>{{ content.score or 0.0 }}</strong>
-          </div>
+          {% for label, val in [
+            ('Section', content.section.name if content.section else '-'),
+            ('Category', content.category.name if content.category else '-'),
+            ('Source', content.source.name if content.source else '-'),
+            ('Calculated Score', content.score or 0.0)
+          ] %}
+            <div class="admin-kv-item">
+              <span class="text-muted">{{ label }}</span>
+              <strong>{{ val }}</strong>
+            </div>
+          {% endfor %}
         </div>
       </div>
       <div class="admin-panel admin-panel--flat">

@@ -85,17 +85,95 @@ const SearchAutocomplete = {
     }
   },
 
+  _createSkeletonRow() {
+    const tpl = document.getElementById('search-skeleton-row-template');
+    if (tpl && tpl.content) {
+      return tpl.content.firstElementChild.cloneNode(true);
+    }
+    const skeleton = document.createElement('div');
+    skeleton.className = 'autocomplete-skeleton';
+    skeleton.setAttribute('aria-hidden', 'true');
+    return skeleton;
+  },
+
   _showSkeleton() {
-    const row = () => `
-      <div class="autocomplete-skeleton" aria-hidden="true">
-        <div class="autocomplete-skeleton__thumb"></div>
-        <div class="autocomplete-skeleton__lines">
-          <div class="autocomplete-skeleton__line"></div>
-          <div class="autocomplete-skeleton__line autocomplete-skeleton__line--short"></div>
-        </div>
-      </div>`;
-    this.dropdown.innerHTML = row() + row() + row();
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < 3; i++) {
+      frag.appendChild(this._createSkeletonRow());
+    }
+    this.dropdown.replaceChildren(frag);
     this._open();
+  },
+
+  _createItem(item, type) {
+    const tpl = document.getElementById('search-item-template');
+    let a;
+    if (tpl && tpl.content) {
+      a = tpl.content.firstElementChild.cloneNode(true);
+    } else {
+      a = document.createElement('a');
+      a.className = 'autocomplete-item';
+    }
+
+    if (item.url && (item.url.startsWith('/') || item.url.startsWith('http://') || item.url.startsWith('https://'))) {
+      a.href = item.url;
+    } else {
+      a.href = '#';
+    }
+    a.dataset.type = type;
+
+    const thumbEl = a.querySelector('.autocomplete-item__thumb');
+    if (thumbEl) {
+      if (item.thumb && (item.thumb.startsWith('/') || item.thumb.startsWith('http://') || item.thumb.startsWith('https://'))) {
+        const img = document.createElement('img');
+        img.className = 'autocomplete-item__thumb';
+        img.src = item.thumb;
+        img.alt = '';
+        img.loading = 'lazy';
+        thumbEl.replaceWith(img);
+      }
+    }
+
+    const titleDiv = a.querySelector('.autocomplete-item__title');
+    if (titleDiv) {
+      titleDiv.textContent = item.title || '';
+    }
+
+    const categoryText = type === 'article' ? item.category : item.channel;
+    const categoryDiv = a.querySelector('.autocomplete-item__category');
+    if (categoryDiv) {
+      if (categoryText) {
+        categoryDiv.textContent = categoryText;
+      } else {
+        categoryDiv.remove();
+      }
+    }
+
+    const badge = a.querySelector('.autocomplete-item__badge');
+    if (badge) {
+      badge.className = `autocomplete-item__badge autocomplete-item__badge--${type}`;
+      badge.textContent = type === 'article' ? 'Article' : 'Video';
+    }
+
+    return a;
+  },
+
+  _createFooter(q) {
+    const tpl = document.getElementById('search-footer-template');
+    if (tpl && tpl.content) {
+      const footer = tpl.content.firstElementChild.cloneNode(true);
+      footer.href = `/search?q=${encodeURIComponent(q)}`;
+      const queryEl = footer.querySelector('.autocomplete-footer__query');
+      if (queryEl) {
+        queryEl.textContent = `“${q}”`;
+      }
+      return footer;
+    }
+    const footer = document.createElement('a');
+    footer.className = 'autocomplete-footer';
+    footer.href = `/search?q=${encodeURIComponent(q)}`;
+    footer.textContent = `View all results for “${q}”`;
+    return footer;
   },
 
   _render(q, data) {
@@ -107,49 +185,33 @@ const SearchAutocomplete = {
       return;
     }
 
-    let html = '';
+    const frag = document.createDocumentFragment();
 
     if (articles.length) {
-      html += `<div class="autocomplete-section-title">Articles</div>`;
-      html += articles
-        .map(
-          (item) => `
-        <a class="autocomplete-item" href="${this._esc(item.url)}" data-type="article">
-          ${item.thumb ? `<img class="autocomplete-item__thumb" src="${this._esc(item.thumb)}" alt="" loading="lazy">` : `<div class="autocomplete-item__thumb"></div>`}
-          <div class="autocomplete-item__text">
-            <div class="autocomplete-item__title">${this._esc(item.title)}</div>
-            ${item.category ? `<div class="autocomplete-item__category">${this._esc(item.category)}</div>` : ''}
-          </div>
-          <span class="autocomplete-item__badge autocomplete-item__badge--article">Article</span>
-        </a>`
-        )
-        .join('');
+      const sectionTitle = document.createElement('div');
+      sectionTitle.className = 'autocomplete-section-title';
+      sectionTitle.textContent = 'Articles';
+      frag.appendChild(sectionTitle);
+
+      articles.forEach((item) => {
+        frag.appendChild(this._createItem(item, 'article'));
+      });
     }
 
     if (videos.length) {
-      html += `<div class="autocomplete-section-title">Videos</div>`;
-      html += videos
-        .map(
-          (item) => `
-        <a class="autocomplete-item" href="${this._esc(item.url)}" data-type="video">
-          ${item.thumb ? `<img class="autocomplete-item__thumb" src="${this._esc(item.thumb)}" alt="" loading="lazy">` : `<div class="autocomplete-item__thumb"></div>`}
-          <div class="autocomplete-item__text">
-            <div class="autocomplete-item__title">${this._esc(item.title)}</div>
-            ${item.channel ? `<div class="autocomplete-item__category">${this._esc(item.channel)}</div>` : ''}
-          </div>
-          <span class="autocomplete-item__badge autocomplete-item__badge--video">Video</span>
-        </a>`
-        )
-        .join('');
+      const sectionTitle = document.createElement('div');
+      sectionTitle.className = 'autocomplete-section-title';
+      sectionTitle.textContent = 'Videos';
+      frag.appendChild(sectionTitle);
+
+      videos.forEach((item) => {
+        frag.appendChild(this._createItem(item, 'video'));
+      });
     }
 
-    // "View all results" footer
-    html += `<a class="autocomplete-footer" href="/search?q=${encodeURIComponent(q)}">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      View all results for <strong>&ldquo;${this._esc(q)}&rdquo;</strong>
-    </a>`;
+    frag.appendChild(this._createFooter(q));
 
-    this.dropdown.innerHTML = html;
+    this.dropdown.replaceChildren(frag);
     this._open();
   },
 

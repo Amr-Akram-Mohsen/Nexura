@@ -11,7 +11,7 @@
   let activeAuthPopover = null;
 
   function notify(msg, type = 'info') {
-    if (window.Nexura.toast) {
+    if (window.Nexura && typeof window.Nexura.toast === 'function') {
       window.Nexura.toast(msg, type);
     } else if (window.Toast && typeof window.Toast.show === 'function') {
       window.Toast.show(msg, type);
@@ -23,10 +23,12 @@
       activeAuthPopover.dismiss();
     }
 
-    const popover = document.createElement('div');
-    popover.className = 'auth-popover';
-    popover.setAttribute('role', 'dialog');
-    popover.setAttribute('aria-label', 'Sign in required');
+    const template = document.getElementById('auth-popover-template');
+    if (!template || !template.content) return;
+    const clone = template.content.cloneNode(true);
+    const popover = clone.querySelector('.auth-popover');
+    if (!popover) return;
+
 
     const actionMap = {
       like: 'like this',
@@ -36,19 +38,20 @@
     const actionText = actionMap[action] || 'interact';
     const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
 
-    popover.innerHTML = `
-      <div class="auth-popover__header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        <span>Sign in to ${actionText}</span>
-      </div>
-      <div class="auth-popover__actions">
-        <a href="/auth/login?next=${returnUrl}" class="auth-popover__btn auth-popover__btn--login">Log In</a>
-        <a href="/auth/register?next=${returnUrl}" class="auth-popover__btn auth-popover__btn--signup">Sign Up</a>
-      </div>
-    `;
+    const titleEl = popover.querySelector('.auth-popover__title, .auth-popover__header span');
+    if (titleEl) {
+      titleEl.textContent = `Sign in to ${actionText}`;
+    }
+
+    const loginBtn = popover.querySelector('.auth-popover__btn--login');
+    if (loginBtn) {
+      loginBtn.href = `/auth/login?next=${returnUrl}`;
+    }
+
+    const signupBtn = popover.querySelector('.auth-popover__btn--signup');
+    if (signupBtn) {
+      signupBtn.href = `/auth/register?next=${returnUrl}`;
+    }
 
     document.body.appendChild(popover);
 
@@ -74,8 +77,8 @@
       left = window.innerWidth - margin - halfWidth;
     }
 
-    popover.style.top = `${Math.round(top)}px`;
-    popover.style.left = `${Math.round(left)}px`;
+    popover.style.setProperty('--popover-top', `${Math.round(top)}px`);
+    popover.style.setProperty('--popover-left', `${Math.round(left)}px`);
 
     let dismissTimer = null;
 

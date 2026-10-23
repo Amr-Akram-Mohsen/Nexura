@@ -25,3 +25,19 @@
         content="{{ description | truncate(200) }}">
   {% if image %}<meta name="twitter:image" content="{{ image }}">{% endif %}
 {% endmacro %}
+
+{#
+  collection_json_ld: JSON-LD CollectionPage schema for section, category, and topic discovery pages.
+#}
+{% macro collection_json_ld(name, description=None) %}
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": {{ name | tojson }},
+  "description": {{ (description or ('Browse ' ~ name ~ ' coverage on Nexura.')) | tojson }},
+  "url": {{ request.url | tojson }}
+}
+  </script>
+{% endmacro %}
+

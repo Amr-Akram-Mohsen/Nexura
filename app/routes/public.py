@@ -12,24 +12,18 @@ from app.extensions import cache, db
 from app.caching import (
     CACHE_TTL_HOME,
     CACHE_TTL_HOME_FOR_YOU,
-    CACHE_TTL_CONTENT_PAGE,
     CACHE_TTL_SEARCH_RESULTS,
     CACHE_TTL_SEARCH_SUGGESTIONS,
     CACHE_TTL_LAYOUT,
     key_home_for_you,
     invalidate_home_for_you,
 )
-from app.models.taxonomy import Category, Entity
-from app.models.article import Article
-from app.models.video import Video
-from app.models.source import Source
 from app.repositories.content_repo import ContentRepository
-from app.repositories.article_repo import ArticleRepository
-from app.repositories.video_repo import VideoRepository
 from app.repositories.taxonomy_repo import TaxonomyRepository
 from app.repositories.search_repo import SearchRepository
 from app.repositories.analytics_repo import AnalyticsRepository
-from app.serializers.content_serializers import serialize_content_card, _format_duration
+from app.serializers.content_serializers import serialize_content_card
+from app.services.content_service import ContentService
 from app.services.recommendation_service import RecommendationService, trending_reason
 from config import SOCIAL_LINKS
 
@@ -115,6 +109,66 @@ def _prepare_detail_view(content_id: int, slug_or_id: str | int | None, endpoint
 
     _record_view(content_id)
     return content_live, None
+
+
+def _parse_pagination_params() -> tuple[int, str | None]:
+    """Extract standard page number and optional content type filter from query params."""
+    return request.args.get("page", 1, type=int), request.args.get("type")
+
+
+def _resolve_detail_page(
+    slug_or_id: str | int | None,
+    content_id: int | None,
+    expected_type: str,
+    endpoint: str,
+) -> tuple[dict[str, Any] | None, Any]:
+    """Validate content, enforce canonical slug redirect, and assemble shared detail context."""
+    cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
+    if not cid:
+        abort(404)
+
+    page_data = ContentService.get_detail_page_data(cid, expected_type)
+    if not page_data:
+        abort(404)
+
+    content_live, redirect_resp = _prepare_detail_view(cid, slug_or_id, endpoint)
+    if redirect_resp:
+        return None, redirect_resp
+
+    for attr in (
+        "section_slug",
+        "section_name",
+        "category_slug",
+        "category_name",
+        "formatted_date",
+        "formatted_date_long",
+        "reading_time_text",
+    ):
+        if attr in page_data:
+            setattr(content_live, attr, page_data[attr])
+
+    uid = current_user.id if current_user.is_authenticated else None
+    shared_context = {
+        "content": content_live,
+        "related_items": page_data.get("related"),
+        "user_state": _user_state(cid),
+        "comments_tree": AnalyticsRepository.get_comments_tree(cid, current_user_id=uid),
+        "breadcrumbs": page_data.get("breadcrumbs"),
+        "formatted_date_long": page_data.get("formatted_date_long"),
+        "reading_time_text": page_data.get("reading_time_text"),
+    }
+    return page_data, shared_context
+
+
+def _render_newsletter_feedback(result: dict[str, Any], success_title: str, fail_title: str):
+    """Render newsletter confirmation/unsubscription feedback with consistent status code."""
+    success = result.get("success", False)
+    return render_template(
+        "public/newsletter_feedback.html",
+        title=success_title if success else fail_title,
+        message=result.get("message"),
+        success=success,
+    ), (200 if success else 400)
 
 
 HOME_SHELF_SIZE = 6
@@ -209,13 +263,12 @@ def section(section_slug: str):
     if not section_obj:
         abort(404)
 
-    page = request.args.get("page", 1, type=int)
-    content_type = request.args.get("type")
+    page, content_type = _parse_pagination_params()
     category_slug = request.args.get("category")
 
     category_id = None
     if category_slug:
-        cat = db.session.query(Category).filter(Category.slug == category_slug).first()
+        cat = TaxonomyRepository.get_category_by_slug(category_slug)
         category_id = cat.id if cat else None
 
     pagination_obj = ContentRepository.list_published(
@@ -246,12 +299,11 @@ def category(section_slug: str, category_slug: str):
     if not section_obj:
         abort(404)
 
-    cat_obj = db.session.query(Category).filter(Category.slug == category_slug).first()
+    cat_obj = TaxonomyRepository.get_category_by_slug(category_slug)
     if not cat_obj:
         abort(404)
 
-    page = request.args.get("page", 1, type=int)
-    content_type = request.args.get("type")
+    page, content_type = _parse_pagination_params()
 
     pagination_obj = ContentRepository.list_published(
         section_id=section_obj.id, category_id=cat_obj.id, object_type=content_type or None, page=page, per_page=24
@@ -277,12 +329,11 @@ def category(section_slug: str, category_slug: str):
 @public_bp.route("/topic/<entity_slug>")
 def topic(entity_slug: str):
     """Render topic landing page for a specific named entity."""
-    entity = db.session.query(Entity).filter(Entity.slug == entity_slug).first()
+    entity = TaxonomyRepository.get_entity_by_slug(entity_slug)
     if not entity:
         abort(404)
 
-    page = request.args.get("page", 1, type=int)
-    content_type = request.args.get("type")
+    page, content_type = _parse_pagination_params()
 
     pagination_obj = ContentRepository.list_by_entity(entity_id=entity.id, object_type=content_type or None, page=page, per_page=24)
 
@@ -305,122 +356,33 @@ def topic(entity_slug: str):
 @public_bp.route("/article/<int:content_id>")
 def article(slug_or_id: str | None = None, content_id: int | None = None):
     """Render article detail view with authors, sources, entities, and comments."""
-    cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
-    if not cid:
-        abort(404)
-
-    cache_key = f"content_page_{cid}"
-    page_data = cache.get(cache_key)
-
+    page_data, context_or_redirect = _resolve_detail_page(slug_or_id, content_id, "article", "public.article")
     if page_data is None:
-        content = ContentRepository.get_published_content(cid)
-        if not content or content.object_type != "article":
-            abort(404)
+        return context_or_redirect
 
-        article_obj = db.session.get(Article, content.object_id)
-        if not article_obj:
-            abort(404)
-
-        related_entries = RecommendationService.get_related_recommendations_with_reasons(cid, limit=6)
-        if not related_entries:
-            fallback = ContentRepository.get_related_content(cid, limit=6)
-            related_entries = [(item, "Related story") for item in fallback]
-
-        page_data = {
-            "content": content,
-            "article": article_obj,
-            "authors": ArticleRepository.get_authors(article_obj.id),
-            "source": db.session.get(Source, content.source_id) if content.source_id else None,
-            "entities": ContentRepository.get_entities_for_content(cid),
-            "related": _serialize_shelf_items(related_entries),
-            "section_slug": content.section.slug if content.section else None,
-            "section_name": content.section.name if content.section else None,
-            "category_slug": content.category.slug if content.category else None,
-            "category_name": content.category.name if content.category else None,
-        }
-        cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
-
-    content_live, redirect_resp = _prepare_detail_view(cid, slug_or_id, "public.article")
-    if redirect_resp:
-        return redirect_resp
-
-    content_live.section_slug = page_data.get("section_slug")
-    content_live.section_name = page_data.get("section_name")
-    content_live.category_slug = page_data.get("category_slug")
-    content_live.category_name = page_data.get("category_name")
-
-    uid = current_user.id if current_user.is_authenticated else None
-    return render_template(
-        "public/article.html",
-        content=content_live,
-        article=page_data["article"],
-        authors=page_data["authors"],
-        source=page_data["source"],
-        entities=page_data["entities"],
-        related_items=page_data["related"],
-        user_state=_user_state(cid),
-        comments_tree=AnalyticsRepository.get_comments_tree(cid, current_user_id=uid),
-    )
+    context_or_redirect.update({
+        "article": page_data["article"],
+        "authors": page_data.get("authors", []),
+        "source": page_data.get("source"),
+        "entities": page_data.get("entities", []),
+    })
+    return render_template("public/article.html", **context_or_redirect)
 
 
 @public_bp.route("/video/<slug_or_id>")
 @public_bp.route("/video/<int:content_id>")
 def video(slug_or_id: str | None = None, content_id: int | None = None):
     """Render video detail view with player, comments, and related items."""
-    cid = _extract_content_id(slug_or_id if slug_or_id is not None else content_id)
-    if not cid:
-        abort(404)
-
-    cache_key = f"content_page_{cid}"
-    page_data = cache.get(cache_key)
-
+    page_data, context_or_redirect = _resolve_detail_page(slug_or_id, content_id, "video", "public.video")
     if page_data is None:
-        content = ContentRepository.get_published_content(cid)
-        if not content or content.object_type != "video":
-            abort(404)
+        return context_or_redirect
 
-        video_obj = db.session.get(Video, content.object_id)
-        if not video_obj:
-            abort(404)
-
-        related_entries = RecommendationService.get_related_recommendations_with_reasons(cid, limit=6)
-        if not related_entries:
-            fallback = ContentRepository.get_related_content(cid, limit=6)
-            related_entries = [(item, "Related story") for item in fallback]
-
-        page_data = {
-            "content": content,
-            "video": video_obj,
-            "yt_comments": VideoRepository.get_top_comments(video_obj.id, limit=15),
-            "related": _serialize_shelf_items(related_entries),
-            "duration_formatted": _format_duration(video_obj.duration_seconds),
-            "section_slug": content.section.slug if content.section else None,
-            "section_name": content.section.name if content.section else None,
-            "category_slug": content.category.slug if content.category else None,
-            "category_name": content.category.name if content.category else None,
-        }
-        cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
-
-    content_live, redirect_resp = _prepare_detail_view(cid, slug_or_id, "public.video")
-    if redirect_resp:
-        return redirect_resp
-
-    content_live.section_slug = page_data.get("section_slug")
-    content_live.section_name = page_data.get("section_name")
-    content_live.category_slug = page_data.get("category_slug")
-    content_live.category_name = page_data.get("category_name")
-
-    uid = current_user.id if current_user.is_authenticated else None
-    return render_template(
-        "public/video.html",
-        content=content_live,
-        video=page_data["video"],
-        yt_comments=page_data["yt_comments"],
-        comments_tree=AnalyticsRepository.get_comments_tree(cid, current_user_id=uid),
-        related_items=page_data["related"],
-        duration_formatted=page_data["duration_formatted"],
-        user_state=_user_state(cid),
-    )
+    context_or_redirect.update({
+        "video": page_data["video"],
+        "yt_comments": page_data.get("yt_comments", []),
+        "duration_formatted": page_data.get("duration_formatted"),
+    })
+    return render_template("public/video.html", **context_or_redirect)
 
 
 @public_bp.route("/search")
@@ -562,24 +524,12 @@ def privacy():
 def confirm_newsletter(token: str):
     """Confirm a newsletter subscription via double opt-in link."""
     from app.services.newsletter_service import confirm_subscription
-    result = confirm_subscription(token)
-    return render_template(
-        "public/newsletter_feedback.html",
-        title="Subscription Confirmed" if result.get("success") else "Confirmation Failed",
-        message=result.get("message"),
-        success=result.get("success", False),
-    ), (200 if result.get("success") else 400)
+    return _render_newsletter_feedback(confirm_subscription(token), "Subscription Confirmed", "Confirmation Failed")
 
 
 @public_bp.route("/newsletter/unsubscribe/<token>")
 def unsubscribe_newsletter(token: str):
     """Unsubscribe from Nexura newsletter."""
     from app.services.newsletter_service import unsubscribe_newsletter
-    result = unsubscribe_newsletter(token)
-    return render_template(
-        "public/newsletter_feedback.html",
-        title="Unsubscribed" if result.get("success") else "Unsubscribe Failed",
-        message=result.get("message"),
-        success=result.get("success", False),
-    ), (200 if result.get("success") else 400)
+    return _render_newsletter_feedback(unsubscribe_newsletter(token), "Unsubscribed", "Unsubscribe Failed")
 

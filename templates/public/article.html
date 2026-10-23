@@ -4,26 +4,16 @@
 {% from "macros/breadcrumb.html" import breadcrumb %}
 {% from "macros/newsletter.html" import newsletter_box with context %}
 {% from "macros/interactions.html" import interaction_bar, sticky_pill %}
-{% block title %}{{ article.title }}{% endblock %}
-{% block description %}{{ article.summary or article.preview or (article.content_text[:160] if article.content_text else
-  '') }}{% endblock %}
-{% block robots %}index, follow{% endblock %}
-{% block canonical %}
-  <link rel="canonical"
-        href="{{ request.host_url }}article/{{ content.slug_id }}">
-{% endblock %}
-{% block og_tags %}
-  <meta property="og:title" content="{{ article.title }}">
-  <meta property="og:description"
-        content="{{ article.summary or '' | truncate(200) }}">
-  <meta property="og:type" content="article">
-  <meta property="og:url"
-        content="{{ request.host_url }}article/{{ content.slug_id }}">
-  {% if article.image_url %}
-    <meta property="og:image" content="{{ article.image_url }}">
-  {% endif %}
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ article.title }}">
+{% from "macros/meta_tags.html" import meta_tags %}
+{% from "macros/ui.html" import time_badge %}
+{% block head_meta %}
+  {{ meta_tags(
+      title=article.title,
+      description=article.summary or article.preview or (article.content_text[:160] if article.content_text else ''),
+      image=article.image_url,
+      content_type='article',
+      canonical=request.host_url ~ 'article/' ~ content.slug_id
+  ) }}
 {% endblock %}
 {% block structured_data %}
   <script type="application/ld+json">
@@ -41,15 +31,7 @@
 {% block content %}
   <div class="container">
     {# Breadcrumb #}
-    {% set breadcrumb_items = [{"name": "Home", "url": "/"}] %}
-    {% if content.section_name and content.section_slug %}
-      {% set _ = breadcrumb_items.append({'name': content.section_name, 'url': '/' ~ content.section_slug}) %}
-    {% endif %}
-    {% if content.category_name and content.category_slug and content.section_slug %}
-      {% set _ = breadcrumb_items.append({'name': content.category_name, 'url': '/' ~ content.section_slug ~ '/' ~ content.category_slug}) %}
-    {% endif %}
-    {% set _ = breadcrumb_items.append({'name': article.title | truncate(50)}) %}
-    {{ breadcrumb(breadcrumb_items) }}
+    {{ breadcrumb(breadcrumbs) }}
     <div class="content-with-sidebar">
       {# Article Main Column #}
       <article itemscope itemtype="https://schema.org/NewsArticle">
@@ -63,21 +45,7 @@
             {% if content.section_slug %}
               <a class="badge badge--category" href="/{{ content.section_slug }}">{{ content.section_name }}</a>
             {% endif %}
-            {% if article.word_count and article.word_count > 0 %}
-              <span class="badge badge--category">
-                <svg width="10"
-                     height="10"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2.5"
-                     aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                {{ ((article.word_count / 200) | int) + 1 }} min read
-              </span>
-            {% endif %}
+            {{ time_badge(reading_time_text or (((article.word_count / 200) | int) + 1 ~ ' min read')) }}
           </div>
           <h1 class="article-header__title" itemprop="headline">{{ article.title }}</h1>
           <div class="article-header__meta">
@@ -94,7 +62,7 @@
                       <time class="author-bar__date"
                             datetime="{{ content.published_at.isoformat() }}"
                             itemprop="datePublished">
-                        {{ content.published_at.strftime("%B %d, %Y") }}
+                        {{ content.formatted_date_long or formatted_date_long }}
                       </time>
                     {% endif %}
                   </div>
@@ -104,7 +72,7 @@
               {% if content.published_at %}
                 <time class="author-bar__date"
                       datetime="{{ content.published_at.isoformat() }}">
-                  {{ content.published_at.strftime("%B %d, %Y") }}
+                  {{ content.formatted_date_long or formatted_date_long }}
                 </time>
               {% endif %}
             {% endif %}
@@ -173,7 +141,7 @@
             <h2 class="sidebar-widget__title">Related</h2>
             <div class="related-articles-list">
               {% for related in related_items[:5] %}
-                <a href="{{ related.url or ('/video/' ~ (related.slug_id or related.id) if related.object_type == 'video' else '/article/' ~ (related.slug_id or related.id)) }}"
+                <a href="{{ related.url }}"
                    class="related-article-card">
                   {% if related.thumbnail %}
                     <img src="{{ related.thumbnail }}"

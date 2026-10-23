@@ -22,7 +22,7 @@
   }
 
   function notify(msg, type = 'info') {
-    if (window.Nexura.toast) {
+    if (window.Nexura && typeof window.Nexura.toast === 'function') {
       window.Nexura.toast(msg, type);
     } else if (window.Toast && typeof window.Toast.show === 'function') {
       window.Toast.show(msg, type);
@@ -43,22 +43,81 @@
 
     document.querySelectorAll('.comment-reply-form').forEach((f) => f.remove());
 
-    const form = document.createElement('form');
-    form.className = 'comment-reply-form';
-    form.setAttribute('data-comment-form', '');
+    const template = document.getElementById('comment-reply-form-template');
+    if (!template || !template.content) return;
+    const clone = template.content.cloneNode(true);
+    const form = clone.querySelector('.comment-reply-form');
+    if (!form) return;
+
+
     form.setAttribute('data-content-id', contentId);
-    form.innerHTML = `
-      <input type="hidden" name="content_id" value="${encodeURIComponent(contentId)}">
-      <input type="hidden" name="parent_id" value="${encodeURIComponent(parentId)}">
-      <textarea name="text" placeholder="Write a reply..." rows="2" maxlength="2000" required></textarea>
-      <div class="comment-reply-form__actions">
-        <button class="btn btn--ghost btn--sm" type="button" data-action="cancel-reply">Cancel</button>
-        <button class="btn btn--gradient btn--sm" type="submit">Reply</button>
-      </div>
-    `;
+    const contentInput = form.querySelector('input[name="content_id"]');
+    if (contentInput) contentInput.value = contentId;
+    const parentInput = form.querySelector('input[name="parent_id"]');
+    if (parentInput) parentInput.value = parentId;
+
     slot.appendChild(form);
     const textarea = form.querySelector('textarea');
     if (textarea) textarea.focus();
+  }
+
+  function buildCommentCard(c, parentId) {
+    const template = document.getElementById('comment-card-template');
+    let card;
+    if (template && template.content) {
+      const clone = template.content.cloneNode(true);
+      card = clone.querySelector('.comment-card');
+    }
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'comment-card';
+    }
+
+    card.id = `comment-${c.id}`;
+    card.dataset.commentId = String(c.id);
+    card.dataset.userId = String(c.user_id);
+    if (parentId) {
+      card.classList.add('comment-card--reply');
+    }
+
+    const initial = (c.user_name || 'C')[0].toUpperCase();
+    const avatar = card.querySelector('.comment-card__avatar');
+    if (avatar) avatar.textContent = initial;
+
+    const author = card.querySelector('.comment-card__author');
+    if (author) author.textContent = c.user_name || 'Community Member';
+
+    const date = card.querySelector('.comment-card__date');
+    if (date) date.textContent = c.formatted_date || 'Just now';
+
+    const text = card.querySelector('.comment-card__text');
+    if (text) text.textContent = c.content || '';
+
+    const actionBtns = card.querySelectorAll('.comment-action-btn');
+    actionBtns.forEach((btn) => {
+      btn.dataset.targetId = String(c.id);
+    });
+
+    const replySlot = card.querySelector('.comment-reply-slot');
+    if (replySlot) {
+      if (parentId) {
+        replySlot.remove();
+      } else {
+        replySlot.id = `reply-slot-${c.id}`;
+      }
+    }
+
+    const repliesContainer = card.querySelector('.comment-card__replies');
+    if (repliesContainer) {
+      if (parentId) {
+        repliesContainer.remove();
+      } else {
+        repliesContainer.id = `replies-${c.id}`;
+        repliesContainer.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    return card;
   }
 
   async function handleCommentSubmit(form) {
@@ -82,10 +141,13 @@
       return;
     }
 
-    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    let originalBtnChildren = null;
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner"></span>';
+      originalBtnChildren = Array.from(submitBtn.childNodes).map((n) => n.cloneNode(true));
+      const spinner = document.createElement('span');
+      spinner.className = 'spinner';
+      submitBtn.replaceChildren(spinner);
     }
 
     try {
@@ -119,45 +181,7 @@
 
       if (data.success && data.comment) {
         const c = data.comment;
-        const initial = (c.user_name || 'C')[0].toUpperCase();
-
-        const cardHtml = `
-          <div class="comment-card ${parentId ? 'comment-card--reply' : ''}" id="comment-${c.id}" data-comment-id="${c.id}" data-user-id="${c.user_id}">
-            <div class="comment-card__avatar" aria-hidden="true">${escapeHtml(initial)}</div>
-            <div class="comment-card__body">
-              <div class="comment-card__header">
-                <span class="comment-card__author">${escapeHtml(c.user_name || 'Community Member')}</span>
-                <span class="comment-card__badge-you">You</span>
-                <time class="comment-card__date">${escapeHtml(c.formatted_date || 'Just now')}</time>
-              </div>
-              <p class="comment-card__text">${escapeHtml(c.content)}</p>
-              <div class="comment-card__actions">
-                <button class="comment-action-btn" data-interaction="like" data-target-type="comment" data-target-id="${c.id}" disabled title="You cannot react to your own comment" aria-disabled="true" type="button">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
-                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                  </svg>
-                  <span data-count>0</span>
-                </button>
-                <button class="comment-action-btn" data-interaction="dislike" data-target-type="comment" data-target-id="${c.id}" disabled title="You cannot react to your own comment" aria-disabled="true" type="button">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
-                    <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-                  </svg>
-                  <span data-count>0</span>
-                </button>
-              </div>
-              ${
-                !parentId
-                  ? `
-              <div class="comment-reply-slot" id="reply-slot-${c.id}"></div>
-              <div class="comment-card__replies" id="replies-${c.id}" style="display:none;"></div>
-              `
-                  : ''
-              }
-            </div>
-          </div>
-        `;
+        const newCard = buildCommentCard(c, parentId);
 
         if (parentId) {
           const parentCard = document.getElementById(`comment-${parentId}`);
@@ -167,12 +191,16 @@
             repliesContainer.className = 'comment-card__replies';
             repliesContainer.id = `replies-${parentId}`;
             repliesContainer.setAttribute('aria-hidden', 'false');
-            parentCard.querySelector('.comment-card__body').appendChild(repliesContainer);
+            const parentBody = parentCard.querySelector('.comment-card__body');
+            if (parentBody) {
+              parentBody.appendChild(repliesContainer);
+            } else {
+              parentCard.appendChild(repliesContainer);
+            }
           }
           if (repliesContainer) {
-            repliesContainer.style.display = 'flex';
             repliesContainer.setAttribute('aria-hidden', 'false');
-            repliesContainer.insertAdjacentHTML('beforeend', cardHtml);
+            repliesContainer.appendChild(newCard);
           }
           // Update or create the replies toggle button
           const existingToggle = parentCard
@@ -188,15 +216,25 @@
               const newCount = currentCount + 1;
               countEl.textContent = `${newCount} ${newCount === 1 ? 'reply' : 'replies'}`;
             }
-          } else if (parentCard) {
+          } else if (parentCard && repliesContainer) {
             // First reply — create the toggle button before the replies container
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'comment-replies-toggle';
-            toggleBtn.type = 'button';
+            const toggleTemplate = document.getElementById('comment-replies-toggle-template');
+            let toggleBtn;
+            if (toggleTemplate && toggleTemplate.content) {
+              const clone = toggleTemplate.content.cloneNode(true);
+              toggleBtn = clone.querySelector('.comment-replies-toggle');
+            }
+            if (!toggleBtn) {
+              toggleBtn = document.createElement('button');
+              toggleBtn.className = 'comment-replies-toggle';
+              toggleBtn.type = 'button';
+              const span = document.createElement('span');
+              span.textContent = '1 reply';
+              toggleBtn.appendChild(span);
+            }
             toggleBtn.dataset.action = 'toggle-replies';
             toggleBtn.dataset.target = `replies-${parentId}`;
             toggleBtn.setAttribute('aria-expanded', 'true');
-            toggleBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span>1 reply</span>`;
             repliesContainer.parentNode.insertBefore(toggleBtn, repliesContainer);
           }
           form.remove();
@@ -205,11 +243,14 @@
           if (list) {
             const wrapper = document.createElement('div');
             wrapper.className = 'comment-list__item';
-            wrapper.innerHTML = cardHtml;
+            wrapper.appendChild(newCard);
             list.insertAdjacentElement('afterbegin', wrapper);
           }
           const emptyState = document.getElementById('comments-empty');
-          if (emptyState) emptyState.style.display = 'none';
+          if (emptyState) {
+            if (window.Nexura && window.Nexura.dom) window.Nexura.dom.hide(emptyState);
+            else emptyState.setAttribute('hidden', '');
+          }
 
           form.reset();
           const charCount = form.querySelector('[data-char-count]');
@@ -233,26 +274,31 @@
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnHtml;
+        if (originalBtnChildren) {
+          submitBtn.replaceChildren(...originalBtnChildren);
+        }
       }
     }
   }
 
   function initCommentExpands() {
-    document.querySelectorAll('.comment-card__expand-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const text = btn.previousElementSibling;
-        if (!text) return;
-        const isClamped = text.classList.toggle('comment-card__text--clamped');
-        btn.textContent = isClamped ? 'Show more' : 'Show less';
-        btn.setAttribute('aria-expanded', isClamped ? 'false' : 'true');
-      });
-    });
+    // Kept for backward compatibility; expand buttons are now handled via event delegation.
   }
 
   // Delegated event handling for comments
   document.addEventListener('click', (e) => {
     const target = e.target;
+
+    const expandBtn = target.closest('.comment-card__expand-btn');
+    if (expandBtn) {
+      e.preventDefault();
+      const text = expandBtn.previousElementSibling;
+      if (!text) return;
+      const isClamped = text.classList.toggle('comment-card__text--clamped');
+      expandBtn.textContent = isClamped ? 'Show more' : 'Show less';
+      expandBtn.setAttribute('aria-expanded', isClamped ? 'false' : 'true');
+      return;
+    }
 
     const scrollCommentsBtn = target.closest(
       '[data-action="scroll-to-comments"], a[href="#comments"]'
@@ -283,11 +329,9 @@
       if (!container) return;
       const isOpen = repliesToggle.getAttribute('aria-expanded') === 'true';
       if (isOpen) {
-        container.style.display = 'none';
         container.setAttribute('aria-hidden', 'true');
         repliesToggle.setAttribute('aria-expanded', 'false');
       } else {
-        container.style.display = 'flex';
         container.setAttribute('aria-hidden', 'false');
         repliesToggle.setAttribute('aria-expanded', 'true');
       }
@@ -304,12 +348,18 @@
       const remaining = hidden.length - toShow.length;
       if (remaining <= 0) {
         const loadMoreEl = document.getElementById('comments-load-more');
-        if (loadMoreEl) loadMoreEl.style.display = 'none';
+        if (loadMoreEl) {
+          if (window.Nexura && window.Nexura.dom) window.Nexura.dom.hide(loadMoreEl);
+          else loadMoreEl.setAttribute('hidden', '');
+        }
       } else {
-        loadMoreBtn.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-          Show ${remaining} more ${remaining === 1 ? 'comment' : 'comments'}
-        `;
+        const textSpan = loadMoreBtn.querySelector('.comments-load-more__text');
+        const textContent = `Show ${remaining} more ${remaining === 1 ? 'comment' : 'comments'}`;
+        if (textSpan) {
+          textSpan.textContent = textContent;
+        } else {
+          loadMoreBtn.lastChild.textContent = ` ${textContent}`;
+        }
       }
       return;
     }

@@ -106,3 +106,21 @@ class SyndicationService:
             "total_likes": int(total_likes),
             "engagement_index": engagement_index,
         }
+
+    @staticmethod
+    def get_syndication_hub_data() -> dict[str, Any]:
+        """Aggregate statistics, recent published articles, and platforms for the syndication hub."""
+        stats = SyndicationService.get_syndication_stats()
+        recent_published = (
+            db.session.query(Content)
+            .filter(Content.is_published.is_(True), Content.object_type == "article")
+            .order_by(desc(Content.published_at))
+            .limit(20)
+            .all()
+        )
+        platforms = db.session.query(DistributionPlatform).all()
+        return {
+            "stats": stats,
+            "recent_published": recent_published,
+            "platforms": platforms,
+        }

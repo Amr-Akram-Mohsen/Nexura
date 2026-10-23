@@ -20,7 +20,7 @@
     if (window.Nexura.dom && typeof window.Nexura.dom.lockScroll === 'function') {
       window.Nexura.dom.lockScroll();
     } else {
-      document.body.style.overflow = 'hidden';
+      document.body.classList.add('is-scroll-locked');
     }
   }
 
@@ -28,7 +28,7 @@
     if (window.Nexura.dom && typeof window.Nexura.dom.unlockScroll === 'function') {
       window.Nexura.dom.unlockScroll();
     } else {
-      document.body.style.overflow = '';
+      document.body.classList.remove('is-scroll-locked');
     }
   }
 

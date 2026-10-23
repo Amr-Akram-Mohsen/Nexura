@@ -316,6 +316,33 @@ class ContentRepository:
 
         return SearchRepository.full_text_search(query=query, section_id=section_id, object_type=object_type, sort=sort, page=page, per_page=per_page)
 
+    @staticmethod
+    def count_published_active() -> int:
+        """Count all active published Content items."""
+        return (
+            db.session.query(func.count(Content.id))
+            .filter(Content.is_published.is_(True), Content.is_active.is_(True))
+            .scalar()
+            or 0
+        )
+
+    @staticmethod
+    def get_sitemap_entries(offset: int = 0, limit: int = 1000) -> list[tuple[int, str, str, datetime]]:
+        """Fetch content id, title, object_type, published_at for active published items ordered by published_at desc."""
+        return (
+            db.session.query(Content.id, Content.title, Content.object_type, Content.published_at)
+            .filter(Content.is_published.is_(True), Content.is_active.is_(True))
+            .order_by(Content.published_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
+    def get_source_by_id(source_id: int) -> Source | None:
+        """Fetch media publisher source by ID."""
+        return db.session.get(Source, source_id)
+
 
 class PaginationResult:
     """Lightweight pagination container matching Flask-SQLAlchemy Pagination interface."""

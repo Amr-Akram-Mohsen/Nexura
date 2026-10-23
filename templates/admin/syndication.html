@@ -1,77 +1,52 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Social Syndication Hub{% endblock %}
 {% block page_title %}Multichannel Content Syndication & Publishing{% endblock %}
+{% from "macros/ui.html" import kpi_card, panel_header %}
 {% block content %}
-  {# ── Syndication Reach KPIs ── #}
-  <div class="kpi-grid">
-    <div class="kpi-card kpi-card--violet">
-      <span class="kpi-card__label">Social Engagement Index</span>
-      <span class="kpi-card__value">{{ stats.engagement_index }}</span>
-      <span class="kpi-card__sub">Weighted multi-channel score</span>
-    </div>
-    <div class="kpi-card kpi-card--blue">
-      <span class="kpi-card__label">Total Social Shares</span>
-      <span class="kpi-card__value">{{ '{:,}'.format(stats.total_shares) }}</span>
-    </div>
-    <div class="kpi-card kpi-card--green">
-      <span class="kpi-card__label">Total Social Clicks</span>
-      <span class="kpi-card__value">{{ '{:,}'.format(stats.total_clicks) }}</span>
-    </div>
-    <div class="kpi-card kpi-card--amber">
-      <span class="kpi-card__label">Total Social Likes</span>
-      <span class="kpi-card__value">{{ '{:,}'.format(stats.total_likes) }}</span>
-    </div>
+{# ── Syndication Reach KPIs ── #}
+<div class="kpi-grid">
+  {{ kpi_card('Social Engagement Index', stats.engagement_index, 'Weighted multi-channel score', color='violet') }}
+  {{ kpi_card('Total Social Shares', '{:,}'.format(stats.total_shares), color='blue') }}
+  {{ kpi_card('Total Social Clicks', '{:,}'.format(stats.total_clicks), color='green') }}
+  {{ kpi_card('Total Social Likes', '{:,}'.format(stats.total_likes), color='amber') }}
+</div>
+{# ── Auto-Draft Generator for Published Content ── #}
+<div class="admin-panel">
+  {{ panel_header('Generate Multi-Platform Social Drafts (§20)', icon='syndication', icon_color='violet') }}
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th class="col-xs">ID</th>
+          <th>Article Title</th>
+          <th class="col-md">Section</th>
+          <th class="col-md">Published Date</th>
+          <th class="col-actions">Social Drafts Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in recent_published %}
+        <tr>
+          <td><code class="admin-cell-meta">#{{ item.id }}</code></td>
+          <td>
+            <strong class="admin-cell-title">{{ item.title }}</strong>
+          </td>
+          <td class="admin-cell-secondary">{{ item.section.name if item.section else '-' }}</td>
+          <td class="admin-cell-meta">{{ item.published_at.strftime("%Y-%m-%d") if item.published_at else '-' }}</td>
+          <td class="text-right">
+            <a class="btn btn--secondary btn--sm"
+              href="{{ url_for('admin.syndication.generate_drafts', content_id=item.id) }}">
+              ✨ Generate Social Drafts
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="admin-table-empty">No published articles available for syndication.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  {# ── Auto-Draft Generator for Published Content ── #}
-  <div class="admin-panel">
-    <div class="admin-panel__header">
-      <h2 class="admin-panel__title">
-        <svg class="icon-violet"
-             width="18"
-             height="18"
-             viewBox="0 0 24 24"
-             fill="none"
-             stroke="currentColor"
-             stroke-width="2">
-          <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-        </svg>
-        Generate Multi-Platform Social Drafts (§20)
-      </h2>
-    </div>
-    <div class="admin-table-wrap">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th class="col-xs">ID</th>
-            <th>Article Title</th>
-            <th class="col-md">Section</th>
-            <th class="col-md">Published Date</th>
-            <th class="col-actions">Social Drafts Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in recent_published %}
-            <tr>
-              <td><code class="admin-cell-meta">#{{ item.id }}</code></td>
-              <td>
-                <strong class="admin-cell-title">{{ item.title }}</strong>
-              </td>
-              <td class="admin-cell-secondary">{{ item.section.name if item.section else '-' }}</td>
-              <td class="admin-cell-meta">{{ item.published_at.strftime("%Y-%m-%d") if item.published_at else '-' }}</td>
-              <td class="text-right">
-                <a class="btn btn--secondary btn--sm"
-                   href="{{ url_for('admin.syndication.generate_drafts', content_id=item.id) }}">
-                  ✨ Generate Social Drafts
-                </a>
-              </td>
-            </tr>
-          {% else %}
-            <tr>
-              <td colspan="5" class="admin-table-empty">No published articles available for syndication.</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+</div>
 {% endblock %}

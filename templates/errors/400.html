@@ -4,7 +4,3 @@
 {% block error_code %}400{% endblock %}
 {% block error_heading %}Invalid Request{% endblock %}
 {% block error_description %}The server could not understand your request. Please check the URL or form input and try again.{% endblock %}
-{% block error_actions %}
-  <a class="btn btn--secondary" href="javascript:history.back()">← Go Back</a>
-  <a class="btn btn--gradient" href="{{ url_for('public.home') }}">Return Home</a>
-{% endblock %}

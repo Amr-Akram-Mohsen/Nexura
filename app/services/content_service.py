@@ -8,12 +8,16 @@ from typing import Any
 from dataclasses import dataclass
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.extensions import db
-from app.caching import invalidate_content_after_write
+from app.extensions import db, cache
+from app.caching import invalidate_content_after_write, CACHE_TTL_CONTENT_PAGE
 from app.models.content import Content, Article, ArticleSource, Author, ContentEntity
 from app.models.video import Video
 from app.models.source import Source
 from app.repositories.content_repo import ContentRepository
+from app.repositories.article_repo import ArticleRepository
+from app.repositories.video_repo import VideoRepository
+from app.services.recommendation_service import RecommendationService
+from app.serializers.content_serializers import serialize_content_card, _format_duration
 
 log = logging.getLogger(__name__)
 
@@ -234,3 +238,110 @@ class ContentService:
         if prefix.isdigit():
             return int(prefix)
         return None
+
+    @staticmethod
+    def get_detail_page_data(content_id: int, expected_type: str) -> dict[str, Any] | None:
+        """Fetch and assemble cached detail page data for an article or video."""
+        cache_key = f"content_page_{content_id}"
+        page_data = cache.get(cache_key)
+        if page_data is not None:
+            return page_data
+
+        content = ContentRepository.get_published_content(content_id)
+        if not content or content.object_type != expected_type:
+            return None
+
+        related_entries = RecommendationService.get_related_recommendations_with_reasons(content_id, limit=6)
+        if not related_entries:
+            fallback = ContentRepository.get_related_content(content_id, limit=6)
+            related_entries = [(item, "Related story") for item in fallback]
+
+        serialized_related = []
+        for rel_content, rel_reason in related_entries:
+            card = serialize_content_card(rel_content)
+            if rel_reason:
+                card["recommendation_reason"] = rel_reason
+            serialized_related.append(card)
+
+        section_slug = content.section.slug if content.section else None
+        section_name = content.section.name if content.section else None
+        category_slug = content.category.slug if content.category else None
+        category_name = content.category.name if content.category else None
+
+        formatted_date = content.published_at.strftime("%b %d, %Y") if content.published_at else ""
+        formatted_date_long = content.published_at.strftime("%B %d, %Y") if content.published_at else ""
+        published_iso = content.published_at.isoformat() if content.published_at else ""
+
+        if expected_type == "article":
+            article_obj = ArticleRepository.get_by_id(content.object_id)
+            if not article_obj:
+                return None
+
+            title = article_obj.title or content.title or ""
+            reading_time = ((int(article_obj.word_count) // 200) + 1) if (article_obj.word_count and article_obj.word_count > 0) else None
+            reading_time_text = f"{reading_time} min read" if reading_time else None
+
+            # Shared breadcrumbs
+            breadcrumbs = [{"name": "Home", "url": "/"}]
+            if section_name and section_slug:
+                breadcrumbs.append({"name": section_name, "url": f"/{section_slug}"})
+            if category_name and category_slug and section_slug:
+                breadcrumbs.append({"name": category_name, "url": f"/{section_slug}/{category_slug}"})
+            truncated_title = (title[:47] + "...") if len(title) > 50 else title
+            breadcrumbs.append({"name": truncated_title})
+
+            source_obj = ContentRepository.get_source_by_id(content.source_id) if content.source_id else None
+            page_data = {
+                "content": content,
+                "article": article_obj,
+                "authors": ArticleRepository.get_authors(article_obj.id),
+                "source": source_obj,
+                "entities": ContentRepository.get_entities_for_content(content_id),
+                "related": serialized_related,
+                "section_slug": section_slug,
+                "section_name": section_name,
+                "category_slug": category_slug,
+                "category_name": category_name,
+                "formatted_date": formatted_date,
+                "formatted_date_long": formatted_date_long,
+                "published_iso": published_iso,
+                "reading_time": reading_time,
+                "reading_time_text": reading_time_text,
+                "breadcrumbs": breadcrumbs,
+            }
+        elif expected_type == "video":
+            video_obj = VideoRepository.get_by_id(content.object_id)
+            if not video_obj:
+                return None
+
+            title = video_obj.title or content.title or ""
+
+            # Shared breadcrumbs
+            breadcrumbs = [{"name": "Home", "url": "/"}]
+            if section_name and section_slug:
+                breadcrumbs.append({"name": section_name, "url": f"/{section_slug}"})
+            if category_name and category_slug and section_slug:
+                breadcrumbs.append({"name": category_name, "url": f"/{section_slug}/{category_slug}"})
+            truncated_title = (title[:47] + "...") if len(title) > 50 else title
+            breadcrumbs.append({"name": truncated_title})
+
+            page_data = {
+                "content": content,
+                "video": video_obj,
+                "yt_comments": VideoRepository.get_top_comments(video_obj.id, limit=15),
+                "related": serialized_related,
+                "duration_formatted": _format_duration(video_obj.duration_seconds),
+                "section_slug": section_slug,
+                "section_name": section_name,
+                "category_slug": category_slug,
+                "category_name": category_name,
+                "formatted_date": formatted_date,
+                "formatted_date_long": formatted_date_long,
+                "published_iso": published_iso,
+                "breadcrumbs": breadcrumbs,
+            }
+        else:
+            return None
+
+        cache.set(cache_key, page_data, timeout=CACHE_TTL_CONTENT_PAGE)
+        return page_data

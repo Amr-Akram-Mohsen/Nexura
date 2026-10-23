@@ -7,6 +7,9 @@
 
 (function () {
   function getCsrfToken() {
+    if (window.Nexura && window.Nexura.http && typeof window.Nexura.http.getCsrfToken === 'function') {
+      return window.Nexura.http.getCsrfToken();
+    }
     const meta = document.querySelector('meta[name="csrf-token"]');
     if (meta && meta.content) return meta.content;
     const input = document.querySelector('input[name="csrf_token"]');
@@ -14,7 +17,9 @@
   }
 
   function notify(msg, type = 'info') {
-    if (window.Toast && typeof window.Toast.show === 'function') {
+    if (window.Nexura && typeof window.Nexura.toast === 'function') {
+      window.Nexura.toast(msg, type);
+    } else if (window.Toast && typeof window.Toast.show === 'function') {
       window.Toast.show(msg, type);
     }
   }
@@ -39,16 +44,18 @@
   function showEmptyState() {
     const emptyState = document.getElementById('library-empty-state');
     if (emptyState) {
-      emptyState.style.display = 'flex';
-      emptyState.removeAttribute('hidden');
+      if (window.Nexura && window.Nexura.dom) window.Nexura.dom.show(emptyState);
+      else emptyState.removeAttribute('hidden');
     }
     const pagination = document.getElementById('library-pagination');
     if (pagination) {
-      pagination.style.display = 'none';
+      if (window.Nexura && window.Nexura.dom) window.Nexura.dom.hide(pagination);
+      else pagination.setAttribute('hidden', '');
     }
     const clearActions = document.getElementById('clear-history-actions');
     if (clearActions) {
-      clearActions.style.display = 'none';
+      if (window.Nexura && window.Nexura.dom) window.Nexura.dom.hide(clearActions);
+      else clearActions.setAttribute('hidden', '');
     }
   }
 
@@ -106,7 +113,7 @@
       if (window.Nexura && window.Nexura.dom) {
         window.Nexura.dom.lockScroll();
       } else {
-        document.body.style.overflow = 'hidden';
+        document.body.classList.add('is-scroll-locked');
       }
 
       // Focus Cancel button
@@ -120,7 +127,7 @@
       if (window.Nexura && window.Nexura.dom) {
         window.Nexura.dom.unlockScroll();
       } else {
-        document.body.style.overflow = '';
+        document.body.classList.remove('is-scroll-locked');
       }
       if (this.prevFocus && typeof this.prevFocus.focus === 'function') {
         this.prevFocus.focus();

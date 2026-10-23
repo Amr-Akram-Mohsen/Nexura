@@ -72,6 +72,11 @@ class TaxonomyRepository:
         return query.order_by(Category.sort_order.asc(), Category.name.asc()).all()
 
     @staticmethod
+    def get_all_categories() -> list[Category]:
+        """Fetch all categories ordered by name."""
+        return db.session.query(Category).order_by(Category.name.asc()).all()
+
+    @staticmethod
     def get_category_by_slug(slug: str) -> Category | None:
         """Fetch category by slug with parent and children loaded."""
         return db.session.query(Category).options(joinedload(Category.parent), selectinload(Category.children)).filter(Category.slug == slug).first()
@@ -160,6 +165,11 @@ class TaxonomyRepository:
         if active_only:
             query = query.filter(Source.is_active.is_(True))
         return query.order_by(desc(Source.authority_score), Source.name.asc()).all()
+
+    @staticmethod
+    def get_all_sources() -> list[Source]:
+        """Fetch all media publishers ordered by name."""
+        return db.session.query(Source).order_by(Source.name.asc()).all()
 
     @staticmethod
     def get_source_by_slug(slug: str) -> Source | None:

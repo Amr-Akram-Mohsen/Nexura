@@ -42,6 +42,10 @@ body.is-scroll-locked {
   overflow: hidden !important;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 img,
 video {
   display: block;
@@ -115,12 +119,6 @@ svg {
   width: min(100%, var(--container-max));
   margin-inline: auto;
   padding-inline: clamp(var(--space-4), 4vw, var(--space-10));
-}
-
-.container--narrow {
-  width: min(100%, var(--content-max));
-  margin-inline: auto;
-  padding-inline: clamp(var(--space-4), 4vw, var(--space-8));
 }
 
 .container--pt-4 {

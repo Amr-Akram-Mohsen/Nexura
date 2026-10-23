@@ -208,3 +208,19 @@ class AnalyticsRepository:
         )
         db.session.add(click)
         db.session.commit()
+
+    @staticmethod
+    def get_moderation_queue(limit: int = 50) -> list[Comment]:
+        """Fetch recent comments for moderation review with user and content eager-loaded."""
+        return (
+            db.session.query(Comment)
+            .options(joinedload(Comment.user), joinedload(Comment.content_ref))
+            .order_by(desc(Comment.id))
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
+    def get_total_comments() -> int:
+        """Fetch total comment count."""
+        return db.session.query(func.count(Comment.id)).scalar() or 0

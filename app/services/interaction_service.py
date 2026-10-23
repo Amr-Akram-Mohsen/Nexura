@@ -278,7 +278,58 @@ def _score_comment_sentiment_async(comment_id: int) -> None:
         log.debug("Could not start sentiment thread: %s", exc)
 
 
+def moderate_comment(comment_id: int, action: str) -> tuple[bool, str, int]:
+    """Execute moderation action (approve, soft_delete, hard_delete) on a user comment."""
+    comment = db.session.get(Comment, comment_id)
+    if not comment:
+        return False, "Comment not found.", 404
+
+    if action == "approve":
+        comment.sentiment = "positive" if not comment.sentiment else comment.sentiment
+        db.session.commit()
+        return True, "Comment approved.", 200
+
+    elif action == "soft_delete":
+        comment.content = "[This comment was removed by moderators for violating community guidelines.]"
+        db.session.commit()
+        return True, "Comment soft-deleted.", 200
+
+    elif action == "hard_delete":
+        content_id = comment.content_id
+        db.session.delete(comment)
+        if content_id:
+            content = db.session.get(Content, content_id)
+            if content:
+                content.comment_count = max(0, (content.comment_count or 0) - 1)
+        db.session.commit()
+        return True, "Comment permanently deleted.", 200
+
+    else:
+        return False, f"Invalid moderation action '{action}'.", 400
+
+
+class InteractionService:
+    """Service class encapsulating interaction operations and moderation."""
+
+    toggle_reaction = staticmethod(toggle_reaction)
+    toggle_save = staticmethod(toggle_save)
+    toggle_share = staticmethod(toggle_share)
+    record_share = staticmethod(record_share)
+    submit_comment = staticmethod(submit_comment)
+    moderate_comment = staticmethod(moderate_comment)
+
+
 from app.services.newsletter_service import subscribe_newsletter
 from app.utils.security import score_password
 
-__all__ = ["toggle_reaction", "toggle_save", "toggle_share", "record_share", "submit_comment", "subscribe_newsletter", "score_password"]
+__all__ = [
+    "toggle_reaction",
+    "toggle_save",
+    "toggle_share",
+    "record_share",
+    "submit_comment",
+    "moderate_comment",
+    "InteractionService",
+    "subscribe_newsletter",
+    "score_password",
+]

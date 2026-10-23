@@ -1,6 +1,7 @@
 """User repository for accounts, saved collections, history, and subscribers."""
 
 from __future__ import annotations
+import secrets
 from typing import Sequence
 from datetime import datetime, timezone
 
@@ -92,6 +93,111 @@ class UserRepository:
         user.password_changed_at = datetime.now(timezone.utc)
         user.password_reset_token = None
         user.password_reset_sent_at = None
+        db.session.commit()
+
+    @staticmethod
+    def register_unverified_user(
+        *,
+        email: str,
+        name: str,
+        password: str,
+        verification_token: str,
+    ) -> User:
+        """Create and persist a new unverified user with verification token."""
+        now_utc = datetime.now(timezone.utc)
+        user = User(
+            email=email.strip().lower(),
+            name=name,
+            password_hash=generate_password_hash(password),
+            is_verified=False,
+            is_active=True,
+            is_admin=False,
+            created_at=now_utc,
+            verification_sent_at=now_utc,
+            email_verification_token=verification_token,
+            email_verification_sent_at=now_utc,
+            password_reset_token=None,
+        )
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    @staticmethod
+    def record_login(user: User) -> None:
+        """Update last_login_at timestamp on successful login."""
+        user.last_login_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+    @staticmethod
+    def verify_email(user: User) -> None:
+        """Mark user's email as verified and clear verification token."""
+        user.is_verified = True
+        user.verified_at = datetime.now(timezone.utc)
+        user.email_verification_token = None
+        db.session.commit()
+
+    @staticmethod
+    def set_email_verification_token(user: User, token: str) -> None:
+        """Update email verification token and timestamps."""
+        now_utc = datetime.now(timezone.utc)
+        user.email_verification_token = token
+        user.email_verification_sent_at = now_utc
+        user.verification_sent_at = now_utc
+        db.session.commit()
+
+    @staticmethod
+    def set_password_reset_token(user: User, token: str) -> None:
+        """Store password reset token and sent timestamp."""
+        user.password_reset_token = token
+        user.password_reset_sent_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+    @staticmethod
+    def find_or_create_google_user(
+        *,
+        email: str,
+        google_id: str,
+        name: str | None = None,
+    ) -> tuple[User, bool]:
+        """Find an existing user or create a new user from Google OAuth profile.
+
+        Returns a tuple of (user, is_new_user).
+        """
+        clean_email = email.strip().lower()
+        user = UserRepository.get_by_email(clean_email)
+        now_utc = datetime.now(timezone.utc)
+
+        if not user:
+            user = User(
+                email=clean_email,
+                name=name or (clean_email.split("@")[0] if clean_email else "Google User"),
+                password_hash=generate_password_hash(secrets.token_urlsafe(32)),
+                google_id=google_id,
+                provider="google",
+                is_verified=True,
+                verified_at=now_utc,
+                is_active=True,
+                is_admin=False,
+                created_at=now_utc,
+                last_login_at=now_utc,
+            )
+            db.session.add(user)
+            db.session.commit()
+            return user, True
+        else:
+            if not user.google_id:
+                user.google_id = google_id
+                user.provider = "google"
+            user.is_verified = True
+            user.last_login_at = now_utc
+            db.session.commit()
+            return user, False
+
+    @staticmethod
+    def update_profile(user: User, *, name: str | None = None) -> None:
+        """Update user profile fields."""
+        if name is not None:
+            user.name = name.strip()
         db.session.commit()
 
     @staticmethod
@@ -247,3 +353,15 @@ class UserRepository:
         db.session.add(msg)
         db.session.commit()
         return msg
+
+    @staticmethod
+    def get_subscribers(limit: int = 50) -> list[NewsletterSubscriber]:
+        """Fetch latest newsletter subscribers."""
+        return db.session.query(NewsletterSubscriber).order_by(desc(NewsletterSubscriber.created_at)).limit(limit).all()
+
+    @staticmethod
+    def get_subscriber_counts() -> tuple[int, int]:
+        """Return (total_subscribers, confirmed_subscribers)."""
+        total = db.session.query(func.count(NewsletterSubscriber.id)).scalar() or 0
+        confirmed = db.session.query(func.count(NewsletterSubscriber.id)).filter(NewsletterSubscriber.is_confirmed.is_(True)).scalar() or 0
+        return total, confirmed
