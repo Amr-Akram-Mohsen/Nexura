@@ -253,7 +253,7 @@ def _score_comment_sentiment_async(comment_id: int) -> None:
     """Enqueue non-blocking sentiment analysis for a newly created comment."""
     try:
         from threading import Thread
-        from app.ingestion.clients import HuggingFaceClient
+        from app.ingestion.huggingface_client import HuggingFaceClient
 
         def _worker():
             from app import create_app
@@ -266,11 +266,12 @@ def _score_comment_sentiment_async(comment_id: int) -> None:
                 try:
                     client = HuggingFaceClient()
                     result = client.analyze_sentiment(comment.content)
-                    comment.sentiment = result.get("label", "neutral")
-                    comment.confidence = result.get("score", 0.5)
+                    comment.sentiment = result.get("label")
+                    comment.confidence = result.get("score")
                     db.session.commit()
                 except Exception as exc:
                     log.debug("Sentiment scoring skipped for comment %s: %s", comment_id, exc)
+
 
         t = Thread(target=_worker, daemon=True)
         t.start()

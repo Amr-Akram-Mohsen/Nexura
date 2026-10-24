@@ -282,6 +282,8 @@
   position: relative;
   width: 100%;
   max-width: 100%;
+  aspect-ratio: 16 / 9;
+  /* Fixed: Container now independently maintains 16:9 height */
   margin-bottom: var(--space-6);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -292,9 +294,14 @@
 }
 
 .video-facade__thumb {
+  position: absolute;
+  /* Fixed: Anchors thumbnail to fill the container */
+  inset: 0;
+  /* Fixed: Stretches thumb to top/right/bottom/left 0 */
   width: 100%;
   max-width: 100%;
-  aspect-ratio: 16/9;
+  height: 100%;
+  /* Fixed: Fills container height */
   object-fit: cover;
   display: block;
   transition:
