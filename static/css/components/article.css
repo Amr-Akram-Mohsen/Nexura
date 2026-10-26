@@ -216,19 +216,16 @@
   margin-bottom: var(--space-2);
 }
 
-.article-body figure {
-  margin: var(--space-6) 0;
+.article-body figure:not(:first-of-type) {
+  margin-top: var(--space-6);
   width: 100%;
 }
 
 .article-body figcaption {
-  margin-top: var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-muted);
   font-style: normal;
   text-align: left;
-  padding-left: var(--space-3);
-  border-left: 2px solid var(--border-default);
   line-height: var(--leading-normal);
 }
 
@@ -272,7 +269,6 @@
 
 .article-body img {
   border-radius: var(--radius-lg);
-  margin-block: var(--space-6);
   width: 100%;
   object-fit: cover;
 }

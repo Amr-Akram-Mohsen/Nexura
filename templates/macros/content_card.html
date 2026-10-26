@@ -1,283 +1,247 @@
 {# templates/macros/content_card.html #}
 {% macro content_card(item, show_excerpt=True, class='') %}
-  {% if item is mapping %}
-    {% set is_video = (item.get('object_type') == 'video') %}
-    {% set item_id = item.get('id', '') %}
-    {% set item_title = item.get('title', '') %}
-    {% set item_thumbnail = item.get('thumbnail') %}
-    {% set item_duration = item.get('duration') %}
-    {% set item_reading_time = item.get('reading_time') %}
-    {% set item_preview = item.get('preview') or item.get('preview_text') %}
-    {% set item_source = item.get('source_name') or item.get('channel_name') or 'Nexura' %}
-    {% set item_source_logo = item.get('source_logo') %}
-    {% set item_views = item.get('view_count', 0) %}
-    {% set item_reason = item.get('recommendation_reason') %}
-    {% set item_date = item.get('formatted_date') or item.get('age') or item.get('published_at', '') %}
-    {% set cat_name = item.get('category_display_name') or item.get('category_name') or (item.get('category').get('name') if item.get('category') is mapping else (item.get('category').name if item.get('category') and item.get('category').name is defined else (item.get('category') if item.get('category') is string else ''))) %}
-    {% set item_url = item.get('url') or ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.get('slug_id') or item_id)) %}
-    {% set tag_items = item.get('tags') or item.get('entities') or [] %}
-  {% else %}
-    {% set is_video = (item.object_type == 'video') %}
-    {% set item_id = item.id %}
-    {% set item_title = item.title %}
-    {% set item_thumbnail = item.thumbnail if item.thumbnail is defined else None %}
-    {% set item_duration = item.duration if item.duration is defined else None %}
-    {% set item_reading_time = item.reading_time if item.reading_time is defined else None %}
-    {% set item_preview = item.preview_text if item.preview_text is defined else None %}
-    {% set item_source = item.source.name if (item.source is defined and item.source) else 'Nexura' %}
-    {% set item_source_logo = item.source.logo_url if (item.source is defined and item.source) else None %}
-    {% set item_views = item.view_count if item.view_count is defined else 0 %}
-    {% set item_reason = item.recommendation_reason if (item.recommendation_reason is defined) else None %}
-    {% set item_date = item.formatted_date if (item.formatted_date is defined and item.formatted_date) else (item.published_at.strftime('%b %d, %Y') if (item.published_at is defined and item.published_at) else '') %}
-    {% set cat_name = item.category_display_name if (item.category_display_name is defined and item.category_display_name) else (item.category.name if (item.category is defined and item.category) else '') %}
-    {% set item_url = item.url if item.url is defined else ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.slug_id if item.slug_id is defined else item_id)) %}
-    {% set tag_items = item.content_entities if item.content_entities is defined else [] %}
-  {% endif %}
-  <a class="card {{ class }}"
-     href="{{ item_url }}"
-     data-content-id="{{ item_id }}"
-     aria-label="{{ item_title }}">
-    {# Image / Thumbnail #}
-    <div class="card__image-wrap">
-      {% if item_thumbnail %}
-        <img class="card__image"
-             src="{{ item_thumbnail }}"
-             alt=""
-             loading="lazy"
-             width="400"
-             height="225">
-      {% else %}
-        <div class="card__placeholder-image" aria-hidden="true">
-          <svg width="32"
-               height="32"
-               viewBox="0 0 24 24"
-               fill="none"
-               stroke="currentColor"
-               stroke-width="1.5">
-            {% if is_video %}
-              <polygon points="5 3 19 12 5 21 5 3" />
-            {% else %}
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            {% endif %}
-          </svg>
-        </div>
-      {% endif %}
-      {# Type badge #}
-      <span class="card__type-badge card__type-badge--{% if is_video %}video{% else %}article{% endif %}">
+{% if item is mapping %}
+{% set is_video = (item.get('object_type') == 'video') %}
+{% set item_id = item.get('id', '') %}
+{% set item_title = item.get('title', '') %}
+{% set item_thumbnail = item.get('thumbnail') %}
+{% set item_duration = item.get('duration') %}
+{% set item_reading_time = item.get('reading_time') %}
+{% set item_preview = item.get('preview') or item.get('preview_text') %}
+{% set item_source = item.get('source_name') or item.get('channel_name') or 'Nexura' %}
+{% set item_source_logo = item.get('source_logo') %}
+{% set item_views = item.get('view_count', 0) %}
+{% set item_reason = item.get('recommendation_reason') %}
+{% set item_date = item.get('formatted_date') or item.get('age') or item.get('published_at', '') %}
+{% set cat_name = item.get('category_display_name') or item.get('category_name') or (item.get('category').get('name') if
+item.get('category') is mapping else (item.get('category').name if item.get('category') and item.get('category').name is
+defined else (item.get('category') if item.get('category') is string else ''))) %}
+{% set item_url = item.get('url') or ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.get('slug_id') or
+item_id)) %}
+{% set tag_items = item.get('tags') or item.get('entities') or [] %}
+{% else %}
+{% set is_video = (item.object_type == 'video') %}
+{% set item_id = item.id %}
+{% set item_title = item.title %}
+{% set item_thumbnail = item.thumbnail if item.thumbnail is defined else None %}
+{% set item_duration = item.duration if item.duration is defined else None %}
+{% set item_reading_time = item.reading_time if item.reading_time is defined else None %}
+{% set item_preview = item.preview_text if item.preview_text is defined else None %}
+{% set item_source = item.source.name if (item.source is defined and item.source) else 'Nexura' %}
+{% set item_source_logo = item.source.logo_url if (item.source is defined and item.source) else None %}
+{% set item_views = item.view_count if item.view_count is defined else 0 %}
+{% set item_reason = item.recommendation_reason if (item.recommendation_reason is defined) else None %}
+{% set item_date = item.formatted_date if (item.formatted_date is defined and item.formatted_date) else
+(item.published_at.strftime('%b %d, %Y') if (item.published_at is defined and item.published_at) else '') %}
+{% set cat_name = item.category_display_name if (item.category_display_name is defined and item.category_display_name)
+else (item.category.name if (item.category is defined and item.category) else '') %}
+{% set item_url = item.url if item.url is defined else ('/' ~ ('video' if is_video else 'article') ~ '/' ~ (item.slug_id
+if item.slug_id is defined else item_id)) %}
+{% set tag_items = item.content_entities if item.content_entities is defined else [] %}
+{% endif %}
+<a class="card {{ class }}" href="{{ item_url }}" data-content-id="{{ item_id }}" aria-label="{{ item_title }}">
+  {# Image / Thumbnail #}
+  <div class="card__image-wrap">
+    {% if item_thumbnail %}
+    <img class="card__image" src="{{ item_thumbnail }}" alt="" loading="lazy" width="400" height="225">
+    {% else %}
+    <div class="card__placeholder-image" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         {% if is_video %}
-          <svg width="9"
-               height="9"
-               viewBox="0 0 24 24"
-               fill="currentColor"
-               aria-hidden="true">
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
-          VIDEO
+        <polygon points="5 3 19 12 5 21 5 3" />
         {% else %}
-          <svg width="9"
-               height="9"
-               viewBox="0 0 24 24"
-               fill="none"
-               stroke="currentColor"
-               stroke-width="2.5"
-               aria-hidden="true">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          ARTICLE
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
         {% endif %}
-      </span>
-      {# Duration badge for videos #}
-      {% if is_video and item_duration %}
-        <span class="card__duration">{{ item_duration }}</span>
+      </svg>
+    </div>
+    {% endif %}
+    {# Type badge #}
+    <span class="card__type-badge card__type-badge--{% if is_video %}video{% else %}article{% endif %}">
+      {% if is_video %}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <polygon points="5 3 19 12 5 21 5 3" />
+      </svg>
+      VIDEO
+      {% else %}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+      ARTICLE
+      {% endif %}
+    </span>
+    {# Duration badge for videos #}
+    {% if is_video and item_duration %}
+    <span class="card__duration">{{ item_duration }}</span>
+    {% endif %}
+  </div>
+  {# Body #}
+  <div class="card__body">
+    {% if item_reason %}
+    <span class="card__reason">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
+      </svg>
+      {{ item_reason }}
+    </span>
+    {% endif %}
+    <div class="card__meta">
+      {% if cat_name %}
+      <span class="card__category">{{ cat_name }}</span>
+      {% endif %}
+      {% if item_date %}
+      <time class="card__date" datetime="{{ item_date }}">
+        {{ item_date if item_date is string else item_date }}
+      </time>
       {% endif %}
     </div>
-    {# Body #}
-    <div class="card__body">
-      {% if item_reason %}
-        <span class="card__reason">
-          <svg width="11"
-               height="11"
-               viewBox="0 0 24 24"
-               fill="currentColor"
-               aria-hidden="true">
-            <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
-          </svg>
-          {{ item_reason }}
-        </span>
-      {% endif %}
-      <div class="card__meta">
-        {% if cat_name %}
-          <span class="card__category">{{ cat_name }}</span>
+    <h3 class="card__title">{{ item_title }}</h3>
+    {% if show_excerpt and item_preview %}
+    <p class="card__excerpt">{{ item_preview }}</p>
+    {% endif %}
+    <div class="card__footer">
+      <div class="card__source">
+        {% if item_source_logo %}
+        <img class="card__source-logo" src="{{ item_source_logo }}" alt="" loading="lazy">
         {% endif %}
-        {% if item_date %}
-          <time class="card__date" datetime="{{ item_date }}">
-            {{ item_date[:10] if item_date is string else item_date }}
-          </time>
-        {% endif %}
+        <span>{{ item_source }}</span>
       </div>
-      <h3 class="card__title">{{ item_title }}</h3>
-      {% if show_excerpt and item_preview %}
-        <p class="card__excerpt">{{ item_preview }}</p>
+      {% if not is_video and item_reading_time %}
+      <span class="card__reading-time">{{ item_reading_time }} min read</span>
       {% endif %}
-      <div class="card__footer">
-        <div class="card__source">
-          {% if item_source_logo %}
-            <img class="card__source-logo"
-                 src="{{ item_source_logo }}"
-                 alt=""
-                 loading="lazy">
-          {% endif %}
-          <span>{{ item_source }}</span>
-        </div>
-        {% if not is_video and item_reading_time %}
-          <span class="card__reading-time">{{ item_reading_time }} min read</span>
-        {% endif %}
-        {% if is_video and item_views %}
-          <span class="card__reading-time">{{ '{:,}'.format(item_views) }} views</span>
-        {% endif %}
-      </div>
-      {# Tags — top 3 entities #}
-      {% if tag_items %}
-        <div class="card__tags">
-          {% for tag in tag_items[:3] %}
-            {% if tag is mapping %}
-              {% set tag_name = tag.get('name', '') %}
-            {% elif tag.name is defined %}
-              {% set tag_name = tag.name %}
-            {% elif tag.entity is defined and tag.entity %}
-              {% set tag_name = tag.entity.name %}
-            {% else %}
-              {% set tag_name = tag %}
-            {% endif %}
-            {% if tag_name %}
-              <span class="card__tag">{{ tag_name }}</span>
-            {% endif %}
-          {% endfor %}
-        </div>
+      {% if is_video and item_views %}
+      <span class="card__reading-time">{{ '{:,}'.format(item_views) }} views</span>
       {% endif %}
     </div>
-  </a>
+    {# Tags — top 3 entities #}
+    {% if tag_items %}
+    <div class="card__tags">
+      {% for tag in tag_items[:3] %}
+      {% if tag is mapping %}
+      {% set tag_name = tag.get('name', '') %}
+      {% elif tag.name is defined %}
+      {% set tag_name = tag.name %}
+      {% elif tag.entity is defined and tag.entity %}
+      {% set tag_name = tag.entity.name %}
+      {% else %}
+      {% set tag_name = tag %}
+      {% endif %}
+      {% if tag_name %}
+      <span class="card__tag">{{ tag_name }}</span>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</a>
 {% endmacro %}
 {#
-  content_row: horizontal row card (thumbnail left, text right).
-  variant 'search' -> .search-result-row (type badge on thumbnail, date, views)
-  variant 'saved'  -> .saved-card (library; adds id/data-item-id, optional action slot)
-  Optional {% call %} body is rendered in the footer's right side (e.g. unsave button).
-  Accepts both search items (thumbnail, preview, reading_time) and library items
-  (thumbnail_url, preview_text, read_time_minutes, duration_formatted).
+content_row: horizontal row card (thumbnail left, text right).
+variant 'search' -> .search-result-row (type badge on thumbnail, date, views)
+variant 'saved' -> .saved-card (library; adds id/data-item-id, optional action slot)
+Optional {% call %} body is rendered in the footer's right side (e.g. unsave button).
+Accepts both search items (thumbnail, preview, reading_time) and library items
+(thumbnail_url, preview_text, read_time_minutes, duration_formatted).
 #}
 {% macro content_row(item, variant='search') %}
-  {% set saved = (variant == 'saved') %}
-  {% set p = 'saved-card' if saved else 'search-result-row' %}
-  {% set is_video = (item.object_type == 'video') %}
-  {% set thumb = item.thumbnail or item.thumbnail_url %}
-  {% set duration = item.duration or item.duration_formatted %}
-  {% set reading = item.reading_time or item.read_time_minutes %}
-  {% set preview = item.preview or item.preview_text %}
-  {% set source = item.source_name or item.channel_name %}
-  <article class="{{ p }}"
-           {% if saved %} id="saved-card-{{ item.id }}" data-item-id="{{ item.id }}"{% endif %}>
-    {# Thumbnail #}
-    <a class="{{ p }}__thumb-wrap"
-       href="{{ item.url }}"
-       {% if saved %}aria-label="{{ item.title }}"{% else %}aria-hidden="true" tabindex="-1"{% endif %}>
-      {% if thumb %}
-        <img class="{{ p }}__thumb" src="{{ thumb }}" alt="" loading="lazy">
-      {% else %}
-        <div class="{{ p }}__thumb-fallback"
-             {% if not saved %} aria-hidden="true"{% endif %}>
-          <svg width="{{ 24 if saved else 28 }}"
-               height="{{ 24 if saved else 28 }}"
-               viewBox="0 0 24 24"
-               fill="none"
-               stroke="currentColor"
-               stroke-width="1.5">
-            {% if saved %}
-              <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-            {% elif is_video %}
-              <polygon points="5 3 19 12 5 21 5 3" />
-            {% else %}
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            {% endif %}
-          </svg>
-        </div>
-      {% endif %}
-      {% if not saved %}
-        {# Type badge overlaid on thumb #}
-        <span class="card__type-badge card__type-badge--{{ item.object_type }}">
-          {% if is_video %}
-            <svg width="9"
-                 height="9"
-                 viewBox="0 0 24 24"
-                 fill="currentColor"
-                 aria-hidden="true">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            VIDEO
-          {% else %}
-            <svg width="9"
-                 height="9"
-                 viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2.5"
-                 aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            ARTICLE
-          {% endif %}
-        </span>
-        {% if is_video and duration %}<span class="card__duration">{{ duration }}</span>{% endif %}
-      {% elif duration %}
-        <span class="saved-card__duration">{{ duration }}</span>
-      {% endif %}
-    </a>
-    {# Body #}
-    <div class="{{ p }}__body">
-      <div class="{{ p }}__meta">
+{% set saved = (variant == 'saved') %}
+{% set p = 'saved-card' if saved else 'search-result-row' %}
+{% set is_video = (item.object_type == 'video') %}
+{% set thumb = item.thumbnail or item.thumbnail_url %}
+{% set duration = item.duration or item.duration_formatted %}
+{% set reading = item.reading_time or item.read_time_minutes %}
+{% set preview = item.preview or item.preview_text %}
+{% set source = item.source_name or item.channel_name %}
+<article class="{{ p }}" {% if saved %} id="saved-card-{{ item.id }}" data-item-id="{{ item.id }}" {% endif %}>
+  {# Thumbnail #}
+  <a class="{{ p }}__thumb-wrap" href="{{ item.url }}" {% if saved %}aria-label="{{ item.title }}" {% else
+    %}aria-hidden="true" tabindex="-1" {% endif %}>
+    {% if thumb %}
+    <img class="{{ p }}__thumb" src="{{ thumb }}" alt="" loading="lazy">
+    {% else %}
+    <div class="{{ p }}__thumb-fallback" {% if not saved %} aria-hidden="true" {% endif %}>
+      <svg width="{{ 24 if saved else 28 }}" height="{{ 24 if saved else 28 }}" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="1.5">
         {% if saved %}
-          <span class="card__type-badge card__type-badge--{{ item.object_type }}">{{ item.object_type | capitalize }}</span>
-          {% if item.category_name %}<span class="saved-card__category">{{ item.category_name }}</span>{% endif %}
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+        {% elif is_video %}
+        <polygon points="5 3 19 12 5 21 5 3" />
         {% else %}
-          {% if item.category_name %}
-            <span class="search-result-row__category">{{ item.category_name }}</span>
-            <span class="search-result-row__dot">·</span>
-          {% endif %}
-          {% if item.formatted_date or item.age %}
-            <time class="search-result-row__date">{{ item.formatted_date or item.age }}</time>
-          {% endif %}
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
         {% endif %}
-      </div>
-      <h2 class="{{ p }}__title"><a href="{{ item.url }}">{{ item.title }}</a></h2>
-      {% if preview %}
-        <p class="{{ p }}__{{ 'preview' if saved else 'excerpt' }}">{{ preview }}</p>
-      {% endif %}
-      <div class="{{ p }}__footer">
-        {% if saved %}<div class="saved-card__footer-left">{% endif %}
-        {% if saved %}
-          {% if source %}<span class="saved-card__source">{{ source }}</span>{% endif %}
-          {% if reading %}
-            <span class="saved-card__dot">·</span>
-            <span class="saved-card__read-time">{{ reading }} min read</span>
-          {% endif %}
-        {% else %}
-          <span class="search-result-row__source">{{ source or 'Nexura' }}</span>
-          {% if reading %}
-            <span class="search-result-row__dot">·</span>
-            <span>{{ reading }} min read</span>
-          {% endif %}
-          {% if is_video and item.view_count %}
-            <span class="search-result-row__dot">·</span>
-            <span>{{ '{:,}'.format(item.view_count) }} views</span>
-          {% endif %}
-        {% endif %}
-        {% if saved %}</div>{% endif %}
-        {% if caller %}{{ caller() }}{% endif %}
-      </div>
+      </svg>
     </div>
-  </article>
+    {% endif %}
+    {% if not saved %}
+    {# Type badge overlaid on thumb #}
+    <span class="card__type-badge card__type-badge--{{ item.object_type }}">
+      {% if is_video %}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <polygon points="5 3 19 12 5 21 5 3" />
+      </svg>
+      VIDEO
+      {% else %}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+      ARTICLE
+      {% endif %}
+    </span>
+    {% if is_video and duration %}<span class="card__duration">{{ duration }}</span>{% endif %}
+    {% elif duration %}
+    <span class="saved-card__duration">{{ duration }}</span>
+    {% endif %}
+  </a>
+  {# Body #}
+  <div class="{{ p }}__body">
+    <div class="{{ p }}__meta">
+      {% if saved %}
+      <span class="card__type-badge card__type-badge--{{ item.object_type }}">{{ item.object_type | capitalize }}</span>
+      {% if item.category_name %}<span class="saved-card__category">{{ item.category_name }}</span>{% endif %}
+      {% else %}
+      {% if item.category_name %}
+      <span class="search-result-row__category">{{ item.category_name }}</span>
+      <span class="search-result-row__dot">·</span>
+      {% endif %}
+      {% if item.formatted_date or item.age %}
+      <time class="search-result-row__date">{{ item.formatted_date or item.age }}</time>
+      {% endif %}
+      {% endif %}
+    </div>
+    <h2 class="{{ p }}__title"><a href="{{ item.url }}">{{ item.title }}</a></h2>
+    {% if preview %}
+    <p class="{{ p }}__{{ 'preview' if saved else 'excerpt' }}">{{ preview }}</p>
+    {% endif %}
+    <div class="{{ p }}__footer">
+      {% if saved %}<div class="saved-card__footer-left">{% endif %}
+        {% if saved %}
+        {% if source %}<span class="saved-card__source">{{ source }}</span>{% endif %}
+        {% if reading %}
+        <span class="saved-card__dot">·</span>
+        <span class="saved-card__read-time">{{ reading }} min read</span>
+        {% endif %}
+        {% else %}
+        <span class="search-result-row__source">{{ source or 'Nexura' }}</span>
+        {% if reading %}
+        <span class="search-result-row__dot">·</span>
+        <span>{{ reading }} min read</span>
+        {% endif %}
+        {% if is_video and item.view_count %}
+        <span class="search-result-row__dot">·</span>
+        <span>{{ '{:,}'.format(item.view_count) }} views</span>
+        {% endif %}
+        {% endif %}
+        {% if saved %}
+      </div>{% endif %}
+      {% if caller %}{{ caller() }}{% endif %}
+    </div>
+  </div>
+</article>
 {% endmacro %}

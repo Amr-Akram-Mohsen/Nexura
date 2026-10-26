@@ -35,7 +35,7 @@ class ContentRepository:
             .filter(Content.id == content_id)
         )
         if published_only:
-            query = query.filter(Content.is_active.is_(True), Content.is_published.is_(True))
+            query = ContentRepository._apply_public_visibility(query)
         return query.first()
 
     @staticmethod
@@ -102,7 +102,7 @@ class ContentRepository:
         )
 
         if published_only:
-            query = query.filter(Content.is_active.is_(True), Content.is_published.is_(True))
+            query = ContentRepository._apply_public_visibility(query)
 
         if object_type in ("article", "video"):
             query = query.filter(Content.object_type == object_type)
@@ -135,7 +135,18 @@ class ContentRepository:
         if sort == "popular":
             query = query.order_by(desc(Content.view_count), desc(Content.published_at))
         elif sort == "score":
-            query = query.order_by(desc(Content.score), desc(Content.published_at))
+            if object_type == "article":
+                query = query.join(
+                    Article,
+                    Article.id == Content.object_id,
+                ).order_by(
+                    Article.quality_score.desc().nullslast(),
+                    desc(Content.published_at),
+                    desc(Content.id),
+                )
+            else:
+                query = query.order_by(desc(Content.score), desc(Content.published_at))
+
         elif sort == "top_reviewed":
             query = query.order_by(desc(Content.review_score), desc(Content.review_count))
         else:  # "latest" (default)
@@ -342,6 +353,26 @@ class ContentRepository:
     def get_source_by_id(source_id: int) -> Source | None:
         """Fetch media publisher source by ID."""
         return db.session.get(Source, source_id)
+
+    @staticmethod
+    def _apply_public_visibility(query):
+        """Restrict public content to active, published items with valid article bodies."""
+        valid_article = (
+            db.session.query(Article.id)
+            .filter(
+                Article.id == Content.object_id,
+                Article.status == "published",
+                func.length(func.trim(Article.content_html)) > 0,
+            )
+            .exists()
+        )
+
+        return query.filter(
+            Content.is_active.is_(True),
+            Content.is_published.is_(True),
+            or_(Content.object_type != "article", valid_article),
+        )
+
 
 
 class PaginationResult:

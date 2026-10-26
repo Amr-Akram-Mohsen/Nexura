@@ -133,7 +133,6 @@
 .card__category {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--accent-blue);
   padding: 2px var(--space-2);
@@ -241,6 +240,7 @@
     color var(--duration-fast),
     background var(--duration-fast);
 }
+
 .card__tag:hover {
   color: var(--accent-blue);
   background: hsla(217, 90%, 62%, 0.08);
@@ -284,12 +284,10 @@
 .hero-slide__gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to top,
-    hsla(220, 18%, 7%, 0.95) 0%,
-    hsla(220, 18%, 7%, 0.6) 45%,
-    hsla(220, 18%, 7%, 0.15) 100%
-  );
+  background: linear-gradient(to top,
+      hsla(220, 18%, 7%, 0.95) 0%,
+      hsla(220, 18%, 7%, 0.6) 45%,
+      hsla(220, 18%, 7%, 0.15) 100%);
 }
 
 .hero-slide__content {
@@ -348,6 +346,7 @@
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
 }
+
 .hero__dot.active {
   width: 24px;
   background: var(--accent-blue);

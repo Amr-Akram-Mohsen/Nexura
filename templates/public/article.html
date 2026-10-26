@@ -7,16 +7,16 @@
 {% from "macros/meta_tags.html" import meta_tags %}
 {% from "macros/ui.html" import time_badge %}
 {% block head_meta %}
-  {{ meta_tags(
-      title=article.title,
-      description=article.summary or article.preview or (article.content_text[:160] if article.content_text else ''),
-      image=article.image_url,
-      content_type='article',
-      canonical=request.host_url ~ 'article/' ~ content.slug_id
-  ) }}
+{{ meta_tags(
+title=article.title,
+description=article.summary or article.preview or (article.content_text[:160] if article.content_text else ''),
+image=article.image_url,
+content_type='article',
+canonical=request.host_url ~ 'article/' ~ content.slug_id
+) }}
 {% endblock %}
 {% block structured_data %}
-  <script type="application/ld+json">
+<script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "NewsArticle",
@@ -29,157 +29,143 @@
   </script>
 {% endblock %}
 {% block content %}
-  <div class="container">
-    {# Breadcrumb #}
-    {{ breadcrumb(breadcrumbs) }}
-    <div class="content-with-sidebar">
-      {# Article Main Column #}
-      <article itemscope itemtype="https://schema.org/NewsArticle">
-        {# Article header #}
-        <header class="article-header">
-          <div class="article-header__kicker">
-            {% if content.category_name %}
-              <a class="badge badge--category"
-                 href="/{{ content.section_slug }}/{{ content.category_slug }}">{{ content.category_name }}</a>
-            {% endif %}
-            {% if content.section_slug %}
-              <a class="badge badge--category" href="/{{ content.section_slug }}">{{ content.section_name }}</a>
-            {% endif %}
-            {{ time_badge(reading_time_text or (((article.word_count / 200) | int) + 1 ~ ' min read')) }}
-          </div>
-          <h1 class="article-header__title" itemprop="headline">{{ article.title }}</h1>
-          <div class="article-header__meta">
-            {# Author(s) #}
-            {% if authors %}
-              {% for author in authors[:2] %}
-                <div class="author-bar">
-                  <div class="author-bar__avatar-placeholder" aria-hidden="true">
-                    {{ author.name[0] | upper if author.name else 'A' }}
-                  </div>
-                  <div class="author-bar__info">
-                    <span class="author-bar__name" itemprop="author">{{ author.name }}</span>
-                    {% if content.published_at %}
-                      <time class="author-bar__date"
-                            datetime="{{ content.published_at.isoformat() }}"
-                            itemprop="datePublished">
-                        {{ content.formatted_date_long or formatted_date_long }}
-                      </time>
-                    {% endif %}
-                  </div>
-                </div>
-              {% endfor %}
-            {% else %}
+<div class="container">
+  {# Breadcrumb #}
+  {{ breadcrumb(breadcrumbs) }}
+  <div class="content-with-sidebar">
+    {# Article Main Column #}
+    <article itemscope itemtype="https://schema.org/NewsArticle">
+      {# Article header #}
+      <header class="article-header">
+        <div class="article-header__kicker">
+          {% if content.category_name %}
+          <a class="badge badge--category" href="/{{ content.section_slug }}/{{ content.category_slug }}">{{
+            content.category_name }}</a>
+          {% endif %}
+          {% if content.section_slug %}
+          <a class="badge badge--category" href="/{{ content.section_slug }}">{{ content.section_name }}</a>
+          {% endif %}
+          {{ time_badge(reading_time_text or (((article.word_count / 200) | int) + 1 ~ ' min read')) }}
+        </div>
+        <h1 class="article-header__title" itemprop="headline">{{ article.title }}</h1>
+        <div class="article-header__meta">
+          {# Author(s) #}
+          {% if authors %}
+          {% for author in authors[:2] %}
+          <div class="author-bar">
+            <div class="author-bar__avatar-placeholder" aria-hidden="true">
+              {{ author.name[0] | upper if author.name else 'A' }}
+            </div>
+            <div class="author-bar__info">
+              <span class="author-bar__name" itemprop="author">{{ author.name }}</span>
               {% if content.published_at %}
-                <time class="author-bar__date"
-                      datetime="{{ content.published_at.isoformat() }}">
-                  {{ content.formatted_date_long or formatted_date_long }}
-                </time>
+              <time class="author-bar__date" datetime="{{ content.published_at.isoformat() }}" itemprop="datePublished">
+                {{ content.formatted_date_long or formatted_date_long }}
+              </time>
               {% endif %}
-            {% endif %}
-            {# Source badge #}
-            {% if source %}
-              <a class="source-badge"
-                 href="{{ source.domain or '#' }}"
-                 target="_blank"
-                 rel="noopener noreferrer">
-                {% if source.logo_url %}
-                  <img src="{{ source.logo_url }}"
-                       alt="{{ source.name }}"
-                       width="14"
-                       height="14"
-                       loading="lazy">
-                {% endif %}
-                {{ source.name }}
-              </a>
-            {% endif %}
+            </div>
           </div>
-        </header>
-        {# Hero image #}
-        {% if article.image_url %}
+          {% endfor %}
+          {% else %}
+          {% if content.published_at %}
+          <time class="author-bar__date" datetime="{{ content.published_at.isoformat() }}">
+            {{ content.formatted_date_long or formatted_date_long }}
+          </time>
+          {% endif %}
+          {% endif %}
+          {# Source badge #}
+          {% if source %}
+          <a class="source-badge" href="{{ source.domain or '#' }}" target="_blank" rel="noopener noreferrer">
+            {% if source.logo_url %}
+            <img src="{{ source.logo_url }}" alt="{{ source.name }}" width="14" height="14" loading="lazy">
+            {% endif %}
+            {{ source.name }}
+          </a>
+          {% endif %}
+        </div>
+      </header>
+      {# Hero image #}
+      <!-- {% if article.image_url %}
           <img class="article-hero-image"
                src="{{ article.image_url }}"
                alt="{{ article.title | truncate(80) }}"
                loading="eager"
                fetchpriority="high"
                itemprop="image">
+        {% endif %} -->
+      {# Interaction bar #}
+      {{ interaction_bar(content, user_state, comments_tree, kind='article') }}
+      {# Article body #}
+      <div class="article-body article-html" itemprop="articleBody">
+        {% if article.content_html %}
+        {{ article.content_html | safe }}
+        {% elif article.content_text %}
+        {% for paragraph in article.content_text.split('\n\n') %}
+        {% if paragraph.strip() %}
+        <p>{{ paragraph.strip() }}</p>
         {% endif %}
-        {# Interaction bar #}
-        {{ interaction_bar(content, user_state, comments_tree, kind='article') }}
-        {# Article body #}
-        <div class="article-body article-html" itemprop="articleBody">
-          {% if article.content_html %}
-            {{ article.content_html | safe }}
-          {% elif article.content_text %}
-            {% for paragraph in article.content_text.split('\n\n') %}
-              {% if paragraph.strip() %}
-                <p>{{ paragraph.strip() }}</p>
-              {% endif %}
-            {% endfor %}
-          {% else %}
-            <p class="text-muted"><em>Full article content not yet available.</em></p>
-          {% endif %}
-        </div>
-        {# Tags #}
-        {% if entities %}
-          <div class="article-topics">
-            <p class="article-topics__title">Topics</p>
-            <div class="article-topics__list">
-              {% for entity in entities[:10] %}
-                <a class="card__tag" href="/topic/{{ entity.slug }}">{{ entity.name }}</a>
-              {% endfor %}
-            </div>
-          </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted"><em>Full article content not yet available.</em></p>
         {% endif %}
-        {# Discussion / Comments Section #}
-        {{ comments_section(content, comments_tree, current_user) }}
-      </article>
-      {# Sidebar #}
-      <aside class="sidebar" aria-label="Related content">
-        {# Related articles widget #}
-        {% if related_items %}
-          <div class="sidebar-widget">
-            <h2 class="sidebar-widget__title">Related</h2>
-            <div class="related-articles-list">
-              {% for related in related_items[:5] %}
-                <a href="{{ related.url }}"
-                   class="related-article-card">
-                  {% if related.thumbnail %}
-                    <img src="{{ related.thumbnail }}"
-                         alt=""
-                         class="related-article-card__thumb"
-                         loading="lazy">
-                  {% endif %}
-                  <div class="related-article-card__info">
-                    <p class="related-article-card__title">{{ related.title }}</p>
-                    {% if related.published_at %}
-                      <time class="related-article-card__date">{{ related.published_at }}</time>
-                    {% endif %}
-                  </div>
-                </a>
-              {% endfor %}
-            </div>
-          </div>
-        {% endif %}
-        {# Newsletter sidebar #}
-        {{ newsletter_box(variant='sidebar', title='Get the best of Nexura', desc='Weekly digest of the top articles and videos.', btn_id='sidebar-subscribe-btn') }}
-      </aside>
-    </div>
-    {# Related Content Section (below article) #}
-    {% if related_items %}
-      <section class="related-section" aria-labelledby="related-content">
-        <h2 class="related-section__title" id="related-content">More Like This</h2>
-        <div class="related-section__grid">
-          {% for item in related_items[:4] %}
-            {{ content_card(item) }}
+      </div>
+      {# Tags #}
+      {% if entities %}
+      <div class="article-topics">
+        <p class="article-topics__title">Topics</p>
+        <div class="article-topics__list">
+          {% for entity in entities[:10] %}
+          <a class="card__tag" href="/topic/{{ entity.slug }}">{{ entity.name }}</a>
           {% endfor %}
         </div>
-      </section>
-    {% endif %}
+      </div>
+      {% endif %}
+      {# Discussion / Comments Section #}
+      {{ comments_section(content, comments_tree, current_user) }}
+    </article>
+    {# Sidebar #}
+    <aside class="sidebar" aria-label="Related content">
+      {# Related articles widget #}
+      {% if related_items %}
+      <div class="sidebar-widget">
+        <h2 class="sidebar-widget__title">Related</h2>
+        <div class="related-articles-list">
+          {% for related in related_items[:5] %}
+          <a href="{{ related.url }}" class="related-article-card">
+            {% if related.thumbnail %}
+            <img src="{{ related.thumbnail }}" alt="" class="related-article-card__thumb" loading="lazy">
+            {% endif %}
+            <div class="related-article-card__info">
+              <p class="related-article-card__title">{{ related.title }}</p>
+              {% if related.published_at %}
+              <time class="related-article-card__date">{{ related.formatted_date }}</time>
+              {% endif %}
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {# Newsletter sidebar #}
+      {{ newsletter_box(variant='sidebar', title='Get the best of Nexura', desc='Weekly digest of the top articles and
+      videos.', btn_id='sidebar-subscribe-btn') }}
+    </aside>
   </div>
-  {# Floating Sticky Action Pill #}
-  {{ sticky_pill(content, user_state, comments_tree, kind='article', show_progress=True) }}
+  {# Related Content Section (below article) #}
+  {% if related_items %}
+  <section class="related-section" aria-labelledby="related-content">
+    <h2 class="related-section__title" id="related-content">More Like This</h2>
+    <div class="related-section__grid">
+      {% for item in related_items[:4] %}
+      {{ content_card(item) }}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{# Floating Sticky Action Pill #}
+{{ sticky_pill(content, user_state, comments_tree, kind='article', show_progress=True) }}
 {% endblock %}
 {% block extra_js %}
-  <script src="{{ url_for('static', filename='js/features/article-chrome.js') }}"
-          defer></script>
+<script src="{{ url_for('static', filename='js/features/article-chrome.js') }}" defer></script>
 {% endblock %}

@@ -229,7 +229,7 @@ def home():
 
         section_rows = []
         for section_obj in sections[:3]:
-            items = ContentRepository.list_published(section_id=section_obj.id, page=1, per_page=12).items
+            items = ContentRepository.list_published(section_id=section_obj.id, page=1, per_page=18).items
             serialized = [serialize_content_card(c) for c in items]
             section_rows.append({"name": section_obj.name, "slug": section_obj.slug, "content_items": serialized, "items": serialized})
 

@@ -1,35 +1,67 @@
-/** Search autocomplete suggestions and DOM text highlighting. */
+/** Search autocomplete suggestions, DOM text highlighting, and live UI controls. */
 'use strict';
 
 const SearchAutocomplete = {
   input: null,
   dropdown: null,
+  clearBtn: null,
   localCache: new Map(),
   debounceTimer: null,
-  DEBOUNCE_MS: 200,
+  abortController: null,
+  DEBOUNCE_MS: 180,
   MIN_CHARS: 2,
   currentQuery: '',
 
   init() {
     this.input = document.querySelector('#search-input, [data-search-input]');
     this.dropdown = document.querySelector('#autocomplete-dropdown, [data-search-dropdown]');
+    this.clearBtn = document.getElementById('search-clear-btn');
+
     if (!this.input || !this.dropdown) return;
 
+    // Bind all input-level events
     this.input.addEventListener('input', () => this._onInput());
     this.input.addEventListener('keydown', (e) => this._onKeydown(e));
     this.input.addEventListener('focus', () => {
       if (this.input.value.trim().length >= this.MIN_CHARS) this._open();
     });
+
+    // Close on outside click (delegated once on document)
     document.addEventListener('click', (e) => {
       if (!this.input.contains(e.target) && !this.dropdown.contains(e.target)) {
         this._close();
       }
     });
+
+    // Clear button
+    if (this.clearBtn) {
+      this.clearBtn.addEventListener('click', () => {
+        this.input.value = '';
+        this.input.focus();
+        this._syncClearBtn();
+        this._close();
+      });
+    }
+
+    // Sync clear button initial state (e.g. when page loads with a query value)
+    this._syncClearBtn();
+  },
+
+  _syncClearBtn() {
+    if (!this.clearBtn) return;
+    const hasValue = this.input.value.trim().length > 0;
+    if (hasValue) {
+      this.clearBtn.removeAttribute('hidden');
+    } else {
+      this.clearBtn.setAttribute('hidden', '');
+    }
   },
 
   _onInput() {
     clearTimeout(this.debounceTimer);
     const q = this.input.value.trim();
+    this._syncClearBtn();
+
     if (q.length < this.MIN_CHARS) {
       this._close();
       return;
@@ -46,10 +78,12 @@ const SearchAutocomplete = {
       e.preventDefault();
       const next = focusedIdx < items.length - 1 ? focusedIdx + 1 : 0;
       items.forEach((i, idx) => i.classList.toggle('focused', idx === next));
+      items[next]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       const prev = focusedIdx > 0 ? focusedIdx - 1 : items.length - 1;
       items.forEach((i, idx) => i.classList.toggle('focused', idx === prev));
+      items[prev]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       const focused = items[focusedIdx];
       if (focused) {
@@ -59,20 +93,31 @@ const SearchAutocomplete = {
       }
     } else if (e.key === 'Escape') {
       this._close();
+      this.input.focus();
     }
   },
 
   async _fetch(q) {
     this.currentQuery = q;
+
+    // Cache hit
     if (this.localCache.has(q)) {
       this._render(q, this.localCache.get(q));
       return;
     }
 
+    // Cancel any in-flight request
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+    this.abortController = new AbortController();
+
     this._showSkeleton();
 
     try {
-      const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`, {
+        signal: this.abortController.signal,
+      });
       if (!res.ok) {
         this._close();
         return;
@@ -80,8 +125,10 @@ const SearchAutocomplete = {
       const data = await res.json();
       this.localCache.set(q, data);
       if (this.currentQuery === q) this._render(q, data);
-    } catch {
-      this._close();
+    } catch (err) {
+      if (err.name !== 'AbortError') this._close();
+    } finally {
+      this.abortController = null;
     }
   },
 
@@ -93,6 +140,16 @@ const SearchAutocomplete = {
     const skeleton = document.createElement('div');
     skeleton.className = 'autocomplete-skeleton';
     skeleton.setAttribute('aria-hidden', 'true');
+    const thumb = document.createElement('div');
+    thumb.className = 'autocomplete-skeleton__thumb';
+    const lines = document.createElement('div');
+    lines.className = 'autocomplete-skeleton__lines';
+    const l1 = document.createElement('div');
+    l1.className = 'autocomplete-skeleton__line';
+    const l2 = document.createElement('div');
+    l2.className = 'autocomplete-skeleton__line autocomplete-skeleton__line--short';
+    lines.append(l1, l2);
+    skeleton.append(thumb, lines);
     return skeleton;
   },
 
@@ -165,14 +222,14 @@ const SearchAutocomplete = {
       footer.href = `/search?q=${encodeURIComponent(q)}`;
       const queryEl = footer.querySelector('.autocomplete-footer__query');
       if (queryEl) {
-        queryEl.textContent = `“${q}”`;
+        queryEl.textContent = `"${q}"`;
       }
       return footer;
     }
     const footer = document.createElement('a');
     footer.className = 'autocomplete-footer';
     footer.href = `/search?q=${encodeURIComponent(q)}`;
-    footer.textContent = `View all results for “${q}”`;
+    footer.textContent = `View all results for "${q}"`;
     return footer;
   },
 
@@ -192,10 +249,7 @@ const SearchAutocomplete = {
       sectionTitle.className = 'autocomplete-section-title';
       sectionTitle.textContent = 'Articles';
       frag.appendChild(sectionTitle);
-
-      articles.forEach((item) => {
-        frag.appendChild(this._createItem(item, 'article'));
-      });
+      articles.forEach((item) => frag.appendChild(this._createItem(item, 'article')));
     }
 
     if (videos.length) {
@@ -203,10 +257,7 @@ const SearchAutocomplete = {
       sectionTitle.className = 'autocomplete-section-title';
       sectionTitle.textContent = 'Videos';
       frag.appendChild(sectionTitle);
-
-      videos.forEach((item) => {
-        frag.appendChild(this._createItem(item, 'video'));
-      });
+      videos.forEach((item) => frag.appendChild(this._createItem(item, 'video')));
     }
 
     frag.appendChild(this._createFooter(q));
@@ -218,15 +269,9 @@ const SearchAutocomplete = {
   _open() {
     this.dropdown.classList.add('open');
   },
+
   _close() {
     this.dropdown.classList.remove('open');
-  },
-  _esc(s) {
-    return String(s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   },
 };
 
