@@ -15,6 +15,9 @@ article_categories = db.Table(
     Column("weight", Float, default=0.0, nullable=False),
     Index("ix_article_categories_category", "category_id"),
     Index("ix_article_categories_article", "article_id"),
+    __table_args__ = (
+        db.Index("ix_article_categories_category", "category_id")
+    )
 )
 
 

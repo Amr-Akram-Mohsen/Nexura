@@ -9,6 +9,14 @@ from app.extensions import db
 from app.models.author import Author, article_authors
 from app.models.article import Article, ArticleSource, article_categories
 
+# Association table linking content to generic attributes
+content_attributes = db.Table(
+    "content_attributes",
+    db.Column("content_id", db.Integer, db.ForeignKey("contents.id"), primary_key=True),
+    db.Column("attribute_id", db.Integer, db.ForeignKey("attributes.id"), primary_key=True),
+    db.Index("ix_content_attributes_attribute", "attribute_id"),
+    db.Index("ix_content_attributes_content", "content_id"),
+)
 
 class Content(db.Model):
     """Master content aggregator and public entry point for articles and videos."""
@@ -16,7 +24,7 @@ class Content(db.Model):
     __tablename__ = "contents"
     __table_args__ = (
         UniqueConstraint("object_type", "object_id", name="uq_contents_object_type_id"),
-        CheckConstraint("object_type IN ('article', 'video')", name="ck_contents_object_type_valid"),
+        CheckConstraint("object_type IN ('article', 'video', 'post')", name="ck_contents_object_type_valid"),
         Index("ix_contents_published_at", "published_at"),
         Index("ix_contents_active", "is_active"),
         Index("ix_contents_view_count", "view_count"),
@@ -26,6 +34,7 @@ class Content(db.Model):
         Index("ix_contents_section_id", "section_id"),
         Index("ix_contents_category_id", "category_id"),
         Index("ix_contents_category_published_at", "category_id", "published_at"),
+        Index("ix_contents_category_intent_published_at", "category_id", "intent_id", "published_at"),
         Index("ix_contents_section_published_at", "section_id", "published_at"),
         Index("ix_contents_active_published_at", "is_active", "published_at"),
         Index("ix_contents_title", "title"),
@@ -33,8 +42,8 @@ class Content(db.Model):
     )
 
     id = Column(Integer, primary_key=True)
-    object_type = Column(String(20), nullable=False)
-    object_id = Column(Integer, nullable=False)
+    object_type = Column(String(20), nullable=False, index=True)
+    object_id = Column(Integer, nullable=False, index=True)
     published_at = Column(TIMESTAMP(timezone=True), nullable=False)
     ingested_at = Column(TIMESTAMP(timezone=True), server_default="CURRENT_TIMESTAMP")
     title = Column(Text)
@@ -42,7 +51,7 @@ class Content(db.Model):
     search_text = Column(Text)
     search_vector = Column(TSVECTOR)
     is_active = Column(Boolean, default=True, nullable=False)
-    is_published = Column(Boolean, default=False, nullable=False)
+    is_published = Column(Boolean, default=False, nullable=False, index=True)
 
     like_count = Column(Integer, default=0, nullable=False)
     dislike_count = Column(Integer, default=0, nullable=False)
@@ -57,12 +66,12 @@ class Content(db.Model):
 
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"))
     section_id = Column(Integer, ForeignKey("sections.id", ondelete="RESTRICT"), nullable=False)
-    gender_id = Column(Integer, ForeignKey("gender_facets.id", ondelete="SET NULL"))
-    intent_id = Column(Integer, ForeignKey("intent_facets.id", ondelete="SET NULL"))
-    price_tier_id = Column(Integer, ForeignKey("price_tier_facets.id", ondelete="SET NULL"))
-    source_id = Column(Integer, ForeignKey("sources.id", ondelete="SET NULL"))
+    gender_id = Column(Integer, ForeignKey("gender_facets.id", ondelete="SET NULL"), index=True)
+    intent_id = Column(Integer, ForeignKey("intent_facets.id", ondelete="SET NULL"), index=True)
+    price_tier_id = Column(Integer, ForeignKey("price_tier_facets.id", ondelete="SET NULL"), index=True)
+    source_id = Column(Integer, ForeignKey("sources.id", ondelete="SET NULL"), index=True)
 
-    ingestion_origin = Column(String(50))
+    ingestion_origin = Column(String(50), index=True)
 
     section = relationship("Section", back_populates="contents")
     category = relationship("Category", back_populates="contents")
@@ -71,6 +80,7 @@ class Content(db.Model):
     gender_facet = relationship("GenderFacet", back_populates="contents")
     price_tier_facet = relationship("PriceTierFacet", back_populates="contents")
     content_entities = relationship("ContentEntity", back_populates="content", cascade="all, delete-orphan")
+    attributes = db.relationship('AttributeFacet', secondary=content_attributes, back_populates='contents')
     content_locations = relationship("ContentLocation", back_populates="content", cascade="all, delete-orphan")
     views = relationship("View", back_populates="content", cascade="all, delete-orphan")
     saves = relationship("Save", back_populates="content", cascade="all, delete-orphan")
@@ -133,4 +143,4 @@ class ContentLocation(db.Model):
     location = relationship("Location")
 
 
-__all__ = ["Content", "ContentEntity", "ContentLocation", "Article", "ArticleSource", "Author", "article_authors", "article_categories"]
+__all__ = ["Content", "ContentEntity", "ContentLocation", "Article", "ArticleSource", "Author", "article_authors", "article_categories", "content_attributes"]

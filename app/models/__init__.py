@@ -11,3 +11,5 @@ from app.models import interaction  # noqa: F401
 from app.models import recommendation  # noqa: F401
 from app.models import distribution  # noqa: F401
 from app.models import audit  # noqa: F401
+from app.models import external  # noqa: F401
+from app.models import post  # noqa: F401

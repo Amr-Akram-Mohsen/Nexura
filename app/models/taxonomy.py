@@ -7,7 +7,6 @@ from sqlalchemy.orm import relationship
 
 from app.extensions import db
 
-
 class Section(db.Model):
     """High-level domain partition (e.g. Technology, Lifestyle)."""
 
@@ -168,3 +167,31 @@ class Event(db.Model):
 
     def __repr__(self) -> str:
         return f"<Event {self.title!r}>"
+
+class AttributeFacet(db.Model):
+    __tablename__ = 'attributes'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    slug = db.Column(db.String(80), unique=True, nullable=False)
+
+    @staticmethod
+    def get_by_slug(slug, session):
+        return session.query(AttributeFacet).filter_by(slug=slug).first()
+
+    @staticmethod
+    def get_or_create(name, session, category_id=None):
+        if not name:
+            return None
+        slug = generate_slug(name)
+        attr = AttributeFacet.get_by_slug(slug, session)
+        if not attr:
+            attr = AttributeFacet(name=name, slug=slug, category_id=category_id)
+            session.add(attr)
+            session.flush()
+        return attr
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
+    category = db.relationship('Category')
+
+    from app.models.content import content_attributes
+    contents = db.relationship('Content', secondary=content_attributes, back_populates='attributes')
+
